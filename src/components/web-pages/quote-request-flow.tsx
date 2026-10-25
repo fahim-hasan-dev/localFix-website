@@ -16,6 +16,8 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import type { IntakeAnswer, JobVisibility, Professional, Urgency } from "@/types";
 import { cn } from "@/lib/cn";
 
+type Phase = "category" | "details" | "matches" | "sent";
+
 function initials(name: string) {
   return name
     .split(" ")
@@ -58,21 +60,17 @@ export function QuoteRequestFlow() {
   const startingSlug = invitedPro?.categorySlug || draft.categorySlug || "";
   const [categorySlug, setCategorySlug] = useState(startingSlug);
   const [answers, setAnswers] = useState<Record<string, string>>(draft.answers ?? {});
-  const [index, setIndex] = useState(0);
   const [zip, setZip] = useState(draft.zip || user?.zip || "78701");
   const [description, setDescription] = useState(draft.problem || draft.summary || "");
   const [budget, setBudget] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
-  const [phase, setPhase] = useState<"category" | "questions" | "zip" | "details" | "matches" | "sent">(
-    startingSlug ? "questions" : "category",
-  );
+  const [phase, setPhase] = useState<Phase>(startingSlug ? "details" : "category");
   const [requestedPro, setRequestedPro] = useState<Professional | null>(invitedPro ?? null);
   const [publishedOpen, setPublishedOpen] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [matchedCount, setMatchedCount] = useState(0);
 
   const questions = useMemo(() => questionsForCategory(categorySlug), [categorySlug]);
-  const question = questions[index];
   const category = categories.find((item) => item.slug === categorySlug);
   const matches = useMemo(
     () => matchEligiblePros({ categorySlug, zip, city: user?.city || "Austin" }, professionals, listingStatus),
@@ -87,22 +85,22 @@ export function QuoteRequestFlow() {
       value: labelForAnswer(categorySlug, item.id, answers[item.id]),
     }));
 
+  const detailsReady =
+    questions.every((item) => Boolean(answers[item.id])) &&
+    /^\d{5}$/.test(zip.trim()) &&
+    (description.trim().length >= 8 || Boolean(draft.problem));
+
+  const stepCount = invitedPro || startingSlug ? 2 : 3;
+  const stepIndex = phase === "category" ? 1 : phase === "details" ? (stepCount === 2 ? 1 : 2) : stepCount;
+
   function pickCategory(slug: string) {
     setCategorySlug(slug);
     setAnswers({});
-    setIndex(0);
-    setPhase("questions");
+    setPhase("details");
   }
 
-  function pickAnswer(value: string) {
-    if (!question) return;
-    const next = { ...answers, [question.id]: value };
-    setAnswers(next);
-    if (index < questions.length - 1) {
-      setIndex(index + 1);
-      return;
-    }
-    setPhase(/^\d{5}$/.test(zip.trim()) ? "details" : "zip");
+  function pickAnswer(questionId: string, value: string) {
+    setAnswers((current) => ({ ...current, [questionId]: value }));
   }
 
   function goBack() {
@@ -110,32 +108,9 @@ export function QuoteRequestFlow() {
       setPhase("details");
       return;
     }
-    if (phase === "details") {
-      if (/^\d{5}$/.test(zip.trim()) && questions.length) {
-        setPhase("questions");
-        setIndex(questions.length - 1);
-        return;
-      }
-      setPhase("zip");
-      return;
-    }
-    if (phase === "zip") {
-      setPhase("questions");
-      setIndex(Math.max(questions.length - 1, 0));
-      return;
-    }
-    if (phase === "questions" && index > 0) {
-      setIndex(index - 1);
-      return;
-    }
-    if (phase === "questions" && !invitedPro) {
+    if (phase === "details" && !invitedPro) {
       setPhase("category");
     }
-  }
-
-  function continueFromZip() {
-    if (!/^\d{5}$/.test(zip.trim())) return;
-    setPhase("details");
   }
 
   function publishJob(pro?: Professional) {
@@ -258,29 +233,31 @@ export function QuoteRequestFlow() {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
+    <div className="mx-auto max-w-2xl space-y-4">
       {phase !== "category" ? (
         <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={goBack}
-            className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-title"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
+          {phase === "matches" || (phase === "details" && !invitedPro) ? (
+            <button
+              type="button"
+              onClick={goBack}
+              className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-title"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+          ) : (
+            <span />
+          )}
           <p className="text-xs text-muted">{category?.name}</p>
         </div>
       ) : null}
 
-      {phase === "questions" && question ? (
-        <div className="h-1 overflow-hidden rounded-full bg-smoke">
-          <div
-            className="h-full bg-primary transition-all"
-            style={{ width: `${((index + 1) / questions.length) * 100}%` }}
-          />
-        </div>
-      ) : null}
+      <div className="h-1 overflow-hidden rounded-full bg-smoke">
+        <div
+          className="h-full bg-primary transition-all"
+          style={{ width: `${(stepIndex / stepCount) * 100}%` }}
+        />
+      </div>
 
       <div className="rounded-[22px] border border-line/80 bg-white p-6 sm:p-8">
         {phase === "category" ? (
@@ -288,7 +265,7 @@ export function QuoteRequestFlow() {
             <h1 className="font-display text-2xl font-semibold text-title">
               What do you need help with?
             </h1>
-            <p className="mt-1 text-sm text-muted">Pick a service, then post a job or request one professional.</p>
+            <p className="mt-1 text-sm text-muted">Pick a service, then fill in the job on one page.</p>
             <div className="mt-5 grid gap-2">
               {categories.map((item) => (
                 <button
@@ -305,72 +282,53 @@ export function QuoteRequestFlow() {
           </>
         ) : null}
 
-        {phase === "questions" && question ? (
-          <>
-            <p className="text-xs font-medium text-muted">
-              {index + 1} of {questions.length}
-            </p>
-            <h1 className="mt-2 font-display text-2xl font-semibold text-title">
-              {question.prompt}
-            </h1>
-            <div className="mt-5 grid gap-2">
-              {question.options.map((option) => {
-                const selected = answers[question.id] === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => pickAnswer(option.value)}
-                    className={cn(
-                      "rounded-2xl border px-4 py-3.5 text-left text-sm font-medium transition",
-                      selected
-                        ? "border-primary bg-primary/[0.04] text-title"
-                        : "border-line text-copy hover:border-primary/40",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        ) : null}
-
-        {phase === "zip" ? (
-          <>
-            <h1 className="font-display text-2xl font-semibold text-title">
-              Where should they come?
-            </h1>
-            <p className="mt-1 text-sm text-muted">Matching uses this ZIP and each professional’s service radius.</p>
-            <div className="relative mt-5">
-              <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-              <TextField
-                value={zip}
-                onChange={(event) => setZip(event.target.value)}
-                placeholder="78701"
-                maxLength={5}
-                className="rounded-xl pl-10 font-mono"
-              />
-            </div>
-            <Button
-              type="button"
-              size="md"
-              className="mt-5"
-              disabled={!/^\d{5}$/.test(zip.trim())}
-              onClick={continueFromZip}
-            >
-              Continue
-            </Button>
-          </>
-        ) : null}
-
         {phase === "details" ? (
           <>
             <h1 className="font-display text-2xl font-semibold text-title">Job details</h1>
             <p className="mt-1 text-sm text-muted">
-              Required description, location, and timing. Budget and photos are optional. Posting does not hire anyone.
+              Answer these, then add a short description. Posting does not hire anyone.
             </p>
-            <div className="mt-5 space-y-4">
+
+            <div className="mt-6 space-y-5">
+              {questions.map((item) => (
+                <div key={item.id}>
+                  <p className="font-display text-sm font-semibold text-title">{item.prompt}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {item.options.map((option) => {
+                      const selected = answers[item.id] === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => pickAnswer(item.id, option.value)}
+                          className={cn(
+                            "rounded-full border px-3.5 py-1.5 text-sm font-medium transition",
+                            selected
+                              ? "border-primary bg-primary text-white"
+                              : "border-line bg-white text-copy hover:border-primary/40",
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              <Field label="ZIP">
+                <div className="relative">
+                  <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                  <TextField
+                    value={zip}
+                    onChange={(event) => setZip(event.target.value)}
+                    placeholder="78701"
+                    maxLength={5}
+                    className="rounded-xl pl-10 font-mono"
+                  />
+                </div>
+              </Field>
+
               <Field label="Describe the work">
                 <TextArea
                   value={description}
@@ -379,6 +337,7 @@ export function QuoteRequestFlow() {
                   rows={4}
                 />
               </Field>
+
               <Field label="Budget (optional)">
                 <NativeSelect value={budget} onChange={(event) => setBudget(event.target.value)}>
                   <option value="">No budget listed</option>
@@ -389,6 +348,7 @@ export function QuoteRequestFlow() {
                   <option value="$5,000+">$5,000+</option>
                 </NativeSelect>
               </Field>
+
               <Field label="Photos (optional, up to 4)">
                 <input
                   type="file"
@@ -410,11 +370,12 @@ export function QuoteRequestFlow() {
                 </div>
               ) : null}
             </div>
+
             <Button
               type="button"
               size="md"
-              className="mt-5"
-              disabled={description.trim().length < 8 && !draft.problem}
+              className="mt-6"
+              disabled={!detailsReady}
               onClick={() => setPhase("matches")}
             >
               Continue

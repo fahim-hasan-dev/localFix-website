@@ -7,8 +7,8 @@ import {
   CheckCircle2,
   Clock,
   FileCheck2,
+  Flag,
   Inbox,
-  MessageSquare,
   ShieldCheck,
   Star,
   Truck,
@@ -60,6 +60,15 @@ import {
 import type { DirectPaymentMethod } from "@/types";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 export function RequestDetail({
   id,
   backHref,
@@ -107,6 +116,7 @@ export function RequestDetail({
   const [settleInspected, setSettleInspected] = useState(true);
   const [arrangePay, setArrangePay] = useState<DirectPaymentMethod>("cash");
   const [selectedReviewTags, setSelectedReviewTags] = useState<string[]>([]);
+  const [showReport, setShowReport] = useState(false);
 
   const sortedQuotes = useMemo(
     () =>
@@ -175,86 +185,78 @@ export function RequestDetail({
     "Flexible (Anytime during business hours)",
   ];
 
+  const requestedPro = job.requestedProId ? getPro(job.requestedProId) : null;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Link href={backHref} className="inline-flex font-display text-sm font-semibold text-primary">
         ← {backLabel}
       </Link>
 
-      <div className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
+      <div className="rounded-[16px] border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-[26px] sm:text-[28px] font-bold text-title tracking-tight">{job.title}</h1>
-            <p className="mt-2 text-sm text-muted">{meta.join(" · ")}</p>
+            <h1 className="font-display text-2xl font-semibold text-title">{job.title}</h1>
+            <p className="mt-1 text-xs text-muted">{meta.join(" · ")}</p>
           </div>
           <StatusBadge status={job.status} />
         </div>
-        <div className="mt-4">
+        <div className="mt-3">
           <StatusTracker status={job.status} />
         </div>
-        {job.requestedProId ? (
-          <p className="mt-3 text-sm text-copy">
-            Quote requested from{" "}
-            <span className="font-semibold text-title">
-              {getPro(job.requestedProId)?.name ?? "a pro"}
-            </span>
-          </p>
-        ) : null}
         {jobCardSummary(job) ? (
-          <p className="mt-4 text-[16px] leading-7 text-copy">{jobCardSummary(job)}</p>
+          <p className="mt-3 text-sm leading-6 text-copy">{jobCardSummary(job)}</p>
         ) : null}
         {job.intakeAnswers?.length ? (
-          <dl className="mt-4 divide-y divide-line/70 rounded-2xl border border-line/80">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             {job.intakeAnswers.map((item) => (
-              <div key={item.id} className="flex items-start justify-between gap-4 px-4 py-3">
-                <dt className="text-sm text-muted">{item.label}</dt>
-                <dd className="text-right text-sm font-medium text-title">{item.value}</dd>
-              </div>
+              <span
+                key={item.id}
+                className="rounded-full border border-line bg-smoke px-2.5 py-1 text-xs font-medium text-title"
+              >
+                {item.value}
+              </span>
             ))}
-          </dl>
+          </div>
         ) : null}
         {photosForJob.length ? (
-          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          <div className="mt-3 grid grid-cols-4 gap-2">
             {photosForJob.map((src) => (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={src} src={src} alt="" className="h-20 w-full rounded-[10px] object-cover" />
+              <img key={src} src={src} alt="" className="h-14 w-full rounded-lg object-cover" />
             ))}
           </div>
         ) : null}
 
-        {canHire ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {job.status !== "cancelled" && job.status !== "completed" && job.status !== "disputed" ? (
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    dispatch(setJobStatus({ jobId: id, status: "cancelled" }));
-                    setSavedMsg("Request closed.");
-                  }}
-                >
-                  Cancel request
-                </Button>
-                {!hiredQuoteId ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      dispatch(setJobStatus({ jobId: id, status: "getting_quotes" }));
-                      setSavedMsg("Reposted for new offers.");
-                    }}
-                  >
-                    Repost
-                  </Button>
-                ) : null}
-              </>
+        {canHire && job.status !== "cancelled" && job.status !== "completed" && job.status !== "disputed" ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line/70 pt-3">
+            <button
+              type="button"
+              className="text-xs font-semibold text-muted hover:text-title"
+              onClick={() => {
+                dispatch(setJobStatus({ jobId: id, status: "cancelled" }));
+                setSavedMsg("Request closed.");
+              }}
+            >
+              Cancel
+            </button>
+            {!hiredQuoteId ? (
+              <button
+                type="button"
+                className="text-xs font-semibold text-muted hover:text-title"
+                onClick={() => {
+                  dispatch(setJobStatus({ jobId: id, status: "getting_quotes" }));
+                  setSavedMsg("Reposted.");
+                }}
+              >
+                Repost
+              </button>
             ) : null}
+            {savedMsg ? <p className="text-xs font-medium text-success">{savedMsg}</p> : null}
           </div>
+        ) : savedMsg ? (
+          <p className="mt-3 text-xs font-medium text-success">{savedMsg}</p>
         ) : null}
-        {savedMsg ? <p className="mt-3 text-sm text-success font-medium">{savedMsg}</p> : null}
       </div>
 
       {/* LIVE OPERATIONAL STATUS CARDS */}
@@ -818,9 +820,9 @@ export function RequestDetail({
 
       {!isProView ? (
         <>
-          <Card>
+          <Card className="rounded-[16px] p-4 sm:p-5 hover:shadow-xs">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-base font-semibold text-title">Quotations</h2>
+              <h2 className="font-display text-sm font-semibold text-title">Quotations</h2>
               {sortedQuotes.length ? (
                 <span className="text-xs text-muted">{sortedQuotes.length}</span>
               ) : null}
@@ -833,20 +835,26 @@ export function RequestDetail({
               />
             ) : null}
             {sortedQuotes.length === 0 ? (
-              <div className="mt-4 rounded-xl border border-dashed border-line/80 bg-surface px-4 py-8 text-center">
-                <p className="text-sm font-medium text-title">
-                  {job.requestedProId
-                    ? `Waiting on ${getPro(job.requestedProId)?.name ?? "the pro"}`
-                    : "No quotes yet"}
-                </p>
-                <p className="mt-1 text-xs text-muted">
-                  {job.requestedProId
-                    ? "They have your answers and can send a price."
-                    : "Quotes from matched pros will show up here."}
-                </p>
-              </div>
+              requestedPro ? (
+                <div className="mt-3 flex items-center gap-3 rounded-2xl border border-line/80 px-3.5 py-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-title text-sm font-semibold text-white">
+                    {initials(requestedPro.name)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-sm font-semibold text-title">{requestedPro.name}</p>
+                    <p className="text-xs text-muted">Waiting for a quote</p>
+                  </div>
+                  {inboxHref ? (
+                    <Link href={inboxHref} className="text-xs font-semibold text-primary hover:underline">
+                      Message
+                    </Link>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-muted">Quotes from matched pros will show here.</p>
+              )
             ) : (
-              <div className="mt-4 space-y-3">
+              <div className="mt-3 space-y-3">
                 {sortedQuotes.map((quote) => (
                   <QuoteCard
                     key={quote.id}
@@ -869,95 +877,81 @@ export function RequestDetail({
             )}
           </Card>
 
-          <Card>
+          <Card className="rounded-[16px] p-4 sm:p-5 hover:shadow-xs">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-base font-semibold text-title">Messages</h2>
+              <div>
+                <h2 className="font-display text-sm font-semibold text-title">Messages</h2>
+                {messages.length === 0 ? (
+                  <p className="mt-0.5 text-xs text-muted">Opens after a reply.</p>
+                ) : null}
+              </div>
               {inboxHref ? (
-                <Link href={inboxHref} className="text-xs font-semibold text-primary hover:underline">
+                <Link href={inboxHref} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                  <Inbox className="h-3.5 w-3.5" />
                   Inbox
                 </Link>
               ) : null}
             </div>
-            {messages.length === 0 ? (
-              <div className="mt-4 rounded-xl border border-dashed border-line/80 bg-surface px-4 py-8 text-center">
-                <MessageSquare className="mx-auto h-5 w-5 text-muted" />
-                <p className="mt-2 text-sm font-medium text-title">No messages yet</p>
-                <p className="mt-1 text-xs text-muted">Chat opens after a pro replies to this request.</p>
-                {inboxHref ? (
-                  <Button href={inboxHref} variant="ghost" size="sm" className="mt-3">
-                    <Inbox className="h-3.5 w-3.5" />
-                    Open inbox
-                  </Button>
-                ) : null}
-              </div>
-            ) : (
-              <ul className="mt-4 divide-y divide-line/70 overflow-hidden rounded-xl border border-line/80">
+            {messages.length ? (
+              <ul className="mt-3 divide-y divide-line/70 overflow-hidden rounded-2xl border border-line/80">
                 {messages.map((thread) => (
-                  <li key={thread.id} className="px-4 py-3">
+                  <li key={thread.id} className="px-3.5 py-2.5">
                     <p className="text-sm font-semibold text-title">{thread.otherParty}</p>
-                    <p className="mt-1 text-sm text-copy">
+                    <p className="mt-0.5 truncate text-xs text-copy">
                       {thread.lastSender === "homeowner" ? "You" : thread.otherParty}: {thread.lastMessage}
                     </p>
                   </li>
                 ))}
               </ul>
-            )}
+            ) : null}
           </Card>
 
           {canHire && !job.requestedProId && job.status !== "cancelled" && job.status !== "completed" && !hiredQuoteId ? (
-            <Card>
-              <div className="flex items-start gap-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-smoke text-title">
-                  <UserPlus className="h-4 w-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-display text-base font-semibold text-title">Invite a pro</h2>
-                  <p className="mt-0.5 text-xs text-muted">Send this request to someone specific.</p>
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <NativeSelect
-                      value={inviteId}
-                      onChange={(event) => setInviteId(event.target.value)}
-                      className="min-w-0 flex-1 rounded-xl"
-                    >
-                      <option value="">Choose a pro</option>
-                      {invitePool.map((pro) => (
-                        <option key={pro.id} value={pro.id}>
-                          {pro.name} · {pro.trade}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={!inviteId}
-                      onClick={() => {
-                        dispatch(invitePro({ jobId: id, proId: inviteId }));
-                        dispatch(
-                          addNotification({
-                            title: "Pro invited",
-                            body: "Invite sent.",
-                            href: `/account/jobs/${id}`,
-                            createdAt: "Just now",
-                            role: "homeowner",
-                          }),
-                        );
-                        setInviteId("");
-                        setSavedMsg("Invite sent.");
-                      }}
-                    >
-                      Send invite
-                    </Button>
-                  </div>
-                  {invited.length ? (
-                    <p className="mt-3 text-xs text-muted">
-                      Invited:{" "}
-                      {invited
-                        .map((proId) => getPro(proId)?.name ?? "Pro")
-                        .join(", ")}
-                    </p>
-                  ) : null}
-                </div>
+            <Card className="rounded-[16px] p-4 sm:p-5 hover:shadow-xs">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-muted" />
+                <h2 className="font-display text-sm font-semibold text-title">Invite a pro</h2>
               </div>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <NativeSelect
+                  value={inviteId}
+                  onChange={(event) => setInviteId(event.target.value)}
+                  className="min-w-0 flex-1 rounded-xl"
+                >
+                  <option value="">Choose a pro</option>
+                  {invitePool.map((pro) => (
+                    <option key={pro.id} value={pro.id}>
+                      {pro.name} · {pro.trade}
+                    </option>
+                  ))}
+                </NativeSelect>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!inviteId}
+                  onClick={() => {
+                    dispatch(invitePro({ jobId: id, proId: inviteId }));
+                    dispatch(
+                      addNotification({
+                        title: "Pro invited",
+                        body: "Invite sent.",
+                        href: `/account/jobs/${id}`,
+                        createdAt: "Just now",
+                        role: "homeowner",
+                      }),
+                    );
+                    setInviteId("");
+                    setSavedMsg("Invite sent.");
+                  }}
+                >
+                  Send
+                </Button>
+              </div>
+              {invited.length ? (
+                <p className="mt-2 text-xs text-muted">
+                  Invited: {invited.map((proId) => getPro(proId)?.name ?? "Pro").join(", ")}
+                </p>
+              ) : null}
             </Card>
           ) : null}
         </>
@@ -1073,64 +1067,80 @@ export function RequestDetail({
       ) : null}
 
       {canHire && job.status !== "cancelled" ? (
-        <details className="rounded-[20px] border border-line/80 bg-white p-5 shadow-xs">
-          <summary className="cursor-pointer text-sm font-semibold text-title">
-            Report a problem
-          </summary>
-          <p className="mt-3 text-sm text-muted">
-            Use this for a no-show, safety issue, or work that was not resolved.
-          </p>
-          <TextArea
-            className="mt-3 rounded-xl"
-            value={disputeNote}
-            onChange={(event) => setDisputeNote(event.target.value)}
-            placeholder="What happened?"
-            rows={3}
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="mt-3"
-            disabled={disputeNote.trim().length < 8}
-            onClick={() => {
-              dispatch(setJobStatus({ jobId: id, status: "disputed" }));
-              dispatch(
-                openDispute({
-                  jobId: id,
-                  jobTitle: job.title,
-                  homeownerName: job.homeownerName,
-                  proName: hiredPro?.businessName ?? hiredPro?.name ?? "Unassigned",
-                  reason: disputeNote.trim(),
-                  agreedPrice: booking?.agreedPrice,
-                  quoteId: hiredQuoteId,
-                }),
-              );
-              dispatch(
-                addNotification({
-                  title: "Dispute opened",
-                  body: "Support will review the job history, quotation, and messages. HomeFix does not process repair refunds.",
-                  href: `/account/jobs/${id}`,
-                  createdAt: "Just now",
-                  role: "homeowner",
-                }),
-              );
-              dispatch(
-                addNotification({
-                  title: "Dispute opened",
-                  body: `${job.title} was flagged for operations review.`,
-                  href: "/admin/disputes",
-                  createdAt: "Just now",
-                  role: "admin",
-                }),
-              );
-              setDisputeNote("");
-              setSavedMsg("Dispute opened.");
-            }}
-          >
-            Open dispute
-          </Button>
-        </details>
+        <div className="rounded-[16px] border border-line/80 bg-white px-4 py-3.5 shadow-xs">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-smoke text-muted">
+                <Flag className="h-3.5 w-3.5" />
+              </span>
+              <div>
+                <p className="font-display text-sm font-semibold text-title">Report a problem</p>
+                <p className="text-xs text-muted">No-show, safety, or unfinished work</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="text-xs font-semibold text-primary hover:underline"
+              onClick={() => setShowReport((open) => !open)}
+            >
+              {showReport ? "Close" : "Report"}
+            </button>
+          </div>
+          {showReport ? (
+            <div className="mt-3 border-t border-line/70 pt-3">
+              <TextArea
+                className="rounded-xl"
+                value={disputeNote}
+                onChange={(event) => setDisputeNote(event.target.value)}
+                placeholder="What happened?"
+                rows={3}
+              />
+              <Button
+                type="button"
+                size="sm"
+                className="mt-3"
+                disabled={disputeNote.trim().length < 8}
+                onClick={() => {
+                  dispatch(setJobStatus({ jobId: id, status: "disputed" }));
+                  dispatch(
+                    openDispute({
+                      jobId: id,
+                      jobTitle: job.title,
+                      homeownerName: job.homeownerName,
+                      proName: hiredPro?.businessName ?? hiredPro?.name ?? "Unassigned",
+                      reason: disputeNote.trim(),
+                      agreedPrice: booking?.agreedPrice,
+                      quoteId: hiredQuoteId,
+                    }),
+                  );
+                  dispatch(
+                    addNotification({
+                      title: "Dispute opened",
+                      body: "Support will review the job history, quotation, and messages. HomeFix does not process repair refunds.",
+                      href: `/account/jobs/${id}`,
+                      createdAt: "Just now",
+                      role: "homeowner",
+                    }),
+                  );
+                  dispatch(
+                    addNotification({
+                      title: "Dispute opened",
+                      body: `${job.title} was flagged for operations review.`,
+                      href: "/admin/disputes",
+                      createdAt: "Just now",
+                      role: "admin",
+                    }),
+                  );
+                  setDisputeNote("");
+                  setShowReport(false);
+                  setSavedMsg("Dispute opened.");
+                }}
+              >
+                Open dispute
+              </Button>
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {/* MODAL 1: WORK ORDER & RECEIPT MODAL */}

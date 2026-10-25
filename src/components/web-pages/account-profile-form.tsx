@@ -233,18 +233,16 @@ export function AccountProfileForm() {
           Profile Settings
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Manage your personal details and service addresses.
+          Photo, contact, and service address.
         </p>
       </div>
 
-      {/* 1. Personal Information Card */}
-      <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
-        <div className="mb-6 border-b border-line/60 pb-4">
-          <h2 className="font-display text-base sm:text-[17px] font-semibold text-title">Personal Information</h2>
-          <p className="text-xs text-muted">Profile photo and primary contact details</p>
+      <Card className="rounded-[16px] border border-line/80 bg-white p-4 sm:p-6 shadow-xs hover:shadow-xs">
+        <div className="mb-5 border-b border-line/60 pb-3">
+          <h2 className="font-display text-base font-semibold text-title">Personal information</h2>
         </div>
 
-        <form className="space-y-6" onSubmit={submitProfile}>
+        <form className="space-y-5" onSubmit={submitProfile}>
           {/* Avatar and Photo Upload */}
           <div className="flex flex-wrap items-center gap-4 sm:gap-6 border-b border-line/60 pb-6">
             <div className="relative group">
@@ -305,7 +303,7 @@ export function AccountProfileForm() {
               />
             </Field>
 
-            <Field label="Email address" hint="Associated with your account authentication">
+            <Field label="Email address">
               <div className="relative">
                 <TextField
                   type="email"
@@ -321,7 +319,7 @@ export function AccountProfileForm() {
               </div>
             </Field>
 
-            <Field label="Phone number" hint="For contractor updates and appointment confirmations">
+            <Field label="Phone number">
               <TextField
                 name="phone"
                 type="tel"
@@ -344,48 +342,37 @@ export function AccountProfileForm() {
             ) : null}
           </div>
         </form>
-      </Card>
 
-      {/* 2. Service Addresses Section */}
-      <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-line/60 pb-4">
-          <div>
-            <h2 className="font-display text-lg font-bold text-title">Service Addresses</h2>
-            <p className="text-xs text-muted">
-              Properties where contractors can be scheduled for on-site repair jobs
-            </p>
+        <div className="mt-6 border-t border-line/60 pt-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-display text-sm font-semibold text-title">Address</h3>
+            {editingId === null ? (
+              <button
+                type="button"
+                onClick={startAdd}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add
+              </button>
+            ) : null}
           </div>
-          {editingId === null ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={startAdd}
-              className="rounded-full self-start sm:self-auto"
-            >
-              <Plus className="h-4 w-4" />
-              Add new address
-            </Button>
-          ) : null}
-        </div>
 
-        {/* Address Form (Inline Editor for Add or Edit) */}
         {editingId !== null ? (
-          <div className="mb-6 rounded-[16px] border border-primary/20 bg-smoke/70 p-4 sm:p-5">
-            <div className="mb-4 flex items-center justify-between border-b border-line/50 pb-3">
-              <p className="font-display text-sm font-bold text-title">
-                {editingId === "new" ? "Add New Service Address" : `Edit Address (${draft.label})`}
+          <div className="mt-3 rounded-2xl border border-line/80 bg-smoke/50 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="font-display text-sm font-semibold text-title">
+                {editingId === "new" ? "New address" : "Edit address"}
               </p>
               <button
                 type="button"
                 onClick={cancelEdit}
                 aria-label="Close address editor"
-                className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-white hover:text-title transition"
+                className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-white hover:text-title"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-
             <AddressEditor
               draft={draft}
               error={addrError}
@@ -396,8 +383,7 @@ export function AccountProfileForm() {
           </div>
         ) : null}
 
-        {/* Saved Addresses List */}
-        <div className="space-y-3">
+        <div className="mt-3 space-y-2">
           {addresses.map((addr, index) => {
             const isPrimary = isAddressPrimary(addr, index);
             const Icon = getAddressIcon(addr.label);
@@ -405,66 +391,49 @@ export function AccountProfileForm() {
             return (
               <div
                 key={addr.id}
-                className={`relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[16px] border p-4 transition-all duration-200 ${
-                  isPrimary
-                    ? "border-primary/40 bg-primary/[0.02] shadow-xs"
-                    : "border-line/80 bg-white hover:border-line"
-                }`}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-line/80 px-3.5 py-3"
               >
-                <div className="flex items-start gap-3.5">
-                  <div
-                    className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full ${
-                      isPrimary ? "bg-primary/10 text-primary" : "bg-smoke text-muted"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-display text-sm font-bold text-title">{addr.label}</span>
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-smoke text-muted">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-1.5 font-display text-sm font-semibold text-title">
+                      {addr.label}
                       {isPrimary ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                          <Check className="h-3 w-3" />
-                          Primary address
-                        </span>
+                        <span className="text-xs font-medium text-muted">Primary</span>
                       ) : null}
-                    </div>
-                    <p className="mt-1 font-display text-[15px] font-medium text-title">
-                      {addr.street}
                     </p>
-                    <p className="text-xs text-muted">
-                      {addr.city}, {addr.state} {addr.zip}
+                    <p className="truncate text-xs text-muted">
+                      {addr.street}, {addr.city}, {addr.state} {addr.zip}
                     </p>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-line/40">
+                <div className="flex shrink-0 items-center gap-2">
                   {!isPrimary ? (
                     <button
                       type="button"
                       onClick={() => makePrimary(addr)}
-                      className="rounded-full px-3 py-1 text-xs font-semibold text-muted hover:bg-smoke hover:text-primary transition"
+                      className="text-xs font-semibold text-muted hover:text-title"
                     >
-                      Set as primary
+                      Primary
                     </button>
                   ) : null}
-
                   <button
                     type="button"
                     onClick={() => startEdit(addr, isPrimary)}
                     disabled={editingId !== null}
-                    className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/5 transition disabled:opacity-40"
+                    className="text-muted hover:text-title disabled:opacity-40"
+                    aria-label={`Edit ${addr.label}`}
                   >
                     <Pencil className="h-3.5 w-3.5" />
-                    Edit
                   </button>
-
                   <button
                     type="button"
                     onClick={() => handleDeleteAddress(addr.id)}
                     disabled={editingId !== null}
-                    aria-label={`Remove address ${addr.label}`}
-                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-muted hover:bg-rose-50 hover:text-error transition disabled:opacity-40"
+                    aria-label={`Remove ${addr.label}`}
+                    className="text-muted hover:text-error disabled:opacity-40"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -474,20 +443,9 @@ export function AccountProfileForm() {
           })}
 
           {!addresses.length && editingId !== "new" ? (
-            <div className="flex flex-col items-center justify-center rounded-[16px] border border-dashed border-line/80 py-8 text-center bg-smoke/30">
-              <div className="grid h-12 w-12 place-items-center rounded-full bg-smoke text-muted mb-3">
-                <MapPin className="h-6 w-6" />
-              </div>
-              <p className="font-display text-sm font-semibold text-title">No saved addresses</p>
-              <p className="mt-1 text-xs text-muted max-w-sm">
-                Add your home or property address so pros can provide accurate quotes and schedule visits.
-              </p>
-              <Button type="button" size="sm" variant="ghost" onClick={startAdd} className="mt-4 rounded-full">
-                <Plus className="h-4 w-4" />
-                Add your first address
-              </Button>
-            </div>
+            <p className="text-sm text-muted">No address yet.</p>
           ) : null}
+        </div>
         </div>
       </Card>
     </div>
