@@ -58,16 +58,12 @@ export function ServiceTile({
         </span>
       </div>
 
-      {/* Bottom Bar: Title, Summary, and Action Arrow */}
       <div className="relative z-10">
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h3 className="font-display text-[18px] sm:text-[19px] font-medium leading-tight text-white group-hover:text-white">
               {category.name}
             </h3>
-            <p className="mt-1 line-clamp-1 font-sans text-xs text-white/75">
-              {category.summary}
-            </p>
           </div>
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-title transition-all duration-300 group-hover:scale-110 group-hover:bg-primary group-hover:text-white">
             <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
