@@ -11,11 +11,13 @@ export function JobCard({
   href,
   actionLabel = "View Request",
   viewer = "homeowner",
+  quoteCount = 0,
 }: {
   job: Job;
   href: string;
   actionLabel?: string;
   viewer?: "homeowner" | "pro";
+  quoteCount?: number;
 }) {
   const category = getCategory(job.categorySlug);
   const image = photos.services[job.categorySlug];
@@ -71,7 +73,12 @@ export function JobCard({
         ) : null}
 
         <div className="mt-3 flex items-center justify-between pt-2 border-t border-line/40">
-          <span className="text-[11px] text-muted">Posted {job.postedAt}</span>
+          <span className="text-[11px] text-muted">
+            Posted {job.postedAt}
+            {isPro
+              ? null
+              : ` · ${quoteCount} quotation${quoteCount === 1 ? "" : "s"}`}
+          </span>
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:underline">
             {actionLabel}
           </span>

@@ -24,7 +24,7 @@ export function Navbar() {
   const pathname = usePathname();
   const user = useAppSelector((state) => state.auth.user);
   const isPro = user?.role === "pro";
-  const isDashboard = pathname.startsWith("/pro") || pathname.startsWith("/account") || pathname.startsWith("/admin");
+  const isDashboard = pathname.startsWith("/pro") || pathname.startsWith("/account");
   const navLinks = isPro || isDashboard ? [] : homeownerLinks;
 
   const [open, setOpen] = useState(false);

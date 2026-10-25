@@ -1,376 +1,89 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import {
-  Calendar,
-  Check,
-  CheckCircle2,
-  ShieldCheck,
-  Star,
-  X,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Field, NativeSelect, TextField } from "@/components/ui/field";
+import { Calendar, ChevronRight, Clock, ShieldCheck, Star } from "lucide-react";
 import { getPro, offerStatusLabels } from "@/Mockdata";
-import { paymentMethodLabels, selectQuotesForJob } from "@/lib/marketplace";
-import {
-  confirmBooking,
-  hireQuote,
-  setOfferStatus,
-  setPaymentArrangement,
-} from "@/redux/slices/marketplaceSlice";
-import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import type { DirectPaymentMethod, Quote } from "@/types";
-import { GuaranteeCard } from "@/components/shared/guarantee-protection";
+import { useAppSelector } from "@/redux/hooks";
+import type { Quote } from "@/types";
 import { cn } from "@/lib/cn";
 
-const priceLabels: Record<string, string> = {
-  fixed: "Fixed Price",
-  estimate: "Estimate",
-  hourly: "Hourly",
-  time_and_materials: "Time & Materials",
-};
+function quotePrice(quote: Quote) {
+  if (quote.priceMax != null) return `$${quote.amount}–$${quote.priceMax}`;
+  return `$${quote.amount}${quote.priceType === "hourly" ? "/hr" : ""}`;
+}
 
 export function QuoteCard({
   quote,
-  canHire = false,
-  compareMode = false,
-  selected = false,
-  onToggleCompare,
+  href,
 }: {
   quote: Quote;
-  canHire?: boolean;
-  compareMode?: boolean;
-  selected?: boolean;
-  onToggleCompare?: () => void;
+  href: string;
 }) {
-  const dispatch = useAppDispatch();
   const hiredId = useAppSelector((state) => state.marketplace.hiredByJob[quote.jobId]);
-  const booking = useAppSelector((state) => state.marketplace.bookings[quote.jobId]);
-  const siblingIds = useAppSelector((state) => selectQuotesForJob(state, quote.jobId).map((item) => item.id));
-  const homeownerName = useAppSelector((state) => state.auth.user?.name);
   const pro = getPro(quote.proId);
   const hired = hiredId === quote.id;
   const closed = quote.status === "rejected" || quote.status === "withdrawn" || quote.status === "expired";
-  const [showBooking, setShowBooking] = useState(false);
-  const [bookDate, setBookDate] = useState("");
-  const [arrivalWindow, setArrivalWindow] = useState("10:00 AM – 12:00 PM (Late Morning)");
-  const [payMethod, setPayMethod] = useState<DirectPaymentMethod>("cash");
-  const [msg, setMsg] = useState("");
-
-  const price =
-    quote.priceMax != null
-      ? `$${quote.amount}–$${quote.priceMax}`
-      : `$${quote.amount}${quote.priceType === "hourly" ? "/hr" : ""}`;
-
-  function accept() {
-    dispatch(
-      hireQuote({
-        jobId: quote.jobId,
-        quoteId: quote.id,
-        proId: quote.proId,
-        agreedPrice: quote.amount,
-        scopeSnapshot: quote.scope,
-        homeownerName,
-        paymentTerms: quote.paymentTerms,
-        siblingQuoteIds: siblingIds,
-      }),
-    );
-    dispatch(setJobStatus({ jobId: quote.jobId, status: "hired" }));
-    dispatch(
-      addNotification({
-        title: "Quotation accepted",
-        body: `${pro?.name ?? "The professional"} was selected. Confirm schedule and how you will pay them directly.`,
-        href: `/account/jobs/${quote.jobId}`,
-        createdAt: "Just now",
-        role: "homeowner",
-      }),
-    );
-    dispatch(
-      addNotification({
-        title: "You were hired",
-        body: `A homeowner accepted your $${quote.amount} quotation. Confirm the schedule on the job.`,
-        href: `/pro/jobs/${quote.jobId}`,
-        createdAt: "Just now",
-        role: "pro",
-      }),
-    );
-    setShowBooking(true);
-    setMsg("Quotation accepted. Agree a schedule and payment method to confirm the booking.");
-  }
-
-  function decline() {
-    dispatch(setOfferStatus({ quoteId: quote.id, status: "rejected" }));
-    setMsg("Quote declined.");
-  }
-
-  function lockBooking() {
-    if (!bookDate) {
-      setMsg("Please choose an appointment date.");
-      return;
-    }
-    dispatch(
-      confirmBooking({
-        jobId: quote.jobId,
-        quoteId: quote.id,
-        proId: quote.proId,
-        agreedPrice: quote.amount,
-        scheduledDate: bookDate,
-        scheduledTime: arrivalWindow,
-        arrivalWindow,
-        scopeSnapshot: quote.scope,
-        paymentArrangement: payMethod,
-        paymentTerms: quote.paymentTerms,
-      }),
-    );
-    dispatch(setPaymentArrangement({ jobId: quote.jobId, paymentArrangement: payMethod }));
-    dispatch(setJobStatus({ jobId: quote.jobId, status: "scheduled" }));
-    dispatch(
-      addNotification({
-        title: "Booking confirmed",
-        body: `${bookDate} · $${quote.amount}. Pay the professional directly — HomeFix does not collect this.`,
-        href: `/account/jobs/${quote.jobId}`,
-        createdAt: "Just now",
-        role: "homeowner",
-      }),
-    );
-    dispatch(
-      addNotification({
-        title: "Booking confirmed",
-        body: `Schedule locked for ${bookDate}. Payment is arranged off-platform.`,
-        href: `/pro/jobs/${quote.jobId}`,
-        createdAt: "Just now",
-        role: "pro",
-      }),
-    );
-    setShowBooking(false);
-    setMsg("Booking confirmed. Pay the professional directly using the agreed method.");
-  }
+  const status = hired
+    ? "Hired"
+    : quote.status === "rejected"
+      ? "Declined"
+      : offerStatusLabels[quote.status] ?? quote.status;
+  const when = quote.proposedSchedule || quote.availability;
+  const duration = quote.estimatedDuration;
 
   return (
-    <article
+    <Link
+      href={href}
+      aria-label={`View ${pro?.name ?? "professional"} quotation`}
       className={cn(
-        "rounded-2xl border bg-white p-5 sm:p-6 transition-all duration-200",
-        selected
-          ? "border-primary ring-2 ring-primary/20 shadow-sm"
-          : "border-line shadow-xs hover:border-line/90 hover:shadow-sm",
-        hired && "border-success/40 bg-success/[0.01]",
-        closed && !hired && "opacity-65 bg-stone-50/70 border-stone-200"
+        "flex items-center gap-3 rounded-2xl border border-line/80 bg-white px-3.5 py-3 transition hover:border-primary/40 hover:shadow-sm",
+        hired && "border-success/40 bg-success/[0.02]",
+        closed && !hired && "opacity-70",
       )}
     >
-      {/* Top Header: Contractor Info & Badges */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-display text-base font-bold text-primary">
-            {pro?.name ? pro.name.charAt(0) : pro?.businessName ? pro.businessName.charAt(0) : "P"}
-          </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-display text-lg font-semibold leading-tight text-title truncate">
-                {pro?.name ?? "Provider"}
-              </h3>
-              {pro?.clearance === "cleared" && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                  <ShieldCheck className="h-3 w-3" />
-                  Verified Pro
-                </span>
-              )}
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted">
-              <span className="font-medium text-stone-700">{pro?.trade}</span>
-              {pro?.rating ? (
-                <span className="inline-flex items-center gap-1 font-semibold text-title">
-                  <Star className="h-3 w-3 fill-accent text-accent" />
-                  {pro.rating.toFixed(1)}
-                </span>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        {/* Status Badges */}
-        <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto shrink-0">
-          <span className="rounded-full border border-stone-200 bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">
-            {priceLabels[quote.priceType] ?? "Fixed Price"}
-          </span>
-          <Badge
-            tone={
-              hired
-                ? "green"
-                : quote.status === "accepted"
-                ? "green"
-                : quote.status === "rejected"
-                ? "slate"
-                : "amber"
-            }
-          >
-            {hired
-              ? "Hired"
-              : quote.status === "rejected"
-              ? "Declined"
-              : offerStatusLabels[quote.status] ?? quote.status}
-          </Badge>
-        </div>
-      </div>
-
-      <p className="mt-4 font-display text-2xl font-bold tracking-tight text-title">{price}</p>
-      {quote.scope ? <p className="mt-2 text-sm leading-relaxed text-stone-700">{quote.scope}</p> : null}
-      <dl className="mt-3 grid gap-1.5 text-xs text-muted sm:grid-cols-2">
-        {quote.estimatedDuration ? (
-          <div>
-            <dt className="font-medium text-stone-500">Estimated time</dt>
-            <dd className="text-copy">{quote.estimatedDuration}</dd>
-          </div>
-        ) : null}
-        {quote.proposedSchedule || quote.availability ? (
-          <div>
-            <dt className="font-medium text-stone-500">Availability</dt>
-            <dd className="text-copy">{quote.proposedSchedule || quote.availability}</dd>
-          </div>
-        ) : null}
-        {quote.exclusions ? (
-          <div className="sm:col-span-2">
-            <dt className="font-medium text-stone-500">Not included</dt>
-            <dd className="text-copy">{quote.exclusions}</dd>
-          </div>
-        ) : null}
-        {quote.warranty ? (
-          <div>
-            <dt className="font-medium text-stone-500">Warranty</dt>
-            <dd className="text-copy">{quote.warranty}</dd>
-          </div>
-        ) : null}
-        {quote.paymentTerms ? (
-          <div className="sm:col-span-2">
-            <dt className="font-medium text-stone-500">Payment terms</dt>
-            <dd className="text-copy">{quote.paymentTerms}</dd>
-          </div>
-        ) : null}
-      </dl>
-
-      {/* Action Buttons: Accept & Reject Only */}
-      {canHire && !hiredId && !closed ? (
-        <div className="mt-5 flex flex-wrap items-center gap-2.5 border-t border-line/70 pt-4">
-          <Button
-            type="button"
-            size="sm"
-            onClick={accept}
-            className="font-semibold shadow-xs"
-          >
-            <Check className="mr-1.5 h-4 w-4" />
-            Accept Quote
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={decline}
-            className="font-medium text-stone-600 hover:bg-error/10 hover:text-error"
-          >
-            <X className="mr-1.5 h-4 w-4" />
-            Reject
-          </Button>
-          {compareMode && onToggleCompare ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={onToggleCompare}
-              className={cn(
-                "ml-auto font-medium",
-                selected
-                  ? "bg-primary/10 text-primary hover:bg-primary/15"
-                  : "text-stone-600 hover:bg-stone-100"
-              )}
-            >
-              {selected ? "✓ Comparing" : "Compare"}
-            </Button>
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-title text-sm font-semibold text-white">
+        {(pro?.name ?? "P").charAt(0)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1.5 font-display text-sm font-semibold text-title">
+          <span className="truncate">{pro?.name ?? "Professional"}</span>
+          {pro?.clearance === "cleared" ? (
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" />
           ) : null}
-        </div>
-      ) : null}
-
-      {/* Booking Form (Triggers immediately upon Accept) */}
-      {canHire && (hired || showBooking) && !booking?.scheduledDate && !booking?.agreedPrice ? (
-        <div className="mt-5 space-y-4 rounded-2xl border border-primary/30 bg-smoke/80 p-4 sm:p-5 shadow-xs">
-          <div className="flex items-center justify-between gap-2 border-b border-line/60 pb-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-title">
-              <Calendar className="h-4.5 w-4.5 text-primary" />
-              Confirm appointment schedule
-            </div>
-            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200 flex items-center gap-1">
-              <ShieldCheck className="h-3 w-3" /> Direct pay to pro
+        </p>
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+          {pro?.rating ? (
+            <span className="inline-flex items-center gap-1 font-medium text-title">
+              <Star className="h-3 w-3 fill-amber-400 text-amber-500" />
+              {pro.rating.toFixed(1)}
             </span>
-          </div>
-
-          {/* LocalHomeFix Guarantee Trust Card */}
-          <GuaranteeCard variant="compact" className="bg-white border-line/80" />
-
-          <p className="text-xs text-muted leading-relaxed">
-            Select your preferred arrival window. Contractors confirm exact arrival within this 2-hour timeframe. Direct settlement on 100% completion with zero platform markup.
+          ) : null}
+          {pro?.trade ? <span>{pro.trade}</span> : null}
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+              hired
+                ? "bg-success/10 text-success"
+                : closed
+                  ? "bg-smoke text-muted"
+                  : "bg-amber-50 text-amber-700",
+            )}
+          >
+            {status}
+          </span>
+        </p>
+      </div>
+      <div className="hidden shrink-0 text-right sm:block">
+        <p className="font-display text-base font-bold text-title">{quotePrice(quote)}</p>
+        {when || duration ? (
+          <p className="mt-0.5 flex items-center justify-end gap-1 text-[11px] text-muted">
+            {when ? <Calendar className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+            <span className="max-w-[10rem] truncate">{when || duration}</span>
           </p>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Appointment Date">
-              <TextField type="date" value={bookDate} onChange={(e) => setBookDate(e.target.value)} />
-            </Field>
-            <Field label="How you will pay the pro">
-              <NativeSelect
-                value={payMethod}
-                onChange={(e) => setPayMethod(e.target.value as DirectPaymentMethod)}
-              >
-                {Object.entries(paymentMethodLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            <Field label="2-Hour Arrival Window">
-              <NativeSelect
-                value={arrivalWindow}
-                onChange={(e) => setArrivalWindow(e.target.value)}
-              >
-                <option value="8:00 AM – 10:00 AM (Early Morning)">8:00 AM – 10:00 AM (Early Morning)</option>
-                <option value="10:00 AM – 12:00 PM (Late Morning)">10:00 AM – 12:00 PM (Late Morning)</option>
-                <option value="1:00 PM – 3:00 PM (Early Afternoon)">1:00 PM – 3:00 PM (Early Afternoon)</option>
-                <option value="3:00 PM – 5:00 PM (Late Afternoon)">3:00 PM – 5:00 PM (Late Afternoon)</option>
-                <option value="Flexible (Anytime during business hours)">Flexible (Anytime during business hours)</option>
-              </NativeSelect>
-            </Field>
-          </div>
-          <div className="pt-1 flex items-center gap-3">
-            <Button type="button" size="sm" onClick={lockBooking} className="rounded-full">
-              Confirm Schedule &amp; Lock Booking
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {/* Booked Confirmation Notice */}
-      {hired && booking?.scheduledDate ? (
-        <div className="mt-5 rounded-xl border border-success/30 bg-success/[0.05] p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-success">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-            Booked for {booking.scheduledDate} at {booking.scheduledTime} · ${booking.agreedPrice}
-          </div>
-          <p className="mt-1 text-xs text-stone-600">
-            Booking confirmed. Coordinate directly with {pro?.name ?? "your contractor"} through messaging. Pay them directly.
-          </p>
-          <div className="mt-3">
-            <Link
-              href="/account/messages"
-              className="inline-flex items-center gap-1 font-display text-sm font-bold text-primary hover:underline"
-            >
-              Open messages ↗
-            </Link>
-          </div>
-        </div>
-      ) : null}
-
-      {msg ? <p className="mt-3 text-xs font-medium text-primary">{msg}</p> : null}
-    </article>
+        ) : null}
+      </div>
+      <p className="shrink-0 font-display text-base font-bold text-title sm:hidden">{quotePrice(quote)}</p>
+      <ChevronRight className="hidden h-4 w-4 shrink-0 text-muted sm:block" aria-hidden />
+    </Link>
   );
 }

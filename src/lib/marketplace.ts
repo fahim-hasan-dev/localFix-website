@@ -75,12 +75,47 @@ export function selectHiredQuoteId(state: RootState, jobId: string) {
   return state.marketplace.hiredByJob[jobId];
 }
 
+const TIMING_TAG = /\[Preferred Timing:\s*([^\]]+)\]/gi;
+
+export function splitJobDescription(description: string) {
+  const timing = [...description.matchAll(TIMING_TAG)].at(-1)?.[1]?.trim();
+  const text = description.replace(TIMING_TAG, "").replace(/\n{2,}/g, "\n").trim();
+  return { text, timing };
+}
+
 export function jobCardSummary(job: Job) {
+  const { text } = splitJobDescription(job.description);
   const firstLabel = job.intakeAnswers?.[0]?.label;
-  if (firstLabel && job.description.includes(firstLabel)) {
-    return job.description.split(firstLabel)[0].replace(/[. ]+$/, "").trim();
+  if (firstLabel && text.includes(firstLabel)) {
+    return text.split(firstLabel)[0].replace(/[. ]+$/, "").trim();
   }
-  return job.description;
+  return text;
+}
+
+export function jobRequestFacts(job: Job) {
+  const { timing: taggedTiming } = splitJobDescription(job.description);
+  const byId = (id: string) => job.intakeAnswers?.find((item) => item.id === id)?.value;
+  const byLabel = (pattern: RegExp) =>
+    job.intakeAnswers?.find((item) => pattern.test(item.label))?.value;
+
+  const facts: { label: string; value: string }[] = [];
+  const timing = byId("timing") ?? byLabel(/timing/i) ?? taggedTiming;
+  const materials = byId("materials") ?? byLabel(/part|material/i);
+  if (timing) facts.push({ label: "Timing", value: timing });
+  if (materials) facts.push({ label: "Materials", value: materials });
+  if (job.propertyType) {
+    const labels: Record<string, string> = {
+      single_family: "Single-family",
+      condo: "Condo",
+      townhome: "Townhome",
+      apartment: "Apartment",
+      commercial: "Commercial",
+      other: "Other",
+    };
+    facts.push({ label: "Property", value: labels[job.propertyType] ?? job.propertyType });
+  }
+  if (job.budget) facts.push({ label: "Budget", value: job.budget });
+  return facts;
 }
 
 export const paymentMethodLabels: Record<string, string> = {

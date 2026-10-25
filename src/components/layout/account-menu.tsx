@@ -18,7 +18,6 @@ import type { User } from "@/types";
 
 function roleLabel(role: User["role"]) {
   if (role === "pro") return "Verified Pro";
-  if (role === "admin") return "Administrator";
   return "Homeowner";
 }
 
@@ -35,9 +34,8 @@ export function AccountMenu({ user }: { user: User }) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   const isPro = user.role === "pro";
-  const isAdmin = user.role === "admin";
-  const profileHref = isPro ? "/pro/profile" : isAdmin ? "/admin" : "/account/profile";
-  const dashboardHref = isPro ? "/pro" : isAdmin ? "/admin" : "/account";
+  const profileHref = isPro ? "/pro/profile" : "/account/profile";
+  const dashboardHref = isPro ? "/pro" : "/account";
 
   useEffect(() => {
     function onPointer(event: MouseEvent) {
@@ -57,7 +55,7 @@ export function AccountMenu({ user }: { user: User }) {
   function handleRoleSwitch(targetRole: User["role"]) {
     dispatch(loginAs(targetRole));
     setOpen(false);
-    router.push(targetRole === "pro" ? "/pro" : targetRole === "admin" ? "/admin" : "/account");
+    router.push(targetRole === "pro" ? "/pro" : "/account");
   }
 
   return (
@@ -101,7 +99,7 @@ export function AccountMenu({ user }: { user: User }) {
               className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 font-display text-xs sm:text-sm font-medium text-title hover:bg-smoke transition-colors"
             >
               <LayoutDashboard className="h-4 w-4 text-primary" />
-              {isPro ? "Dashboard" : isAdmin ? "Operations" : "My Requests"}
+              {isPro ? "Dashboard" : "My Requests"}
             </Link>
             <Link
               href={profileHref}
@@ -137,19 +135,6 @@ export function AccountMenu({ user }: { user: User }) {
                 <span className="flex items-center gap-2">
                   <Repeat className="h-3.5 w-3.5" />
                   Switch to Pro View
-                </span>
-                <span className="text-[10px] text-muted font-normal">Demo</span>
-              </button>
-            ) : null}
-            {user.role !== "admin" ? (
-              <button
-                type="button"
-                onClick={() => handleRoleSwitch("admin")}
-                className="flex w-full items-center justify-between rounded-[10px] px-3 py-2 text-left font-display text-xs font-semibold text-primary hover:bg-white hover:shadow-xs transition"
-              >
-                <span className="flex items-center gap-2">
-                  <Repeat className="h-3.5 w-3.5" />
-                  Switch to Admin
                 </span>
                 <span className="text-[10px] text-muted font-normal">Demo</span>
               </button>

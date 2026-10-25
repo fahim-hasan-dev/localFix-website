@@ -7,7 +7,6 @@ import {
   Award,
   Calendar,
   Check,
-  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -36,7 +35,6 @@ import { toggleFavorite } from "@/redux/slices/featuresSlice";
 import { useRoleAccess } from "@/hooks/use-role-access";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import type { Professional } from "@/types";
-import { GuaranteeCard } from "@/components/shared/guarantee-protection";
 import { cn } from "@/lib/cn";
 import {
   defaultWeeklyHours,
@@ -452,15 +450,9 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
             <div className="pt-6 border-t border-line/60 grid gap-8 md:grid-cols-12 md:items-start">
               {/* Left Column (7 cols): Verified Highlights */}
               <div className="md:col-span-7 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display text-xs font-bold uppercase tracking-wider text-muted">
-                    Contractor Highlights
-                  </h3>
-                  <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Verified Professional</span>
-                  </div>
-                </div>
+                <h3 className="font-display text-xs font-bold uppercase tracking-wider text-muted">
+                  Contractor Highlights
+                </h3>
 
                 <div className="grid grid-cols-2 gap-y-4 gap-x-6 pt-1">
                   {/* Hired Times */}
@@ -938,9 +930,6 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
               Pay the pro directly. No booking fee.
             </p>
           </div>
-
-          {/* LocalHomeFix Guarantee Trust Card (Placed below the box, without price) */}
-          <GuaranteeCard variant="compact" />
         </aside>
       </div>
 

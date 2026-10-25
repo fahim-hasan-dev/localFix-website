@@ -2,21 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Check, MapPin, ShieldCheck, Star } from "lucide-react";
+import { ArrowLeft, Check, ShieldCheck, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
+import { Field, NativeSelect, TextArea } from "@/components/ui/field";
 import { categories, getPro, professionals } from "@/Mockdata";
 import { labelForAnswer, questionsForCategory } from "@/lib/intake-questions";
 import { matchEligiblePros } from "@/lib/matching";
 import { loginAs } from "@/redux/slices/authSlice";
 import { clearDraft } from "@/redux/slices/intakeSlice";
 import { addJob } from "@/redux/slices/marketplaceSlice";
-import { addNotification, invitePro, setJobPhotos } from "@/redux/slices/featuresSlice";
+import { addNotification, invitePro, setJobPhotos, type SavedAddress } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import type { IntakeAnswer, JobVisibility, Professional, Urgency } from "@/types";
+import type { IntakeAnswer, JobVisibility, Professional, Urgency, User } from "@/types";
 import { cn } from "@/lib/cn";
 
-type Phase = "category" | "details" | "matches" | "sent";
+type Phase = "category" | "questions" | "details" | "matches" | "sent";
 
 function initials(name: string) {
   return name
@@ -32,6 +32,29 @@ function urgencyFromWhen(value?: string): Urgency {
   if (value === "flexible") return "flexible";
   if (value === "two_weeks") return "two_weeks";
   return "this_week";
+}
+
+function fiveDigitZip(value?: string) {
+  const match = value?.trim().match(/\d{5}/);
+  return match?.[0] ?? "";
+}
+
+function resolveJobLocation(
+  draftZip: string,
+  user: User | null,
+  addresses: SavedAddress[],
+) {
+  const home = addresses.find((item) => item.label.toLowerCase() === "home") ?? addresses[0];
+  const zip =
+    fiveDigitZip(user?.zip) ||
+    fiveDigitZip(home?.zip) ||
+    fiveDigitZip(draftZip) ||
+    "78701";
+  return {
+    zip,
+    city: home?.city || user?.city || "Austin",
+    state: home?.state || user?.state || "TX",
+  };
 }
 
 function readPhotos(files: FileList | null): Promise<string[]> {
@@ -54,27 +77,39 @@ export function QuoteRequestFlow() {
   const invitedPro = getPro(searchParams.get("invite") ?? "");
   const draft = useAppSelector((state) => state.intake.draft);
   const user = useAppSelector((state) => state.auth.user);
+  const addresses = useAppSelector((state) => state.features.addresses);
   const listingStatus = useAppSelector((state) => state.admin.listingStatus);
   const dispatch = useAppDispatch();
+
+  const location = useMemo(
+    () => resolveJobLocation(draft.zip, user, addresses),
+    [addresses, draft.zip, user],
+  );
 
   const startingSlug = invitedPro?.categorySlug || draft.categorySlug || "";
   const [categorySlug, setCategorySlug] = useState(startingSlug);
   const [answers, setAnswers] = useState<Record<string, string>>(draft.answers ?? {});
-  const [zip, setZip] = useState(draft.zip || user?.zip || "78701");
+  const [index, setIndex] = useState(0);
   const [description, setDescription] = useState(draft.problem || draft.summary || "");
   const [budget, setBudget] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
-  const [phase, setPhase] = useState<Phase>(startingSlug ? "details" : "category");
+  const [phase, setPhase] = useState<Phase>(startingSlug ? "questions" : "category");
   const [requestedPro, setRequestedPro] = useState<Professional | null>(invitedPro ?? null);
   const [publishedOpen, setPublishedOpen] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [matchedCount, setMatchedCount] = useState(0);
 
   const questions = useMemo(() => questionsForCategory(categorySlug), [categorySlug]);
+  const question = questions[index];
   const category = categories.find((item) => item.slug === categorySlug);
   const matches = useMemo(
-    () => matchEligiblePros({ categorySlug, zip, city: user?.city || "Austin" }, professionals, listingStatus),
-    [categorySlug, listingStatus, user?.city, zip],
+    () =>
+      matchEligiblePros(
+        { categorySlug, zip: location.zip, city: location.city },
+        professionals,
+        listingStatus,
+      ),
+    [categorySlug, listingStatus, location.city, location.zip],
   );
 
   const intakeAnswers: IntakeAnswer[] = questions
@@ -85,22 +120,33 @@ export function QuoteRequestFlow() {
       value: labelForAnswer(categorySlug, item.id, answers[item.id]),
     }));
 
-  const detailsReady =
-    questions.every((item) => Boolean(answers[item.id])) &&
-    /^\d{5}$/.test(zip.trim()) &&
-    (description.trim().length >= 8 || Boolean(draft.problem));
-
-  const stepCount = invitedPro || startingSlug ? 2 : 3;
-  const stepIndex = phase === "category" ? 1 : phase === "details" ? (stepCount === 2 ? 1 : 2) : stepCount;
+  const showCategory = !invitedPro && !startingSlug;
+  const totalSteps = (showCategory ? 1 : 0) + questions.length + 2;
+  const currentStep =
+    phase === "category"
+      ? 1
+      : phase === "questions"
+        ? (showCategory ? 1 : 0) + index + 1
+        : phase === "details"
+          ? (showCategory ? 1 : 0) + questions.length + 1
+          : (showCategory ? 1 : 0) + questions.length + 2;
 
   function pickCategory(slug: string) {
     setCategorySlug(slug);
     setAnswers({});
-    setPhase("details");
+    setIndex(0);
+    setPhase("questions");
   }
 
-  function pickAnswer(questionId: string, value: string) {
-    setAnswers((current) => ({ ...current, [questionId]: value }));
+  function pickAnswer(value: string) {
+    if (!question) return;
+    const next = { ...answers, [question.id]: value };
+    setAnswers(next);
+    if (index < questions.length - 1) {
+      setIndex(index + 1);
+      return;
+    }
+    setPhase("details");
   }
 
   function goBack() {
@@ -108,7 +154,20 @@ export function QuoteRequestFlow() {
       setPhase("details");
       return;
     }
-    if (phase === "details" && !invitedPro) {
+    if (phase === "details") {
+      if (questions.length) {
+        setPhase("questions");
+        setIndex(questions.length - 1);
+        return;
+      }
+      if (!invitedPro) setPhase("category");
+      return;
+    }
+    if (phase === "questions" && index > 0) {
+      setIndex(index - 1);
+      return;
+    }
+    if (phase === "questions" && !invitedPro) {
       setPhase("category");
     }
   }
@@ -130,9 +189,9 @@ export function QuoteRequestFlow() {
         title: title || category?.name || "Service request",
         categorySlug,
         description: fullDescription,
-        zip: zip.trim(),
-        city: user?.city || "Austin",
-        state: user?.state || "TX",
+        zip: location.zip,
+        city: location.city,
+        state: location.state,
         urgency: urgencyFromWhen(answers.when),
         budget: budget.trim() || undefined,
         homeownerName: user?.name ?? "Maya Chen",
@@ -152,7 +211,7 @@ export function QuoteRequestFlow() {
       dispatch(
         addNotification({
           title: "Quote request",
-          body: `${user?.name ?? "A homeowner"} asked you to quote ${title || "a job"} in ${zip.trim()}.`,
+          body: `${user?.name ?? "A homeowner"} asked you to quote ${title || "a job"} in ${location.zip}.`,
           href: `/pro/jobs/${createdId}`,
           createdAt: "Just now",
           role: "pro",
@@ -172,7 +231,7 @@ export function QuoteRequestFlow() {
         dispatch(
           addNotification({
             title: "New matching job",
-            body: `${title || "A new request"} was posted in ${zip.trim()}. Review and send a quotation.`,
+            body: `${title || "A new request"} was posted in ${location.zip}. Review and send a quotation.`,
             href: `/pro/jobs/${createdId}`,
             createdAt: "Just now",
             role: "pro",
@@ -200,7 +259,7 @@ export function QuoteRequestFlow() {
 
   if (phase === "sent" && jobId) {
     return (
-      <div className="mx-auto max-w-xl rounded-[22px] border border-line/80 bg-white p-6 sm:p-8">
+      <div className="w-full rounded-[22px] border border-line/80 bg-white p-6 sm:p-8">
         <div className="grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-700">
           <Check className="h-6 w-6" />
         </div>
@@ -217,7 +276,7 @@ export function QuoteRequestFlow() {
             {requestedPro?.name ?? category?.name ?? "Open request"}
           </p>
           <p className="mt-0.5 text-xs text-muted">
-            {category?.name} · {zip} · Pay the pro directly if you hire
+            {category?.name} · {location.city} {location.zip} · Pay the pro directly if you hire
           </p>
         </div>
         <div className="mt-6 flex flex-wrap gap-2">
@@ -233,21 +292,17 @@ export function QuoteRequestFlow() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="w-full space-y-4">
       {phase !== "category" ? (
         <div className="flex items-center justify-between">
-          {phase === "matches" || (phase === "details" && !invitedPro) ? (
-            <button
-              type="button"
-              onClick={goBack}
-              className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-title"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </button>
-          ) : (
-            <span />
-          )}
+          <button
+            type="button"
+            onClick={goBack}
+            className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-title"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
           <p className="text-xs text-muted">{category?.name}</p>
         </div>
       ) : null}
@@ -255,7 +310,7 @@ export function QuoteRequestFlow() {
       <div className="h-1 overflow-hidden rounded-full bg-smoke">
         <div
           className="h-full bg-primary transition-all"
-          style={{ width: `${(stepIndex / stepCount) * 100}%` }}
+          style={{ width: `${Math.min(100, (currentStep / Math.max(totalSteps, 1)) * 100)}%` }}
         />
       </div>
 
@@ -265,7 +320,9 @@ export function QuoteRequestFlow() {
             <h1 className="font-display text-2xl font-semibold text-title">
               What do you need help with?
             </h1>
-            <p className="mt-1 text-sm text-muted">Pick a service, then fill in the job on one page.</p>
+            <p className="mt-1 text-sm text-muted">
+              Pick a service, then answer a few questions. Posting does not hire anyone.
+            </p>
             <div className="mt-5 grid gap-2">
               {categories.map((item) => (
                 <button
@@ -282,53 +339,44 @@ export function QuoteRequestFlow() {
           </>
         ) : null}
 
+        {phase === "questions" && question ? (
+          <>
+            <p className="text-xs font-medium text-muted">
+              {index + 1} of {questions.length}
+            </p>
+            <h1 className="mt-2 font-display text-2xl font-semibold text-title">
+              {question.prompt}
+            </h1>
+            <div className="mt-5 grid gap-2">
+              {question.options.map((option) => {
+                const selected = answers[question.id] === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => pickAnswer(option.value)}
+                    className={cn(
+                      "rounded-2xl border px-4 py-3.5 text-left text-sm font-medium transition",
+                      selected
+                        ? "border-primary bg-primary/[0.04] text-title"
+                        : "border-line text-copy hover:border-primary/40",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : null}
+
         {phase === "details" ? (
           <>
             <h1 className="font-display text-2xl font-semibold text-title">Job details</h1>
             <p className="mt-1 text-sm text-muted">
-              Answer these, then add a short description. Posting does not hire anyone.
+              Add a short description. Budget and photos are optional. Posting does not hire anyone.
             </p>
-
-            <div className="mt-6 space-y-5">
-              {questions.map((item) => (
-                <div key={item.id}>
-                  <p className="font-display text-sm font-semibold text-title">{item.prompt}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {item.options.map((option) => {
-                      const selected = answers[item.id] === option.value;
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => pickAnswer(item.id, option.value)}
-                          className={cn(
-                            "rounded-full border px-3.5 py-1.5 text-sm font-medium transition",
-                            selected
-                              ? "border-primary bg-primary text-white"
-                              : "border-line bg-white text-copy hover:border-primary/40",
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              <Field label="ZIP">
-                <div className="relative">
-                  <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-                  <TextField
-                    value={zip}
-                    onChange={(event) => setZip(event.target.value)}
-                    placeholder="78701"
-                    maxLength={5}
-                    className="rounded-xl pl-10 font-mono"
-                  />
-                </div>
-              </Field>
-
+            <div className="mt-5 space-y-4">
               <Field label="Describe the work">
                 <TextArea
                   value={description}
@@ -337,7 +385,6 @@ export function QuoteRequestFlow() {
                   rows={4}
                 />
               </Field>
-
               <Field label="Budget (optional)">
                 <NativeSelect value={budget} onChange={(event) => setBudget(event.target.value)}>
                   <option value="">No budget listed</option>
@@ -348,7 +395,6 @@ export function QuoteRequestFlow() {
                   <option value="$5,000+">$5,000+</option>
                 </NativeSelect>
               </Field>
-
               <Field label="Photos (optional, up to 4)">
                 <input
                   type="file"
@@ -370,12 +416,11 @@ export function QuoteRequestFlow() {
                 </div>
               ) : null}
             </div>
-
             <Button
               type="button"
               size="md"
-              className="mt-6"
-              disabled={!detailsReady}
+              className="mt-5"
+              disabled={description.trim().length < 8 && !draft.problem}
               onClick={() => setPhase("matches")}
             >
               Continue
@@ -411,7 +456,8 @@ export function QuoteRequestFlow() {
                   Post job and receive quotations
                 </p>
                 <p className="mt-1 text-xs text-muted">
-                  {matches.length} cleared professional{matches.length === 1 ? "" : "s"} in this trade and radius can review it.
+                  {matches.length} cleared professional{matches.length === 1 ? "" : "s"} in this trade and radius can
+                  review it.
                 </p>
                 <Button type="button" size="sm" className="mt-3" onClick={() => publishJob()}>
                   Publish job
@@ -421,10 +467,7 @@ export function QuoteRequestFlow() {
 
             <div className="mt-5 space-y-2">
               {(invitedPro ? [invitedPro] : matches).map((pro) => (
-                <div
-                  key={pro.id}
-                  className="flex items-center gap-3 rounded-2xl border border-line/80 p-3.5"
-                >
+                <div key={pro.id} className="flex items-center gap-3 rounded-2xl border border-line/80 p-3.5">
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-title text-sm font-semibold text-white">
                     {initials(pro.name)}
                   </span>

@@ -7,25 +7,21 @@ import {
   CheckCircle2,
   Clock,
   FileCheck2,
-  Flag,
-  Inbox,
   ShieldCheck,
   Star,
   Truck,
-  UserPlus,
   Wrench,
   X,
 } from "lucide-react";
-import { QuoteComparePanel } from "@/components/shared/quote-compare-panel";
 import { QuoteCard } from "@/components/shared/quote-card";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { StatusTracker } from "@/components/shared/status-tracker";
 import { WorkOrderReceipt } from "@/components/shared/work-order-receipt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import {
   jobCardSummary,
+  jobRequestFacts,
   paymentMethodLabels,
   selectBooking,
   selectChangeRequests,
@@ -36,8 +32,6 @@ import {
 import {
   getCategory,
   getPro,
-  professionals,
-  threadsForJob,
   urgencyLabels,
 } from "@/Mockdata";
 import {
@@ -50,11 +44,9 @@ import {
   resolveChangeRequest,
   setPaymentArrangement,
 } from "@/redux/slices/marketplaceSlice";
-import { openDispute } from "@/redux/slices/adminSlice";
 import {
   addNotification,
   addReview,
-  invitePro,
   setJobStatus,
 } from "@/redux/slices/featuresSlice";
 import type { DirectPaymentMethod } from "@/types";
@@ -91,18 +83,13 @@ export function RequestDetail({
   const changeRequests = useAppSelector((state) => selectChangeRequests(state, id));
   const completion = useAppSelector((state) => selectCompletion(state, id));
   const storedPhotos = useAppSelector((state) => state.features.jobPhotos[id] ?? []);
-  const invited = useAppSelector((state) => state.features.invitedPros[id] ?? []);
-  const favorites = useAppSelector((state) => state.features.favorites);
   const isProView = viewer === "pro";
   const marketplaceReady = useAppSelector((state) => state.marketplace.hydrated);
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[id]);
   const hiredQuote = quotes.find((quote) => quote.id === hiredQuoteId);
   const [reviewRating, setReviewRating] = useState("5");
   const [reviewBody, setReviewBody] = useState("");
-  const [disputeNote, setDisputeNote] = useState("");
-  const [inviteId, setInviteId] = useState("");
   const [savedMsg, setSavedMsg] = useState("");
-  const [compareIds, setCompareIds] = useState<string[]>([]);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleWindow, setRescheduleWindow] = useState("10:00 AM – 12:00 PM (Late Morning)");
   const [changeAmount, setChangeAmount] = useState("");
@@ -116,7 +103,6 @@ export function RequestDetail({
   const [settleInspected, setSettleInspected] = useState(true);
   const [arrangePay, setArrangePay] = useState<DirectPaymentMethod>("cash");
   const [selectedReviewTags, setSelectedReviewTags] = useState<string[]>([]);
-  const [showReport, setShowReport] = useState(false);
 
   const sortedQuotes = useMemo(
     () =>
@@ -127,8 +113,6 @@ export function RequestDetail({
       }),
     [quotes],
   );
-
-  const compareSet = sortedQuotes.filter((q) => compareIds.includes(q.id));
 
   if (!marketplaceReady) {
     return (
@@ -161,14 +145,8 @@ export function RequestDetail({
 
   const photosForJob = storedPhotos.length ? storedPhotos : job.photos ?? [];
   const category = getCategory(job.categorySlug);
-  const messages = threadsForJob(job.id);
   const hiredPro = hiredQuote ? getPro(hiredQuote.proId) : null;
   const meta = [category?.name, `${job.city}, ${job.state}`, urgencyLabels[job.urgency]].filter(Boolean);
-  const invitePool = professionals.filter(
-    (pro) =>
-      pro.clearance === "cleared" &&
-      (favorites.includes(pro.id) || pro.categorySlug === job.categorySlug),
-  );
 
   const workActive =
     job.status === "hired" ||
@@ -186,6 +164,8 @@ export function RequestDetail({
   ];
 
   const requestedPro = job.requestedProId ? getPro(job.requestedProId) : null;
+  const requestFacts = jobRequestFacts(job);
+  const requestSummary = jobCardSummary(job);
 
   return (
     <div className="space-y-4">
@@ -196,40 +176,35 @@ export function RequestDetail({
       <div className="rounded-[16px] border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="font-display text-2xl font-semibold text-title">{job.title}</h1>
+            <h1 className="font-display text-xl font-semibold text-title sm:text-2xl">{job.title}</h1>
             <p className="mt-1 text-xs text-muted">{meta.join(" · ")}</p>
           </div>
           <StatusBadge status={job.status} />
         </div>
-        <div className="mt-3">
-          <StatusTracker status={job.status} />
-        </div>
-        {jobCardSummary(job) ? (
-          <p className="mt-3 text-sm leading-6 text-copy">{jobCardSummary(job)}</p>
+        {requestSummary ? (
+          <p className="mt-3 line-clamp-3 text-sm leading-6 text-copy">{requestSummary}</p>
         ) : null}
-        {job.intakeAnswers?.length ? (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {job.intakeAnswers.map((item) => (
-              <span
-                key={item.id}
-                className="rounded-full border border-line bg-smoke px-2.5 py-1 text-xs font-medium text-title"
-              >
-                {item.value}
-              </span>
+        {requestFacts.length ? (
+          <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {requestFacts.map((fact) => (
+              <div key={fact.label} className="rounded-xl bg-smoke/80 px-2.5 py-2">
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted">{fact.label}</dt>
+                <dd className="mt-0.5 truncate text-xs font-medium text-title">{fact.value}</dd>
+              </div>
             ))}
-          </div>
+          </dl>
         ) : null}
         {photosForJob.length ? (
-          <div className="mt-3 grid grid-cols-4 gap-2">
-            {photosForJob.map((src) => (
+          <div className="mt-3 flex gap-2">
+            {photosForJob.slice(0, 4).map((src) => (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={src} src={src} alt="" className="h-14 w-full rounded-lg object-cover" />
+              <img key={src} src={src} alt="" className="h-12 w-12 rounded-lg object-cover" />
             ))}
           </div>
         ) : null}
 
         {canHire && job.status !== "cancelled" && job.status !== "completed" && job.status !== "disputed" ? (
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line/70 pt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line/70 pt-3">
             <button
               type="button"
               className="text-xs font-semibold text-muted hover:text-title"
@@ -252,11 +227,9 @@ export function RequestDetail({
                 Repost
               </button>
             ) : null}
-            {savedMsg ? <p className="text-xs font-medium text-success">{savedMsg}</p> : null}
           </div>
-        ) : savedMsg ? (
-          <p className="mt-3 text-xs font-medium text-success">{savedMsg}</p>
         ) : null}
+        {savedMsg ? <p className="mt-2 text-xs font-medium text-success">{savedMsg}</p> : null}
       </div>
 
       {/* LIVE OPERATIONAL STATUS CARDS */}
@@ -358,7 +331,7 @@ export function RequestDetail({
                 </span>
               </div>
               <p className="text-xs text-muted">
-                Receipt #{booking?.paymentReceiptNumber || completion?.receiptNumber || "LHF-REC-842911"} · Protected by LocalHomeFix Guarantee
+                Receipt #{booking?.paymentReceiptNumber || completion?.receiptNumber || "LHF-REC-842911"}
               </p>
             </div>
           </div>
@@ -822,18 +795,18 @@ export function RequestDetail({
         <>
           <Card className="rounded-[16px] p-4 sm:p-5 hover:shadow-xs">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-sm font-semibold text-title">Quotations</h2>
+              <div>
+                <h2 className="font-display text-sm font-semibold text-title">Quotations</h2>
+                <p className="mt-0.5 text-xs text-muted">
+                  {hiredQuoteId
+                    ? "You confirmed one quotation."
+                    : "Open a quote to review it, then accept one pro."}
+                </p>
+              </div>
               {sortedQuotes.length ? (
                 <span className="text-xs text-muted">{sortedQuotes.length}</span>
               ) : null}
             </div>
-            {compareSet.length >= 2 ? (
-              <QuoteComparePanel
-                quotes={compareSet}
-                jobId={id}
-                onClose={() => setCompareIds([])}
-              />
-            ) : null}
             {sortedQuotes.length === 0 ? (
               requestedPro ? (
                 <div className="mt-3 flex items-center gap-3 rounded-2xl border border-line/80 px-3.5 py-3">
@@ -854,106 +827,17 @@ export function RequestDetail({
                 <p className="mt-3 text-sm text-muted">Quotes from matched pros will show here.</p>
               )
             ) : (
-              <div className="mt-3 space-y-3">
+              <div className="mt-3 space-y-2">
                 {sortedQuotes.map((quote) => (
                   <QuoteCard
                     key={quote.id}
                     quote={quote}
-                    canHire={canHire && job.status !== "cancelled" && job.status !== "disputed"}
-                    compareMode={canHire && !hiredQuoteId}
-                    selected={compareIds.includes(quote.id)}
-                    onToggleCompare={() =>
-                      setCompareIds((ids) =>
-                        ids.includes(quote.id)
-                          ? ids.filter((x) => x !== quote.id)
-                          : ids.length >= 3
-                            ? ids
-                            : [...ids, quote.id],
-                      )
-                    }
+                    href={`/account/jobs/${id}/quotes/${quote.id}`}
                   />
                 ))}
               </div>
             )}
           </Card>
-
-          <Card className="rounded-[16px] p-4 sm:p-5 hover:shadow-xs">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="font-display text-sm font-semibold text-title">Messages</h2>
-                {messages.length === 0 ? (
-                  <p className="mt-0.5 text-xs text-muted">Opens after a reply.</p>
-                ) : null}
-              </div>
-              {inboxHref ? (
-                <Link href={inboxHref} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
-                  <Inbox className="h-3.5 w-3.5" />
-                  Inbox
-                </Link>
-              ) : null}
-            </div>
-            {messages.length ? (
-              <ul className="mt-3 divide-y divide-line/70 overflow-hidden rounded-2xl border border-line/80">
-                {messages.map((thread) => (
-                  <li key={thread.id} className="px-3.5 py-2.5">
-                    <p className="text-sm font-semibold text-title">{thread.otherParty}</p>
-                    <p className="mt-0.5 truncate text-xs text-copy">
-                      {thread.lastSender === "homeowner" ? "You" : thread.otherParty}: {thread.lastMessage}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </Card>
-
-          {canHire && !job.requestedProId && job.status !== "cancelled" && job.status !== "completed" && !hiredQuoteId ? (
-            <Card className="rounded-[16px] p-4 sm:p-5 hover:shadow-xs">
-              <div className="flex items-center gap-2">
-                <UserPlus className="h-4 w-4 text-muted" />
-                <h2 className="font-display text-sm font-semibold text-title">Invite a pro</h2>
-              </div>
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                <NativeSelect
-                  value={inviteId}
-                  onChange={(event) => setInviteId(event.target.value)}
-                  className="min-w-0 flex-1 rounded-xl"
-                >
-                  <option value="">Choose a pro</option>
-                  {invitePool.map((pro) => (
-                    <option key={pro.id} value={pro.id}>
-                      {pro.name} · {pro.trade}
-                    </option>
-                  ))}
-                </NativeSelect>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!inviteId}
-                  onClick={() => {
-                    dispatch(invitePro({ jobId: id, proId: inviteId }));
-                    dispatch(
-                      addNotification({
-                        title: "Pro invited",
-                        body: "Invite sent.",
-                        href: `/account/jobs/${id}`,
-                        createdAt: "Just now",
-                        role: "homeowner",
-                      }),
-                    );
-                    setInviteId("");
-                    setSavedMsg("Invite sent.");
-                  }}
-                >
-                  Send
-                </Button>
-              </div>
-              {invited.length ? (
-                <p className="mt-2 text-xs text-muted">
-                  Invited: {invited.map((proId) => getPro(proId)?.name ?? "Pro").join(", ")}
-                </p>
-              ) : null}
-            </Card>
-          ) : null}
         </>
       ) : null}
 
@@ -1064,83 +948,6 @@ export function RequestDetail({
             </Button>
           </div>
         </Card>
-      ) : null}
-
-      {canHire && job.status !== "cancelled" ? (
-        <div className="rounded-[16px] border border-line/80 bg-white px-4 py-3.5 shadow-xs">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="grid h-8 w-8 place-items-center rounded-xl bg-smoke text-muted">
-                <Flag className="h-3.5 w-3.5" />
-              </span>
-              <div>
-                <p className="font-display text-sm font-semibold text-title">Report a problem</p>
-                <p className="text-xs text-muted">No-show, safety, or unfinished work</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="text-xs font-semibold text-primary hover:underline"
-              onClick={() => setShowReport((open) => !open)}
-            >
-              {showReport ? "Close" : "Report"}
-            </button>
-          </div>
-          {showReport ? (
-            <div className="mt-3 border-t border-line/70 pt-3">
-              <TextArea
-                className="rounded-xl"
-                value={disputeNote}
-                onChange={(event) => setDisputeNote(event.target.value)}
-                placeholder="What happened?"
-                rows={3}
-              />
-              <Button
-                type="button"
-                size="sm"
-                className="mt-3"
-                disabled={disputeNote.trim().length < 8}
-                onClick={() => {
-                  dispatch(setJobStatus({ jobId: id, status: "disputed" }));
-                  dispatch(
-                    openDispute({
-                      jobId: id,
-                      jobTitle: job.title,
-                      homeownerName: job.homeownerName,
-                      proName: hiredPro?.businessName ?? hiredPro?.name ?? "Unassigned",
-                      reason: disputeNote.trim(),
-                      agreedPrice: booking?.agreedPrice,
-                      quoteId: hiredQuoteId,
-                    }),
-                  );
-                  dispatch(
-                    addNotification({
-                      title: "Dispute opened",
-                      body: "Support will review the job history, quotation, and messages. HomeFix does not process repair refunds.",
-                      href: `/account/jobs/${id}`,
-                      createdAt: "Just now",
-                      role: "homeowner",
-                    }),
-                  );
-                  dispatch(
-                    addNotification({
-                      title: "Dispute opened",
-                      body: `${job.title} was flagged for operations review.`,
-                      href: "/admin/disputes",
-                      createdAt: "Just now",
-                      role: "admin",
-                    }),
-                  );
-                  setDisputeNote("");
-                  setShowReport(false);
-                  setSavedMsg("Dispute opened.");
-                }}
-              >
-                Open dispute
-              </Button>
-            </div>
-          ) : null}
-        </div>
       ) : null}
 
       {/* MODAL 1: WORK ORDER & RECEIPT MODAL */}

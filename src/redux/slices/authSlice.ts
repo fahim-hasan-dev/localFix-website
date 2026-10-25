@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import { demoAdminUser, demoHomeowner, demoProUser } from "@/Mockdata";
+import { demoHomeowner, demoProUser } from "@/Mockdata";
 import type { User, UserRole } from "@/types";
 
 const STORAGE_KEY = "lhf-auth-role";
@@ -11,7 +11,6 @@ interface AuthState {
 
 function userFromRole(role: UserRole) {
   if (role === "pro") return demoProUser;
-  if (role === "admin") return demoAdminUser;
   return demoHomeowner;
 }
 
@@ -27,8 +26,7 @@ const authSlice = createSlice({
     hydrate(state) {
       if (typeof window === "undefined") return;
       const role = window.localStorage.getItem(STORAGE_KEY) as UserRole | null;
-      state.user =
-        role === "pro" || role === "homeowner" || role === "admin" ? userFromRole(role) : null;
+      state.user = role === "pro" || role === "homeowner" ? userFromRole(role) : null;
       state.hydrated = true;
     },
     loginAs(state, action: PayloadAction<UserRole | { role: UserRole; profile?: Partial<User> }>) {

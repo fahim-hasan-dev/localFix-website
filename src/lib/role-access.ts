@@ -40,7 +40,6 @@ export type RoleAccess = {
 export function audienceFromUser(user: User | null): AccessAudience {
   if (!user) return "guest";
   if (user.role === "pro") return "pro";
-  if (user.role === "admin") return "admin";
   return "homeowner";
 }
 
@@ -60,7 +59,6 @@ export function signupHref(next?: string) {
 export function postJobHref(user: User | null) {
   if (!user) return loginHref({ next: "/account/post-job" });
   if (user.role === "pro") return "/pro/jobs";
-  if (user.role === "admin") return "/admin";
   return "/account/post-job";
 }
 
@@ -82,24 +80,6 @@ export function resolveRoleAccess(user: User | null, pro?: Partial<ProGate>): Ro
       canManageMembership: false,
       notice: "Browsing is open. Sign in to post, save, message, or quote.",
       blockedReason: "Sign in required",
-    };
-  }
-
-  if (audience === "admin") {
-    return {
-      audience,
-      canBrowse: true,
-      canSavePro: false,
-      canPostJob: false,
-      canManageQuotes: false,
-      canHomeownerMessage: false,
-      canSeeJobBoard: false,
-      canSubmitQuote: false,
-      canSeeContact: false,
-      canProMessage: false,
-      canManageMembership: false,
-      notice: "Staff ops: review applications, disputes, and listings. No marketplace quoting.",
-      blockedReason: "Admin accounts do not post, quote, or message jobs.",
     };
   }
 

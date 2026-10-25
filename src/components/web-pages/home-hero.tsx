@@ -91,13 +91,21 @@ function buildDraft(problem: string, categorySlug: string, zip: string) {
   };
 }
 
+function fiveDigitZip(value?: string) {
+  const match = value?.trim().match(/\d{5}/);
+  return match?.[0] ?? "";
+}
+
 export function HomeHero() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
+  const addresses = useAppSelector((state) => state.features.addresses);
+  const home = addresses.find((item) => item.label.toLowerCase() === "home") ?? addresses[0];
+  const knownZip = fiveDigitZip(user?.zip) || fiveDigitZip(home?.zip);
   const [mode, setMode] = useState<"ai" | "direct">("ai");
   const [problem, setProblem] = useState("");
   const [categorySlug, setCategorySlug] = useState("");
-  const [zip, setZip] = useState("");
+  const [zip, setZip] = useState(knownZip);
   const [error, setError] = useState("");
   const [showEmergency, setShowEmergency] = useState(false);
   const [isChangingCategory, setIsChangingCategory] = useState(false);

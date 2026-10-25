@@ -172,7 +172,7 @@ const marketplaceSlice = createSlice({
     ) {
       const payload = action.payload;
       state.extraQuotes.unshift({
-        id: `quote-local-${Date.now()}`,
+        id: `quote-local-${Date.now()}-${state.extraQuotes.length}`,
         jobId: payload.jobId,
         proId: payload.proId,
         priceType: payload.priceType,

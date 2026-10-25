@@ -7,7 +7,6 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { selectQuotesForJob } from "@/lib/marketplace";
 import { hireQuote } from "@/redux/slices/marketplaceSlice";
 import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
-import { GuaranteeCard } from "@/components/shared/guarantee-protection";
 import type { Quote } from "@/types";
 
 const priceLabel = { fixed: "Fixed", estimate: "Estimate", hourly: "Hourly", time_and_materials: "T&M" } as const;
@@ -101,11 +100,6 @@ export function QuoteComparePanel({
           >
             <X className="h-4 w-4" />
           </button>
-        </div>
-
-        {/* LocalHomeFix Guarantee Trust Banner */}
-        <div className="px-5 pt-3.5 pb-1">
-          <GuaranteeCard variant="compact" />
         </div>
 
         {/* Scrollable comparison table */}

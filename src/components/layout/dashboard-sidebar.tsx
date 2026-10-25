@@ -60,7 +60,6 @@ export function DashboardSidebar({
             (item.href === "/account" && pathname.startsWith("/account/jobs")) ||
             (item.href === "/pro/jobs" && pathname.startsWith("/pro/jobs/")) ||
             (item.href === "/pro/pricing" && pathname.startsWith("/pro/transactions")) ||
-            (item.href === "/admin/applications" && pathname.startsWith("/admin/applications")) ||
             (item.href === "/account/messages" && pathname.startsWith("/account/messages")) ||
             (item.href === "/pro/messages" && pathname.startsWith("/pro/messages"));
           const Icon = getSidebarIcon(item.label);

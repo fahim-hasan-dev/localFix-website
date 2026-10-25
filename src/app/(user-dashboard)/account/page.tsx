@@ -4,12 +4,13 @@ import { Plus } from "lucide-react";
 import { JobCard } from "@/components/shared/job-card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { selectJobsForHomeowner } from "@/lib/marketplace";
+import { selectAllQuotes, selectJobsForHomeowner } from "@/lib/marketplace";
 import { useAppSelector } from "@/redux/hooks";
 
 export default function AccountPage() {
   const user = useAppSelector((state) => state.auth.user);
   const mine = useAppSelector((state) => selectJobsForHomeowner(state, user?.name ?? ""));
+  const quotes = useAppSelector(selectAllQuotes);
 
   return (
     <div className="space-y-6">
@@ -17,7 +18,7 @@ export default function AccountPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line/70 pb-4 pt-1">
         <div className="flex items-center gap-2.5">
           <h1 className="font-display text-[22px] sm:text-[26px] font-semibold text-title tracking-tight">
-            Requests
+            My requests
           </h1>
           <span className="inline-flex items-center rounded-full bg-smoke px-2.5 py-0.5 text-xs font-semibold text-primary border border-primary/20">
             {mine.length}
@@ -42,7 +43,12 @@ export default function AccountPage() {
       ) : (
         <div className="space-y-3.5">
           {mine.map((job) => (
-            <JobCard key={job.id} job={job} href={`/account/jobs/${job.id}`} />
+            <JobCard
+              key={job.id}
+              job={job}
+              href={`/account/jobs/${job.id}`}
+              quoteCount={quotes.filter((quote) => quote.jobId === job.id).length}
+            />
           ))}
         </div>
       )}
