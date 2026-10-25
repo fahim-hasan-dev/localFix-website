@@ -3,11 +3,9 @@
 import { X, Star, ShieldCheck, Clock, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { getPro } from "@/Mockdata";
-import { useAppDispatch } from "@/redux/hooks";
-import {
-  hireQuote,
-  rejectSiblingOffers,
-} from "@/redux/slices/marketplaceSlice";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { selectQuotesForJob } from "@/lib/marketplace";
+import { hireQuote } from "@/redux/slices/marketplaceSlice";
 import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
 import { GuaranteeCard } from "@/components/shared/guarantee-protection";
 import type { Quote } from "@/types";
@@ -45,18 +43,37 @@ export function QuoteComparePanel({
   onClose: () => void;
 }) {
   const dispatch = useAppDispatch();
+  const siblingIds = useAppSelector((state) => selectQuotesForJob(state, jobId).map((item) => item.id));
+  const homeownerName = useAppSelector((state) => state.auth.user?.name);
 
   function accept(quote: Quote) {
     const pro = getPro(quote.proId);
-    dispatch(hireQuote({ jobId, quoteId: quote.id }));
-    dispatch(rejectSiblingOffers({ jobId, acceptedQuoteId: quote.id, seedQuoteIds: ["quote-1","quote-2","quote-3"] }));
+    dispatch(
+      hireQuote({
+        jobId,
+        quoteId: quote.id,
+        proId: quote.proId,
+        agreedPrice: quote.amount,
+        scopeSnapshot: quote.scope,
+        homeownerName,
+        paymentTerms: quote.paymentTerms,
+        siblingQuoteIds: siblingIds,
+      }),
+    );
     dispatch(setJobStatus({ jobId, status: "hired" }));
     dispatch(addNotification({
-      title: "Offer accepted",
-      body: `You hired ${pro?.name ?? "the pro"}. Confirm a date to lock the booking.`,
+      title: "Quotation accepted",
+      body: `You selected ${pro?.name ?? "the professional"}. Confirm schedule and payment method on the job.`,
       href: `/account/jobs/${jobId}`,
       createdAt: "Just now",
       role: "homeowner",
+    }));
+    dispatch(addNotification({
+      title: "You were hired",
+      body: `A homeowner accepted your $${quote.amount} quotation.`,
+      href: `/pro/jobs/${jobId}`,
+      createdAt: "Just now",
+      role: "pro",
     }));
     onClose();
   }
@@ -179,6 +196,24 @@ export function QuoteComparePanel({
                 {quotes.map((q) => (
                   <td key={q.id} className="px-4 py-3 text-sm text-copy leading-5 max-w-[180px]">
                     {q.scope}
+                  </td>
+                ))}
+              </tr>
+
+              <tr>
+                <td className="px-5 py-3 text-xs text-muted">Not included</td>
+                {quotes.map((q) => (
+                  <td key={q.id} className="px-4 py-3 text-sm text-copy leading-5 max-w-[180px]">
+                    {q.exclusions || "—"}
+                  </td>
+                ))}
+              </tr>
+
+              <tr>
+                <td className="px-5 py-3 text-xs text-muted">Payment terms</td>
+                {quotes.map((q) => (
+                  <td key={q.id} className="px-4 py-3 text-sm text-copy leading-5 max-w-[180px]">
+                    {q.paymentTerms || "Pay the professional directly"}
                   </td>
                 ))}
               </tr>

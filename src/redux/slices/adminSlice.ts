@@ -159,6 +159,8 @@ const adminSlice = createSlice({
         homeownerName: string;
         proName: string;
         reason: string;
+        agreedPrice?: number;
+        quoteId?: string;
       }>,
     ) {
       const existing = state.disputes.find(
@@ -166,6 +168,8 @@ const adminSlice = createSlice({
       );
       if (existing) {
         existing.reason = action.payload.reason;
+        existing.agreedPrice = action.payload.agreedPrice ?? existing.agreedPrice;
+        existing.quoteId = action.payload.quoteId ?? existing.quoteId;
         persist(state);
         return;
       }
@@ -178,30 +182,65 @@ const adminSlice = createSlice({
         reason: action.payload.reason,
         status: "open",
         openedAt: isoDate(),
+        agreedPrice: action.payload.agreedPrice,
+        quoteId: action.payload.quoteId,
+        notes: [],
+        history: [{ id: `d-${Date.now()}`, at: isoDate(), action: "submitted", note: action.payload.reason, by: "Homeowner" }],
       };
       state.disputes.unshift(dispute);
       pushActivity(state, "Dispute opened", `${action.payload.jobTitle} — ${action.payload.reason}`, "/admin/disputes");
       persist(state);
     },
+    addDisputeNote(
+      state,
+      action: PayloadAction<{ id: string; body: string; by?: string }>,
+    ) {
+      const item = state.disputes.find((d) => d.id === action.payload.id);
+      if (!item) return;
+      item.notes = item.notes ?? [];
+      item.notes.unshift({
+        id: `dn-${Date.now()}`,
+        at: stamp(),
+        by: action.payload.by ?? "Avery Cole",
+        body: action.payload.body,
+      });
+      if (item.status === "open") item.status = "in_review";
+      pushActivity(state, "Dispute note added", item.jobTitle, `/admin/disputes/${item.id}`);
+      persist(state);
+    },
     updateDispute(
       state,
-      action: PayloadAction<{ id: string; status: AdminDispute["status"]; resolution?: string }>,
+      action: PayloadAction<{ id: string; status: AdminDispute["status"]; resolution?: string; by?: string }>,
     ) {
       const item = state.disputes.find((d) => d.id === action.payload.id);
       if (!item) return;
       item.status = action.payload.status;
       if (action.payload.resolution) item.resolution = action.payload.resolution;
+      item.history = item.history ?? [];
+      item.history.unshift({
+        id: `d-${Date.now()}`,
+        at: isoDate(),
+        action: action.payload.status === "resolved" ? "approved" : action.payload.status === "closed" ? "rejected" : "needs_info",
+        note: action.payload.resolution,
+        by: action.payload.by ?? "Avery Cole",
+      });
       pushActivity(
         state,
         `Dispute ${action.payload.status.replace("_", " ")}`,
         item.jobTitle,
-        "/admin/disputes",
+        `/admin/disputes/${item.id}`,
       );
       persist(state);
     },
   },
 });
 
-export const { hydrateAdmin, decideApplication, setListingVisibility, openDispute, updateDispute } =
-  adminSlice.actions;
+export const {
+  hydrateAdmin,
+  decideApplication,
+  setListingVisibility,
+  openDispute,
+  addDisputeNote,
+  updateDispute,
+} = adminSlice.actions;
 export default adminSlice.reducer;

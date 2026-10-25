@@ -327,8 +327,13 @@ export const trackerSteps = [
   },
   {
     key: "hired",
-    label: "Booked",
+    label: "Hired",
     statuses: ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm", "completed"],
+  },
+  {
+    key: "booked",
+    label: "Booked",
+    statuses: ["scheduled", "en_route", "in_progress", "awaiting_confirm", "completed"],
   },
   {
     key: "progress",

@@ -36,6 +36,13 @@ export interface AdminApplication {
   history: AdminDecision[];
 }
 
+export interface DisputeNote {
+  id: string;
+  at: string;
+  by: string;
+  body: string;
+}
+
 export interface AdminDispute {
   id: string;
   jobId: string;
@@ -46,6 +53,10 @@ export interface AdminDispute {
   status: DisputeStatus;
   openedAt: string;
   resolution?: string;
+  agreedPrice?: number;
+  quoteId?: string;
+  notes?: DisputeNote[];
+  history?: AdminDecision[];
 }
 
 export interface AdminMembership {

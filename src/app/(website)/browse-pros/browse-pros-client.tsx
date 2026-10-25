@@ -223,6 +223,18 @@ export function BrowseProsClient() {
           </Field>
         </div>
 
+        <div className="mt-4 flex flex-col gap-3 rounded-[14px] border border-line/80 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-display text-sm font-semibold text-title">Post a job and receive quotations</p>
+            <p className="mt-0.5 text-xs text-muted">
+              Matching professionals in the service area can quote. Opening a profile does not book anyone.
+            </p>
+          </div>
+          <Button href={postJobHref(user)} size="sm">
+            Post a job
+          </Button>
+        </div>
+
         {/* Scroll anchor for pagination navigation */}
         <div ref={gridTopRef} className="scroll-mt-28" />
 

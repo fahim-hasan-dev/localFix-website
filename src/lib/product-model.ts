@@ -99,10 +99,26 @@ export const roleFeatures: Record<
 };
 
 /**
+ * Demo persistence gap (do not pretend this is a backend):
+ * Jobs, quotations, bookings, notifications, and admin notes live in Redux + localStorage.
+ * There is no server database, email/SMS dispatcher, or payment processor for repair work.
+ * Matching, accept/decline, and dispute notes are client-side so the marketplace loop can be exercised.
+ */
+export const implementationGaps = {
+  persistence: "Browser localStorage only — not a multi-user production database.",
+  notifications: "In-app notification records only. No real email/SMS/push.",
+  payments: "HomeFix never charges homeowners or invoices repair work. Pros pay a subscription in the demo membership UI.",
+  identity: "The signed-in demo pro is always pro-1. Other directory pros cannot log in.",
+} as const;
+
+/**
  * Marketplace loop:
- * Browse / Job post → Profile / Leads → Messages → Offer → Negotiate → Booking → Work → Dual confirm → Pay pro directly → Review
+ * Post job or request a specific pro → matched leads → quotation linked to that job →
+ * compare / accept one → booking + agreed price → payment method (off-platform) →
+ * work → dual confirm → review / dispute.
  *
- * Job status ≠ Offer status. One job, many offers; accepting one books and declines siblings.
+ * Job status ≠ quotation status. One job, many quotations; accepting one creates one booking
+ * and declines sibling quotations. Viewing a profile or posting a request is not a booking.
  */
 export const marketplaceLoop = [
   "Browse or post",

@@ -65,7 +65,7 @@ const journeys: Record<
       {
         n: "04",
         title: "Hire & pay when done",
-        text: "Schedule the visit directly with your technician. Pay them only when you're 100% happy with the work.",
+        text: "Accept one quotation to confirm the booking. Pay the professional directly — HomeFix never takes a repair fee.",
         icon: Wallet,
       },
     ],

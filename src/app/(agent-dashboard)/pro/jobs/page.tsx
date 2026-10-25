@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { JobCard } from "@/components/shared/job-card";
-import { categories, getCategory } from "@/Mockdata";
+import { categories, getCategory, getPro } from "@/Mockdata";
+import { isProEligibleForJob } from "@/lib/matching";
 import { selectAllJobs } from "@/lib/marketplace";
 import { useRoleAccess } from "@/hooks/use-role-access";
 import { useAppSelector } from "@/redux/hooks";
@@ -18,8 +19,10 @@ export default function ProJobsPage() {
   const { access } = useRoleAccess();
   const leadActions = useAppSelector((state) => state.features.leadActions);
   const invitedPros = useAppSelector((state) => state.features.invitedPros);
+  const listingStatus = useAppSelector((state) => state.admin.listingStatus);
   const allJobsRaw = useAppSelector(selectAllJobs);
   const myProId = "pro-1";
+  const myPro = getPro(myProId);
 
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -44,13 +47,13 @@ export default function ProJobsPage() {
         if (closed) return false;
 
         const invited = invitedPros[job.id] ?? [];
-        if (job.requestedProId) {
+        if (job.visibility === "direct" || job.requestedProId) {
           return job.requestedProId === myProId || invited.includes(myProId);
         }
-        if (invited.length) return invited.includes(myProId);
-        return true;
+        if (!myPro) return invited.includes(myProId);
+        return isProEligibleForJob(myPro, job, listingStatus) || invited.includes(myProId);
       }),
-    [allJobsRaw, invitedPros, myProId],
+    [allJobsRaw, invitedPros, listingStatus, myPro, myProId],
   );
 
   const visibleJobs = useMemo(
@@ -109,7 +112,7 @@ export default function ProJobsPage() {
           Available jobs
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Open a request to review answers, then accept or pass.
+          Jobs matched to your trade and service radius. Review details, then send a quotation or pass. Sending a quote is not a booking.
         </p>
       </div>
 

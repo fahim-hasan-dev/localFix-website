@@ -25,6 +25,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import {
+  jobCardSummary,
+  paymentMethodLabels,
   selectBooking,
   selectChangeRequests,
   selectCompletion,
@@ -39,18 +41,23 @@ import {
   urgencyLabels,
 } from "@/Mockdata";
 import {
+  acknowledgeChangeRequest,
   addChangeRequest,
+  confirmBooking,
   homeownerConfirmComplete,
   proMarkComplete,
   requestReschedule,
   resolveChangeRequest,
+  setPaymentArrangement,
 } from "@/redux/slices/marketplaceSlice";
+import { openDispute } from "@/redux/slices/adminSlice";
 import {
   addNotification,
   addReview,
   invitePro,
   setJobStatus,
 } from "@/redux/slices/featuresSlice";
+import type { DirectPaymentMethod } from "@/types";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 
 export function RequestDetail({
@@ -74,7 +81,7 @@ export function RequestDetail({
   const booking = useAppSelector((state) => selectBooking(state, id));
   const changeRequests = useAppSelector((state) => selectChangeRequests(state, id));
   const completion = useAppSelector((state) => selectCompletion(state, id));
-  const photosForJob = useAppSelector((state) => state.features.jobPhotos[id] ?? []);
+  const storedPhotos = useAppSelector((state) => state.features.jobPhotos[id] ?? []);
   const invited = useAppSelector((state) => state.features.invitedPros[id] ?? []);
   const favorites = useAppSelector((state) => state.features.favorites);
   const isProView = viewer === "pro";
@@ -95,10 +102,10 @@ export function RequestDetail({
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [showProCompleteModal, setShowProCompleteModal] = useState(false);
   const [proCompletionNote, setProCompletionNote] = useState("");
-  const [settlePaymentMethod, setSettlePaymentMethod] = useState<
-    "zelle" | "card" | "cash" | "check" | "bank_transfer"
-  >("zelle");
+  const [settlePaymentMethod, setSettlePaymentMethod] = useState<DirectPaymentMethod>("cash");
+  const [settlePaid, setSettlePaid] = useState(false);
   const [settleInspected, setSettleInspected] = useState(true);
+  const [arrangePay, setArrangePay] = useState<DirectPaymentMethod>("cash");
   const [selectedReviewTags, setSelectedReviewTags] = useState<string[]>([]);
 
   const sortedQuotes = useMemo(
@@ -142,6 +149,7 @@ export function RequestDetail({
     );
   }
 
+  const photosForJob = storedPhotos.length ? storedPhotos : job.photos ?? [];
   const category = getCategory(job.categorySlug);
   const messages = threadsForJob(job.id);
   const hiredPro = hiredQuote ? getPro(hiredQuote.proId) : null;
@@ -192,6 +200,9 @@ export function RequestDetail({
             </span>
           </p>
         ) : null}
+        {jobCardSummary(job) ? (
+          <p className="mt-4 text-[16px] leading-7 text-copy">{jobCardSummary(job)}</p>
+        ) : null}
         {job.intakeAnswers?.length ? (
           <dl className="mt-4 divide-y divide-line/70 rounded-2xl border border-line/80">
             {job.intakeAnswers.map((item) => (
@@ -201,8 +212,6 @@ export function RequestDetail({
               </div>
             ))}
           </dl>
-        ) : job.description ? (
-          <p className="mt-4 text-[16px] leading-7 text-copy">{job.description}</p>
         ) : null}
         {photosForJob.length ? (
           <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -372,7 +381,7 @@ export function RequestDetail({
           <div className="flex items-center justify-between gap-2 border-b border-line/60 pb-3">
             <h2 className="font-display text-lg font-bold text-title">Appointment &amp; Booking</h2>
             <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200 flex items-center gap-1">
-              <ShieldCheck className="h-3 w-3" /> $1,000 Guarantee
+              <ShieldCheck className="h-3 w-3" /> Direct pay to pro
             </span>
           </div>
 
@@ -391,18 +400,24 @@ export function RequestDetail({
               <dt className="text-xs text-muted font-medium">Appointment &amp; Arrival Window</dt>
               <dd className="font-semibold text-title mt-0.5 flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-primary" />
-                {booking.scheduledDate} · {booking.arrivalWindow || booking.scheduledTime}
+                {booking.scheduledDate
+                  ? `${booking.scheduledDate} · ${booking.arrivalWindow || booking.scheduledTime}`
+                  : "Schedule not confirmed yet"}
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-muted font-medium">Direct Settlement</dt>
+              <dt className="text-xs text-muted font-medium">Agreed payment method</dt>
               <dd className="text-xs text-muted mt-0.5">
-                {booking.paymentMethod ? (
-                  <span className="font-semibold text-emerald-700 capitalize">
-                    Settled via {booking.paymentMethod} ($0 platform markup)
+                {booking.paidAt ? (
+                  <span className="font-semibold text-emerald-700">
+                    Both parties recorded payment via {paymentMethodLabels[booking.paymentMethod ?? booking.paymentArrangement ?? ""] ?? booking.paymentMethod}
+                  </span>
+                ) : booking.paymentArrangement || booking.paymentMethod ? (
+                  <span className="font-semibold text-title">
+                    {paymentMethodLabels[booking.paymentArrangement ?? booking.paymentMethod ?? ""] ?? booking.paymentArrangement} · pay the professional directly
                   </span>
                 ) : (
-                  "Pay pro directly upon 100% completion ($0 platform markup)"
+                  "Agree how you will pay the professional. HomeFix does not collect this."
                 )}
               </dd>
             </div>
@@ -411,25 +426,74 @@ export function RequestDetail({
           <div className="mt-4 rounded-[12px] bg-smoke p-3.5 border border-line/60">
             <p className="text-xs font-bold uppercase tracking-wider text-muted">Agreed Scope Snapshot</p>
             <p className="mt-1 text-xs sm:text-sm leading-relaxed text-copy">{booking.scopeSnapshot}</p>
+            {booking.acceptedAt ? (
+              <p className="mt-2 text-xs text-muted">Accepted {booking.acceptedAt.slice(0, 10)}</p>
+            ) : null}
           </div>
 
-          {/* Reschedule Option */}
+          {(canHire || isProView) && !booking.paidAt ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+              <Field label="Record agreed payment method">
+                <NativeSelect
+                  value={booking.paymentArrangement ?? arrangePay}
+                  onChange={(e) => setArrangePay(e.target.value as DirectPaymentMethod)}
+                >
+                  {Object.entries(paymentMethodLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    dispatch(
+                      setPaymentArrangement({
+                        jobId: id,
+                        paymentArrangement: arrangePay,
+                      }),
+                    );
+                    setSavedMsg("Payment method recorded. This is not a payment.");
+                  }}
+                >
+                  Save method
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {booking.priceHistory && booking.priceHistory.length > 1 ? (
+            <ul className="mt-4 space-y-1 text-xs text-muted">
+              {booking.priceHistory.map((row) => (
+                <li key={row.id}>
+                  ${row.previousAmount} → ${row.newAmount} · {row.reason}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
           {(canHire || isProView) &&
           job.status !== "en_route" &&
           job.status !== "in_progress" &&
           job.status !== "awaiting_confirm" &&
           job.status !== "completed" ? (
             <div className="mt-5 border-t border-line/60 pt-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted">Change Appointment Time</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted">
+                {booking.scheduledDate ? "Change appointment time" : "Confirm appointment to lock the booking"}
+              </p>
               <div className="mt-2.5 grid gap-3 sm:grid-cols-[1fr_1.5fr_auto]">
-                <Field label="New Date">
+                <Field label={booking.scheduledDate ? "New Date" : "Appointment date"}>
                   <TextField
                     type="date"
                     value={rescheduleDate}
                     onChange={(e) => setRescheduleDate(e.target.value)}
                   />
                 </Field>
-                <Field label="New 2-Hour Arrival Window">
+                <Field label="2-hour arrival window">
                   <NativeSelect
                     value={rescheduleWindow}
                     onChange={(e) => setRescheduleWindow(e.target.value)}
@@ -445,9 +509,45 @@ export function RequestDetail({
                   <Button
                     type="button"
                     size="sm"
-                    variant="ghost"
+                    variant={booking.scheduledDate ? "ghost" : undefined}
                     disabled={!rescheduleDate}
                     onClick={() => {
+                      if (!booking.scheduledDate && hiredQuote) {
+                        dispatch(
+                          confirmBooking({
+                            jobId: id,
+                            quoteId: hiredQuote.id,
+                            proId: hiredQuote.proId,
+                            agreedPrice: hiredQuote.amount,
+                            scheduledDate: rescheduleDate,
+                            scheduledTime: rescheduleWindow,
+                            arrivalWindow: rescheduleWindow,
+                            scopeSnapshot: hiredQuote.scope,
+                            paymentArrangement: booking.paymentArrangement ?? arrangePay,
+                          }),
+                        );
+                        dispatch(setJobStatus({ jobId: id, status: "scheduled" }));
+                        dispatch(
+                          addNotification({
+                            title: "Booking confirmed",
+                            body: `${rescheduleDate} · pay the professional directly. HomeFix does not collect this.`,
+                            href: `/account/jobs/${id}`,
+                            createdAt: "Just now",
+                            role: "homeowner",
+                          }),
+                        );
+                        dispatch(
+                          addNotification({
+                            title: "Booking confirmed",
+                            body: `Schedule locked for ${rescheduleDate}.`,
+                            href: `/pro/jobs/${id}`,
+                            createdAt: "Just now",
+                            role: "pro",
+                          }),
+                        );
+                        setSavedMsg("Booking confirmed. Pay the professional directly.");
+                        return;
+                      }
                       dispatch(
                         requestReschedule({
                           jobId: id,
@@ -460,7 +560,7 @@ export function RequestDetail({
                     }}
                     className="rounded-full border border-line"
                   >
-                    Reschedule
+                    {booking.scheduledDate ? "Reschedule" : "Confirm booking"}
                   </Button>
                 </div>
               </div>
@@ -470,7 +570,7 @@ export function RequestDetail({
           {/* Pro & Customer Action Buttons */}
           <div className="mt-5 flex flex-wrap gap-2.5 border-t border-line/60 pt-4">
             {/* Pro Operational Actions */}
-            {isProView && (job.status === "scheduled" || job.status === "hired") ? (
+            {isProView && job.status === "scheduled" ? (
               <>
                 <Button
                   type="button"
@@ -595,9 +695,9 @@ export function RequestDetail({
         <Card>
           <h2 className="text-lg">Change requests</h2>
           <p className="mt-1 text-sm text-copy">
-            Extra work or price changes need homeowner approval before the agreed total updates.
+            Extra work or price changes need both parties to acknowledge before the agreed job value updates.
           </p>
-          {isProView ? (
+          {isProView || canHire ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-[140px_1fr_auto]">
               <Field label="Extra ($)">
                 <TextField
@@ -626,15 +726,16 @@ export function RequestDetail({
                         jobId: id,
                         amount: Number(changeAmount),
                         reason: changeReason.trim(),
+                        proposedBy: isProView ? "pro" : "homeowner",
                       }),
                     );
                     dispatch(
                       addNotification({
-                        title: "Change request",
-                        body: `Pro requested +$${changeAmount} — review on your job.`,
-                        href: `/account/jobs/${id}`,
+                        title: "Price change proposed",
+                        body: `+$${changeAmount} needs both parties to acknowledge before the agreed job value updates.`,
+                        href: isProView ? `/account/jobs/${id}` : `/pro/jobs/${id}`,
                         createdAt: "Just now",
-                        role: "homeowner",
+                        role: isProView ? "homeowner" : "pro",
                       }),
                     );
                     setChangeAmount("");
@@ -659,18 +760,29 @@ export function RequestDetail({
                   <span>
                     <span className="font-semibold text-title">+${cr.amount}</span> — {cr.reason}
                     <span className="ml-2 text-muted">({cr.status})</span>
+                    {cr.status === "pending" ? (
+                      <span className="ml-2 text-xs text-muted">
+                        {cr.homeownerAcknowledged ? "Homeowner acknowledged" : "Needs homeowner"}
+                        {" · "}
+                        {cr.proAcknowledged ? "Pro acknowledged" : "Needs pro"}
+                      </span>
+                    ) : null}
                   </span>
-                  {canHire && cr.status === "pending" ? (
+                  {canHire && cr.status === "pending" && !cr.homeownerAcknowledged ? (
                     <span className="flex gap-2">
                       <Button
                         type="button"
                         size="sm"
                         onClick={() => {
-                          dispatch(resolveChangeRequest({ id: cr.id, status: "approved" }));
-                          setSavedMsg("Change approved — agreed price updated.");
+                          dispatch(acknowledgeChangeRequest({ id: cr.id, party: "homeowner" }));
+                          setSavedMsg(
+                            cr.proAcknowledged
+                              ? "Both parties acknowledged — agreed price updated."
+                              : "Your acknowledgment recorded. Waiting on the professional.",
+                          );
                         }}
                       >
-                        Approve
+                        Acknowledge
                       </Button>
                       <Button
                         type="button"
@@ -681,6 +793,21 @@ export function RequestDetail({
                         Reject
                       </Button>
                     </span>
+                  ) : isProView && cr.status === "pending" && !cr.proAcknowledged ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        dispatch(acknowledgeChangeRequest({ id: cr.id, party: "pro" }));
+                        setSavedMsg(
+                          cr.homeownerAcknowledged
+                            ? "Both parties acknowledged — agreed price updated."
+                            : "Your acknowledgment recorded. Waiting on the homeowner.",
+                        );
+                      }}
+                    >
+                      Acknowledge
+                    </Button>
                   ) : null}
                 </li>
               ))
@@ -693,7 +820,7 @@ export function RequestDetail({
         <>
           <Card>
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-base font-semibold text-title">Offers</h2>
+              <h2 className="font-display text-base font-semibold text-title">Quotations</h2>
               {sortedQuotes.length ? (
                 <span className="text-xs text-muted">{sortedQuotes.length}</span>
               ) : null}
@@ -969,12 +1096,32 @@ export function RequestDetail({
             onClick={() => {
               dispatch(setJobStatus({ jobId: id, status: "disputed" }));
               dispatch(
+                openDispute({
+                  jobId: id,
+                  jobTitle: job.title,
+                  homeownerName: job.homeownerName,
+                  proName: hiredPro?.businessName ?? hiredPro?.name ?? "Unassigned",
+                  reason: disputeNote.trim(),
+                  agreedPrice: booking?.agreedPrice,
+                  quoteId: hiredQuoteId,
+                }),
+              );
+              dispatch(
                 addNotification({
                   title: "Dispute opened",
-                  body: "Support will review. Keep messages and photos for context.",
+                  body: "Support will review the job history, quotation, and messages. HomeFix does not process repair refunds.",
                   href: `/account/jobs/${id}`,
                   createdAt: "Just now",
                   role: "homeowner",
+                }),
+              );
+              dispatch(
+                addNotification({
+                  title: "Dispute opened",
+                  body: `${job.title} was flagged for operations review.`,
+                  href: "/admin/disputes",
+                  createdAt: "Just now",
+                  role: "admin",
                 }),
               );
               setDisputeNote("");
@@ -1017,7 +1164,7 @@ export function RequestDetail({
               </span>
               <div>
                 <h2 className="font-display text-lg font-bold text-title">Confirm Work Completion</h2>
-                <p className="text-xs text-muted">Direct contractor settlement ($0 platform middleman fee)</p>
+                <p className="text-xs text-muted">Confirm the work. HomeFix does not collect or refund the repair payment.</p>
               </div>
             </div>
 
@@ -1042,13 +1189,26 @@ export function RequestDetail({
                     )
                   }
                 >
-                  <option value="zelle">Zelle (Bank-to-Bank Transfer)</option>
-                  <option value="card">Credit / Debit Card (Card Reader / Square)</option>
-                  <option value="cash">Cash Settlement</option>
-                  <option value="check">Personal or Bank Check</option>
-                  <option value="bank_transfer">Direct ACH / Wire Transfer</option>
+                  <option value="cash">Cash</option>
+                  <option value="bank_transfer">Bank transfer</option>
+                  <option value="mobile_banking">Mobile banking</option>
+                  <option value="zelle">Zelle / instant transfer</option>
+                  <option value="card">Card paid to the professional</option>
+                  <option value="check">Check</option>
+                  <option value="other">Other agreed method</option>
                 </NativeSelect>
               </Field>
+              <label className="flex items-start gap-2.5 text-xs text-copy cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settlePaid}
+                  onChange={(e) => setSettlePaid(e.target.checked)}
+                  className="mt-0.5 rounded border-line text-primary focus:ring-primary"
+                />
+                <span>
+                  I paid the professional directly using this method. Leave unchecked if payment has not happened yet.
+                </span>
+              </label>
 
               <label className="flex items-start gap-2.5 pt-1 text-xs text-copy cursor-pointer">
                 <input
@@ -1081,13 +1241,14 @@ export function RequestDetail({
                     homeownerConfirmComplete({
                       jobId: id,
                       paymentMethod: settlePaymentMethod,
+                      markPaid: settlePaid,
                     }),
                   );
                   dispatch(setJobStatus({ jobId: id, status: "completed" }));
                   dispatch(
                     addNotification({
                       title: "Job completed & settled",
-                      body: `${job.homeownerName} confirmed completion and settlement via ${settlePaymentMethod.toUpperCase()}.`,
+                      body: `${job.homeownerName} confirmed the work${settlePaid ? ` and recorded a direct ${settlePaymentMethod.replace("_", " ")} payment` : ""}. HomeFix did not collect funds.`,
                       href: `/pro/jobs/${id}`,
                       createdAt: "Just now",
                       role: "pro",

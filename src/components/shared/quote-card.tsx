@@ -14,15 +14,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, NativeSelect, TextField } from "@/components/ui/field";
 import { getPro, offerStatusLabels } from "@/Mockdata";
+import { paymentMethodLabels, selectQuotesForJob } from "@/lib/marketplace";
 import {
   confirmBooking,
   hireQuote,
-  rejectSiblingOffers,
   setOfferStatus,
+  setPaymentArrangement,
 } from "@/redux/slices/marketplaceSlice";
 import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import type { Quote } from "@/types";
+import type { DirectPaymentMethod, Quote } from "@/types";
 import { GuaranteeCard } from "@/components/shared/guarantee-protection";
 import { cn } from "@/lib/cn";
 
@@ -49,12 +50,15 @@ export function QuoteCard({
   const dispatch = useAppDispatch();
   const hiredId = useAppSelector((state) => state.marketplace.hiredByJob[quote.jobId]);
   const booking = useAppSelector((state) => state.marketplace.bookings[quote.jobId]);
+  const siblingIds = useAppSelector((state) => selectQuotesForJob(state, quote.jobId).map((item) => item.id));
+  const homeownerName = useAppSelector((state) => state.auth.user?.name);
   const pro = getPro(quote.proId);
   const hired = hiredId === quote.id;
   const closed = quote.status === "rejected" || quote.status === "withdrawn" || quote.status === "expired";
   const [showBooking, setShowBooking] = useState(false);
   const [bookDate, setBookDate] = useState("");
   const [arrivalWindow, setArrivalWindow] = useState("10:00 AM – 12:00 PM (Late Morning)");
+  const [payMethod, setPayMethod] = useState<DirectPaymentMethod>("cash");
   const [msg, setMsg] = useState("");
 
   const price =
@@ -63,26 +67,39 @@ export function QuoteCard({
       : `$${quote.amount}${quote.priceType === "hourly" ? "/hr" : ""}`;
 
   function accept() {
-    dispatch(hireQuote({ jobId: quote.jobId, quoteId: quote.id }));
     dispatch(
-      rejectSiblingOffers({
+      hireQuote({
         jobId: quote.jobId,
-        acceptedQuoteId: quote.id,
-        seedQuoteIds: ["quote-1", "quote-2", "quote-3"],
+        quoteId: quote.id,
+        proId: quote.proId,
+        agreedPrice: quote.amount,
+        scopeSnapshot: quote.scope,
+        homeownerName,
+        paymentTerms: quote.paymentTerms,
+        siblingQuoteIds: siblingIds,
       }),
     );
     dispatch(setJobStatus({ jobId: quote.jobId, status: "hired" }));
     dispatch(
       addNotification({
-        title: "Offer accepted",
-        body: `You hired ${pro?.name ?? pro?.businessName ?? "the pro"}. Confirm your appointment arrival window below.`,
+        title: "Quotation accepted",
+        body: `${pro?.name ?? "The professional"} was selected. Confirm schedule and how you will pay them directly.`,
         href: `/account/jobs/${quote.jobId}`,
         createdAt: "Just now",
         role: "homeowner",
       }),
     );
+    dispatch(
+      addNotification({
+        title: "You were hired",
+        body: `A homeowner accepted your $${quote.amount} quotation. Confirm the schedule on the job.`,
+        href: `/pro/jobs/${quote.jobId}`,
+        createdAt: "Just now",
+        role: "pro",
+      }),
+    );
     setShowBooking(true);
-    setMsg("Offer accepted — select a date and 2-hour arrival window to lock your appointment.");
+    setMsg("Quotation accepted. Agree a schedule and payment method to confirm the booking.");
   }
 
   function decline() {
@@ -105,20 +122,32 @@ export function QuoteCard({
         scheduledTime: arrivalWindow,
         arrivalWindow,
         scopeSnapshot: quote.scope,
+        paymentArrangement: payMethod,
+        paymentTerms: quote.paymentTerms,
       }),
     );
+    dispatch(setPaymentArrangement({ jobId: quote.jobId, paymentArrangement: payMethod }));
     dispatch(setJobStatus({ jobId: quote.jobId, status: "scheduled" }));
     dispatch(
       addNotification({
         title: "Booking confirmed",
-        body: `${bookDate} (${arrivalWindow}) · $${quote.amount}. Direct contractor payment on completion.`,
+        body: `${bookDate} · $${quote.amount}. Pay the professional directly — HomeFix does not collect this.`,
         href: `/account/jobs/${quote.jobId}`,
         createdAt: "Just now",
         role: "homeowner",
       }),
     );
+    dispatch(
+      addNotification({
+        title: "Booking confirmed",
+        body: `Schedule locked for ${bookDate}. Payment is arranged off-platform.`,
+        href: `/pro/jobs/${quote.jobId}`,
+        createdAt: "Just now",
+        role: "pro",
+      }),
+    );
     setShowBooking(false);
-    setMsg("Booking confirmed successfully.");
+    setMsg("Booking confirmed. Pay the professional directly using the agreed method.");
   }
 
   return (
@@ -189,11 +218,38 @@ export function QuoteCard({
 
       <p className="mt-4 font-display text-2xl font-bold tracking-tight text-title">{price}</p>
       {quote.scope ? <p className="mt-2 text-sm leading-relaxed text-stone-700">{quote.scope}</p> : null}
-      {quote.proposedSchedule || quote.availability ? (
-        <p className="mt-2 text-sm text-muted">
-          {quote.proposedSchedule || quote.availability}
-        </p>
-      ) : null}
+      <dl className="mt-3 grid gap-1.5 text-xs text-muted sm:grid-cols-2">
+        {quote.estimatedDuration ? (
+          <div>
+            <dt className="font-medium text-stone-500">Estimated time</dt>
+            <dd className="text-copy">{quote.estimatedDuration}</dd>
+          </div>
+        ) : null}
+        {quote.proposedSchedule || quote.availability ? (
+          <div>
+            <dt className="font-medium text-stone-500">Availability</dt>
+            <dd className="text-copy">{quote.proposedSchedule || quote.availability}</dd>
+          </div>
+        ) : null}
+        {quote.exclusions ? (
+          <div className="sm:col-span-2">
+            <dt className="font-medium text-stone-500">Not included</dt>
+            <dd className="text-copy">{quote.exclusions}</dd>
+          </div>
+        ) : null}
+        {quote.warranty ? (
+          <div>
+            <dt className="font-medium text-stone-500">Warranty</dt>
+            <dd className="text-copy">{quote.warranty}</dd>
+          </div>
+        ) : null}
+        {quote.paymentTerms ? (
+          <div className="sm:col-span-2">
+            <dt className="font-medium text-stone-500">Payment terms</dt>
+            <dd className="text-copy">{quote.paymentTerms}</dd>
+          </div>
+        ) : null}
+      </dl>
 
       {/* Action Buttons: Accept & Reject Only */}
       {canHire && !hiredId && !closed ? (
@@ -237,7 +293,7 @@ export function QuoteCard({
       ) : null}
 
       {/* Booking Form (Triggers immediately upon Accept) */}
-      {(hired || showBooking) && !booking ? (
+      {canHire && (hired || showBooking) && !booking?.scheduledDate && !booking?.agreedPrice ? (
         <div className="mt-5 space-y-4 rounded-2xl border border-primary/30 bg-smoke/80 p-4 sm:p-5 shadow-xs">
           <div className="flex items-center justify-between gap-2 border-b border-line/60 pb-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-title">
@@ -245,7 +301,7 @@ export function QuoteCard({
               Confirm appointment schedule
             </div>
             <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200 flex items-center gap-1">
-              <ShieldCheck className="h-3 w-3" /> $2,500 Guarantee
+              <ShieldCheck className="h-3 w-3" /> Direct pay to pro
             </span>
           </div>
 
@@ -259,6 +315,18 @@ export function QuoteCard({
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Appointment Date">
               <TextField type="date" value={bookDate} onChange={(e) => setBookDate(e.target.value)} />
+            </Field>
+            <Field label="How you will pay the pro">
+              <NativeSelect
+                value={payMethod}
+                onChange={(e) => setPayMethod(e.target.value as DirectPaymentMethod)}
+              >
+                {Object.entries(paymentMethodLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </NativeSelect>
             </Field>
             <Field label="2-Hour Arrival Window">
               <NativeSelect
@@ -282,14 +350,14 @@ export function QuoteCard({
       ) : null}
 
       {/* Booked Confirmation Notice */}
-      {hired && booking ? (
+      {hired && booking?.scheduledDate ? (
         <div className="mt-5 rounded-xl border border-success/30 bg-success/[0.05] p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-success">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             Booked for {booking.scheduledDate} at {booking.scheduledTime} · ${booking.agreedPrice}
           </div>
           <p className="mt-1 text-xs text-stone-600">
-            Work is confirmed. Coordinate directly with {pro?.name ?? "your contractor"} through messaging.
+            Booking confirmed. Coordinate directly with {pro?.name ?? "your contractor"} through messaging. Pay them directly.
           </p>
           <div className="mt-3">
             <Link

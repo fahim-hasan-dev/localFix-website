@@ -9,7 +9,7 @@ export default function BrowseProsPage() {
       <PageBanner
         eyebrow="Find a Pro"
         title="Browse professionals"
-        description="Connect directly with verified, licensed trade professionals across Austin."
+        description="Browse professionals or post a job. You hire only after you accept a quotation. Pay the professional directly — HomeFix charges homeowners nothing."
         image={photos.banners.pros}
       />
       <Suspense fallback={<div className="container-site py-16 text-sm text-muted">Loading pros…</div>}>

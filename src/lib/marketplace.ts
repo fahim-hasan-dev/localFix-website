@@ -70,3 +70,25 @@ export function selectChangeRequests(state: RootState, jobId: string) {
 export function selectCompletion(state: RootState, jobId: string) {
   return state.marketplace.completions[jobId];
 }
+
+export function selectHiredQuoteId(state: RootState, jobId: string) {
+  return state.marketplace.hiredByJob[jobId];
+}
+
+export function jobCardSummary(job: Job) {
+  const firstLabel = job.intakeAnswers?.[0]?.label;
+  if (firstLabel && job.description.includes(firstLabel)) {
+    return job.description.split(firstLabel)[0].replace(/[. ]+$/, "").trim();
+  }
+  return job.description;
+}
+
+export const paymentMethodLabels: Record<string, string> = {
+  cash: "Cash",
+  bank_transfer: "Bank transfer",
+  mobile_banking: "Mobile banking",
+  zelle: "Zelle / instant transfer",
+  card: "Card reader (paid to the pro)",
+  check: "Check",
+  other: "Other agreed method",
+};

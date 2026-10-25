@@ -42,6 +42,28 @@ export type ChangeRequestStatus = "pending" | "approved" | "rejected";
 
 export type BookingStatus = "pending_schedule" | "confirmed" | "reschedule_requested";
 
+/** How the homeowner will pay the pro — never collected by HomeFix */
+export type DirectPaymentMethod =
+  | "cash"
+  | "bank_transfer"
+  | "mobile_banking"
+  | "zelle"
+  | "card"
+  | "check"
+  | "other";
+
+export type JobVisibility = "open" | "direct";
+
+export interface PriceChangeRecord {
+  id: string;
+  previousAmount: number;
+  newAmount: number;
+  reason: string;
+  changedAt: string;
+  homeownerAcknowledgedAt?: string;
+  proAcknowledgedAt?: string;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -113,7 +135,11 @@ export interface Job {
   postedAt: string;
   homeownerName: string;
   intakeAnswers?: IntakeAnswer[];
+  /** Direct request to one professional. Open jobs omit this. */
   requestedProId?: string;
+  visibility?: JobVisibility;
+  photos?: string[];
+  matchedProIds?: string[];
 }
 
 export interface Quote {
@@ -134,6 +160,7 @@ export interface Quote {
   expiresAt?: string;
   paymentTerms?: string;
   status: OfferStatus;
+  createdAt?: string;
   /** Homeowner counter-proposal */
   counterAmount?: number;
   counterNote?: string;
@@ -143,6 +170,7 @@ export interface Booking {
   jobId: string;
   quoteId: string;
   proId: string;
+  homeownerName?: string;
   agreedPrice: number;
   scheduledDate: string;
   scheduledTime: string;
@@ -150,18 +178,30 @@ export interface Booking {
   scopeSnapshot: string;
   status: BookingStatus;
   notes?: string;
-  paymentMethod?: "zelle" | "card" | "cash" | "check" | "bank_transfer";
+  acceptedAt?: string;
+  /** Agreed off-platform method — not proof of payment */
+  paymentArrangement?: DirectPaymentMethod;
+  paymentTerms?: string;
+  paymentMethod?: DirectPaymentMethod;
   paymentReceiptNumber?: string;
   paidAt?: string;
+  paymentConfirmedByHomeowner?: boolean;
+  paymentConfirmedByPro?: boolean;
+  priceHistory?: PriceChangeRecord[];
 }
 
 export interface ChangeRequest {
   id: string;
   jobId: string;
   amount: number;
+  previousAmount?: number;
+  newAmount?: number;
   reason: string;
   status: ChangeRequestStatus;
   createdAt: string;
+  proposedBy?: "homeowner" | "pro";
+  homeownerAcknowledged?: boolean;
+  proAcknowledged?: boolean;
 }
 
 export interface JobCompletion {
@@ -169,7 +209,7 @@ export interface JobCompletion {
   proMarkedAt?: string;
   homeownerConfirmedAt?: string;
   completionNotes?: string;
-  paymentMethod?: "zelle" | "card" | "cash" | "check" | "bank_transfer";
+  paymentMethod?: DirectPaymentMethod;
   receiptNumber?: string;
 }
 

@@ -4,15 +4,16 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, MapPin, ShieldCheck, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TextField } from "@/components/ui/field";
+import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import { categories, getPro, professionals } from "@/Mockdata";
 import { labelForAnswer, questionsForCategory } from "@/lib/intake-questions";
+import { matchEligiblePros } from "@/lib/matching";
 import { loginAs } from "@/redux/slices/authSlice";
 import { clearDraft } from "@/redux/slices/intakeSlice";
 import { addJob } from "@/redux/slices/marketplaceSlice";
-import { addNotification, invitePro } from "@/redux/slices/featuresSlice";
+import { addNotification, invitePro, setJobPhotos } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import type { IntakeAnswer, Professional, Urgency } from "@/types";
+import type { IntakeAnswer, JobVisibility, Professional, Urgency } from "@/types";
 import { cn } from "@/lib/cn";
 
 function initials(name: string) {
@@ -24,16 +25,26 @@ function initials(name: string) {
     .join("");
 }
 
-function matchPros(slug: string) {
-  return professionals
-    .filter((pro) => pro.clearance === "cleared" && pro.categorySlug === slug)
-    .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount);
-}
-
 function urgencyFromWhen(value?: string): Urgency {
   if (value === "asap") return "asap";
   if (value === "flexible") return "flexible";
+  if (value === "two_weeks") return "two_weeks";
   return "this_week";
+}
+
+function readPhotos(files: FileList | null): Promise<string[]> {
+  const list = Array.from(files ?? []).slice(0, 4);
+  return Promise.all(
+    list.map(
+      (file) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result ?? ""));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        }),
+    ),
+  );
 }
 
 export function QuoteRequestFlow() {
@@ -41,6 +52,7 @@ export function QuoteRequestFlow() {
   const invitedPro = getPro(searchParams.get("invite") ?? "");
   const draft = useAppSelector((state) => state.intake.draft);
   const user = useAppSelector((state) => state.auth.user);
+  const listingStatus = useAppSelector((state) => state.admin.listingStatus);
   const dispatch = useAppDispatch();
 
   const startingSlug = invitedPro?.categorySlug || draft.categorySlug || "";
@@ -48,16 +60,24 @@ export function QuoteRequestFlow() {
   const [answers, setAnswers] = useState<Record<string, string>>(draft.answers ?? {});
   const [index, setIndex] = useState(0);
   const [zip, setZip] = useState(draft.zip || user?.zip || "78701");
-  const [phase, setPhase] = useState<"category" | "questions" | "zip" | "matches" | "sent">(
+  const [description, setDescription] = useState(draft.problem || draft.summary || "");
+  const [budget, setBudget] = useState("");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [phase, setPhase] = useState<"category" | "questions" | "zip" | "details" | "matches" | "sent">(
     startingSlug ? "questions" : "category",
   );
   const [requestedPro, setRequestedPro] = useState<Professional | null>(invitedPro ?? null);
+  const [publishedOpen, setPublishedOpen] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [matchedCount, setMatchedCount] = useState(0);
 
   const questions = useMemo(() => questionsForCategory(categorySlug), [categorySlug]);
   const question = questions[index];
   const category = categories.find((item) => item.slug === categorySlug);
-  const matches = useMemo(() => matchPros(categorySlug), [categorySlug]);
+  const matches = useMemo(
+    () => matchEligiblePros({ categorySlug, zip, city: user?.city || "Austin" }, professionals, listingStatus),
+    [categorySlug, listingStatus, user?.city, zip],
+  );
 
   const intakeAnswers: IntakeAnswer[] = questions
     .filter((item) => answers[item.id])
@@ -82,12 +102,16 @@ export function QuoteRequestFlow() {
       setIndex(index + 1);
       return;
     }
-    setPhase(/^\d{5}$/.test(zip.trim()) ? "matches" : "zip");
+    setPhase(/^\d{5}$/.test(zip.trim()) ? "details" : "zip");
   }
 
   function goBack() {
     if (phase === "matches") {
-      if (zip.trim().length === 5 && questions.length) {
+      setPhase("details");
+      return;
+    }
+    if (phase === "details") {
+      if (/^\d{5}$/.test(zip.trim()) && questions.length) {
         setPhase("questions");
         setIndex(questions.length - 1);
         return;
@@ -111,18 +135,15 @@ export function QuoteRequestFlow() {
 
   function continueFromZip() {
     if (!/^\d{5}$/.test(zip.trim())) return;
-    setPhase("matches");
+    setPhase("details");
   }
 
-  function sendRequest(pro: Professional) {
+  function publishJob(pro?: Professional) {
     const title = [category?.name, intakeAnswers[0]?.value].filter(Boolean).join(" · ");
-    const description = [
-      draft.problem,
-      ...intakeAnswers.map((item) => `${item.label} ${item.value}`),
-    ]
-      .filter(Boolean)
-      .join(". ");
+    const fullDescription = (description.trim() || draft.problem || "").trim();
     const createdId = `job-local-${Date.now()}`;
+    const visibility: JobVisibility = pro ? "direct" : "open";
+    const matchedIds = pro ? [pro.id] : matches.map((item) => item.id);
 
     if (!user) {
       dispatch(loginAs("homeowner"));
@@ -133,58 +154,95 @@ export function QuoteRequestFlow() {
         id: createdId,
         title: title || category?.name || "Service request",
         categorySlug,
-        description,
+        description: fullDescription,
         zip: zip.trim(),
         city: user?.city || "Austin",
         state: user?.state || "TX",
         urgency: urgencyFromWhen(answers.when),
+        budget: budget.trim() || undefined,
         homeownerName: user?.name ?? "Maya Chen",
         intakeAnswers,
-        requestedProId: pro.id,
+        requestedProId: pro?.id,
+        visibility,
+        photos,
+        matchedProIds: matchedIds,
       }),
     );
-    dispatch(invitePro({ jobId: createdId, proId: pro.id }));
-    dispatch(
-      addNotification({
-        title: "Quote request",
-        body: `${user?.name ?? "A homeowner"} asked you to quote ${title || "a job"} in ${zip.trim()}.`,
-        href: `/pro/jobs/${createdId}`,
-        createdAt: "Just now",
-        role: "pro",
-      }),
-    );
-    dispatch(
-      addNotification({
-        title: "Request sent",
-        body: `${pro.name} has your details and can send a quote.`,
-        href: `/account/jobs/${createdId}`,
-        createdAt: "Just now",
-        role: "homeowner",
-      }),
-    );
+    if (photos.length) {
+      dispatch(setJobPhotos({ jobId: createdId, photos }));
+    }
+
+    if (pro) {
+      dispatch(invitePro({ jobId: createdId, proId: pro.id }));
+      dispatch(
+        addNotification({
+          title: "Quote request",
+          body: `${user?.name ?? "A homeowner"} asked you to quote ${title || "a job"} in ${zip.trim()}.`,
+          href: `/pro/jobs/${createdId}`,
+          createdAt: "Just now",
+          role: "pro",
+        }),
+      );
+      dispatch(
+        addNotification({
+          title: "Request sent",
+          body: `${pro.name} has your details and can send a quotation. Hiring is not confirmed until you accept it.`,
+          href: `/account/jobs/${createdId}`,
+          createdAt: "Just now",
+          role: "homeowner",
+        }),
+      );
+    } else {
+      if (matchedIds.includes("pro-1")) {
+        dispatch(
+          addNotification({
+            title: "New matching job",
+            body: `${title || "A new request"} was posted in ${zip.trim()}. Review and send a quotation.`,
+            href: `/pro/jobs/${createdId}`,
+            createdAt: "Just now",
+            role: "pro",
+          }),
+        );
+      }
+      dispatch(
+        addNotification({
+          title: "Job published",
+          body: `${matchedIds.length} matching professional${matchedIds.length === 1 ? "" : "s"} can now send quotations.`,
+          href: `/account/jobs/${createdId}`,
+          createdAt: "Just now",
+          role: "homeowner",
+        }),
+      );
+    }
+
     dispatch(clearDraft());
-    setRequestedPro(pro);
+    setRequestedPro(pro ?? null);
+    setPublishedOpen(!pro);
+    setMatchedCount(matchedIds.length);
     setJobId(createdId);
     setPhase("sent");
   }
 
-  if (phase === "sent" && requestedPro && jobId) {
+  if (phase === "sent" && jobId) {
     return (
       <div className="mx-auto max-w-xl rounded-[22px] border border-line/80 bg-white p-6 sm:p-8">
         <div className="grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-700">
           <Check className="h-6 w-6" />
         </div>
         <h1 className="mt-4 font-display text-2xl font-semibold text-title">
-          Quote requested
+          {publishedOpen ? "Job posted" : "Quote requested"}
         </h1>
         <p className="mt-2 text-sm leading-6 text-copy">
-          {requestedPro.name} has your answers and can send a price. You pay the pro
-          directly if you hire.
+          {publishedOpen
+            ? `${matchedCount} matching professional${matchedCount === 1 ? "" : "s"} can review this job and send quotations. You hire only after you accept one.`
+            : `${requestedPro?.name} has your details and can send a quotation. Viewing a profile or sending this request is not a booking.`}
         </p>
         <div className="mt-5 rounded-2xl border border-line/80 px-4 py-3">
-          <p className="font-display text-sm font-semibold text-title">{requestedPro.name}</p>
+          <p className="font-display text-sm font-semibold text-title">
+            {requestedPro?.name ?? category?.name ?? "Open request"}
+          </p>
           <p className="mt-0.5 text-xs text-muted">
-            {category?.name} · {zip}
+            {category?.name} · {zip} · Pay the pro directly if you hire
           </p>
         </div>
         <div className="mt-6 flex flex-wrap gap-2">
@@ -230,7 +288,7 @@ export function QuoteRequestFlow() {
             <h1 className="font-display text-2xl font-semibold text-title">
               What do you need help with?
             </h1>
-            <p className="mt-1 text-sm text-muted">Pick a service. We’ll ask a few questions next.</p>
+            <p className="mt-1 text-sm text-muted">Pick a service, then post a job or request one professional.</p>
             <div className="mt-5 grid gap-2">
               {categories.map((item) => (
                 <button
@@ -283,7 +341,7 @@ export function QuoteRequestFlow() {
             <h1 className="font-display text-2xl font-semibold text-title">
               Where should they come?
             </h1>
-            <p className="mt-1 text-sm text-muted">We’ll match cleared pros near this ZIP.</p>
+            <p className="mt-1 text-sm text-muted">Matching uses this ZIP and each professional’s service radius.</p>
             <div className="relative mt-5">
               <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <TextField
@@ -301,7 +359,65 @@ export function QuoteRequestFlow() {
               disabled={!/^\d{5}$/.test(zip.trim())}
               onClick={continueFromZip}
             >
-              See matching pros
+              Continue
+            </Button>
+          </>
+        ) : null}
+
+        {phase === "details" ? (
+          <>
+            <h1 className="font-display text-2xl font-semibold text-title">Job details</h1>
+            <p className="mt-1 text-sm text-muted">
+              Required description, location, and timing. Budget and photos are optional. Posting does not hire anyone.
+            </p>
+            <div className="mt-5 space-y-4">
+              <Field label="Describe the work">
+                <TextArea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="What is broken, where it is, and any access notes."
+                  rows={4}
+                />
+              </Field>
+              <Field label="Budget (optional)">
+                <NativeSelect value={budget} onChange={(event) => setBudget(event.target.value)}>
+                  <option value="">No budget listed</option>
+                  <option value="Under $250">Under $250</option>
+                  <option value="$250–$500">$250–$500</option>
+                  <option value="$500–$1,000">$500–$1,000</option>
+                  <option value="$1,000–$5,000">$1,000–$5,000</option>
+                  <option value="$5,000+">$5,000+</option>
+                </NativeSelect>
+              </Field>
+              <Field label="Photos (optional, up to 4)">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="block w-full text-sm text-copy file:mr-3 file:rounded-full file:border-0 file:bg-smoke file:px-3 file:py-1.5 file:text-xs file:font-semibold"
+                  onChange={async (event) => {
+                    const next = await readPhotos(event.target.files);
+                    setPhotos(next);
+                  }}
+                />
+              </Field>
+              {photos.length ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {photos.map((src) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={src.slice(0, 24)} src={src} alt="" className="h-16 w-full rounded-lg object-cover" />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <Button
+              type="button"
+              size="md"
+              className="mt-5"
+              disabled={description.trim().length < 8 && !draft.problem}
+              onClick={() => setPhase("matches")}
+            >
+              Continue
             </Button>
           </>
         ) : null}
@@ -309,12 +425,12 @@ export function QuoteRequestFlow() {
         {phase === "matches" ? (
           <>
             <h1 className="font-display text-2xl font-semibold text-title">
-              {invitedPro ? `Request a quote from ${invitedPro.name}` : "Pros who can take this"}
+              {invitedPro ? `Request a quote from ${invitedPro.name}` : "Publish or request a pro"}
             </h1>
             <p className="mt-1 text-sm text-muted">
               {invitedPro
-                ? "They’ll see your answers and send a price."
-                : "Pick one. They get your answers and can send a quote."}
+                ? "They receive this job and can send a quotation. You accept later to confirm the booking."
+                : "Post to matching professionals in this service area, or send the same job to one pro."}
             </p>
 
             {intakeAnswers.length ? (
@@ -326,6 +442,20 @@ export function QuoteRequestFlow() {
                   </li>
                 ))}
               </ul>
+            ) : null}
+
+            {!invitedPro ? (
+              <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/[0.03] p-4">
+                <p className="font-display text-sm font-semibold text-title">
+                  Post job and receive quotations
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  {matches.length} cleared professional{matches.length === 1 ? "" : "s"} in this trade and radius can review it.
+                </p>
+                <Button type="button" size="sm" className="mt-3" onClick={() => publishJob()}>
+                  Publish job
+                </Button>
+              </div>
             ) : null}
 
             <div className="mt-5 space-y-2">
@@ -352,14 +482,14 @@ export function QuoteRequestFlow() {
                       <span>{pro.city}</span>
                     </p>
                   </div>
-                  <Button type="button" size="sm" onClick={() => sendRequest(pro)}>
+                  <Button type="button" size="sm" onClick={() => publishJob(pro)}>
                     Request quote
                   </Button>
                 </div>
               ))}
               {!invitedPro && matches.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted">
-                  No cleared pros in this trade yet.
+                  No cleared professionals in this trade and radius yet. You can still publish the job.
                 </p>
               ) : null}
             </div>

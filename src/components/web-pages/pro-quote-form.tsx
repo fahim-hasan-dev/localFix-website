@@ -8,15 +8,19 @@ import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field"
 import { useRoleAccess } from "@/hooks/use-role-access";
 import { addQuote, acceptCounter, setOfferStatus } from "@/redux/slices/marketplaceSlice";
 import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
-import { selectQuotesForJob } from "@/lib/marketplace";
+import { selectJob, selectQuotesForJob } from "@/lib/marketplace";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import type { QuotePriceType } from "@/types";
 
 export function ProQuoteForm({ jobId }: { jobId: string }) {
   const dispatch = useAppDispatch();
   const { access } = useRoleAccess();
+  const job = useAppSelector((state) => selectJob(state, jobId));
+  const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[jobId]);
   const quotes = useAppSelector((state) => selectQuotesForJob(state, jobId));
+  const myQuote = quotes.find((q) => q.proId === "pro-1");
   const myCounters = quotes.filter((q) => q.proId === "pro-1" && q.status === "countered");
+  const jobClosed = Boolean(hiredQuoteId) || ["hired", "scheduled", "cancelled", "completed", "disputed"].includes(job?.status ?? "");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const locked = !access.canSubmitQuote;
@@ -124,8 +128,14 @@ export function ProQuoteForm({ jobId }: { jobId: string }) {
       ))}
 
       <Card>
-        <h2 className="text-xl">Send a quote</h2>
-        {locked ? (
+        <h2 className="text-xl">Send a quotation</h2>
+        {myQuote ? (
+          <p className="mt-2 text-sm text-copy">
+            Your quotation (${myQuote.amount}) is attached to this job. The homeowner must accept it before a booking is confirmed.
+          </p>
+        ) : jobClosed ? (
+          <p className="mt-2 text-sm text-copy">This job is no longer open for new quotations.</p>
+        ) : locked ? (
           <p className="mt-2 text-sm text-copy">
             {access.blockedReason}{" "}
             <Link href="/pro/pricing" className="font-semibold text-primary">
@@ -137,6 +147,7 @@ export function ProQuoteForm({ jobId }: { jobId: string }) {
             Price this request from their answers above. Homeowner pays you directly if they hire.
           </p>
         )}
+        {myQuote || jobClosed ? null : (
         <form className="mt-5 space-y-4" onSubmit={submit}>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Price type">
@@ -195,9 +206,10 @@ export function ProQuoteForm({ jobId }: { jobId: string }) {
           {error ? <p className="text-sm text-error">{error}</p> : null}
           {saved ? <p className="text-sm text-success">Quote sent.</p> : null}
           <Button type="submit" disabled={locked}>
-            {locked ? "Locked" : "Send quote"}
+            {locked ? "Locked" : "Send quotation"}
           </Button>
         </form>
+        )}
       </Card>
     </div>
   );

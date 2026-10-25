@@ -795,6 +795,7 @@ export const jobs: Job[] = [
     status: "getting_quotes",
     postedAt: "2026-10-12",
     homeownerName: "Maya Chen",
+    visibility: "open",
   },
   {
     id: "job-2",
@@ -811,6 +812,7 @@ export const jobs: Job[] = [
     status: "active",
     postedAt: "2026-10-13",
     homeownerName: "Jordan Hale",
+    visibility: "open",
   },
   {
     id: "job-3",
@@ -826,6 +828,7 @@ export const jobs: Job[] = [
     status: "quotes_in",
     postedAt: "2026-10-10",
     homeownerName: "Elena Ruiz",
+    visibility: "open",
   },
   {
     id: "job-4",
@@ -841,6 +844,7 @@ export const jobs: Job[] = [
     status: "hired",
     postedAt: "2026-10-04",
     homeownerName: "Sam Okonkwo",
+    visibility: "open",
   },
 ];
 
