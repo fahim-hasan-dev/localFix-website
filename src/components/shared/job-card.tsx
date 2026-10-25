@@ -39,7 +39,11 @@ export function JobCard({
         </div>
 
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-          {category?.name ? (
+          {job.requestedProId ? (
+            <span className="rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary">
+              Quote request
+            </span>
+          ) : category?.name ? (
             <span className="font-medium text-primary bg-smoke px-2 py-0.5 rounded-md">
               {category.name}
             </span>
@@ -59,14 +63,16 @@ export function JobCard({
           ) : null}
         </div>
 
-        <p className="mt-2 line-clamp-2 font-sans text-xs sm:text-sm leading-relaxed text-[#555]">
-          {job.description}
-        </p>
+        {isPro ? null : (
+          <p className="mt-2 line-clamp-2 font-sans text-xs sm:text-sm leading-relaxed text-[#555]">
+            {job.description}
+          </p>
+        )}
 
         <div className="mt-3 flex items-center justify-between pt-2 border-t border-line/40">
           <span className="text-[11px] text-muted">Posted {job.postedAt}</span>
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:underline">
-            {actionLabel} ↗
+            {actionLabel}
           </span>
         </div>
       </div>

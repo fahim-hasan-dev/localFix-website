@@ -4,14 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   Building2,
-  Check,
   CheckCircle2,
   Clock,
-  DollarSign,
-  Eye,
   Image as ImageIcon,
-  Info,
-  Percent,
   Plus,
   ShieldCheck,
   Trash2,
@@ -19,8 +14,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Tabs } from "@/components/ui/tabs";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
-import { categories } from "@/Mockdata";
 import { updateUser } from "@/redux/slices/authSlice";
 import {
   updateProProfile,
@@ -28,6 +23,51 @@ import {
 } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/cn";
+import {
+  TIME_OPTIONS,
+  WEEK_DAYS,
+  allDaysMatch,
+  applyHoursToDays,
+  normalizeWeeklyHours,
+  type DaySchedule,
+  type Weekday,
+} from "@/lib/business-hours";
+import { CredentialAttachment } from "@/components/shared/credential-attachment";
+import {
+  defaultInsuranceDoc,
+  defaultLicenseDoc,
+  fileFromUpload,
+  validateCredentialFile,
+} from "@/lib/credential-file";
+
+const PAYMENT_METHODS = [
+  "Cash",
+  "Check",
+  "Credit or debit",
+  "Zelle",
+  "Venmo",
+  "Apple Pay",
+  "Google Pay",
+  "Bank transfer",
+  "PayPal",
+] as const;
+
+const PAYMENT_ALIASES: Record<string, (typeof PAYMENT_METHODS)[number]> = {
+  "Credit/Debit Card": "Credit or debit",
+  "Bank Transfer (ACH)": "Bank transfer",
+  Stripe: "Credit or debit",
+};
+
+function normalizeAcceptedPayments(raw: string[]) {
+  const next = new Set<(typeof PAYMENT_METHODS)[number]>();
+  raw.forEach((value) => {
+    const mapped = PAYMENT_ALIASES[value] ?? (PAYMENT_METHODS.includes(value as (typeof PAYMENT_METHODS)[number])
+      ? (value as (typeof PAYMENT_METHODS)[number])
+      : undefined);
+    if (mapped) next.add(mapped);
+  });
+  return [...next];
+}
 
 export function ProProfileForm() {
   const dispatch = useAppDispatch();
@@ -41,7 +81,21 @@ export function ProProfileForm() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Form State
-  const [formData, setFormData] = useState({ ...proProfile });
+  const [formData, setFormData] = useState({
+    ...proProfile,
+    businessHours: normalizeWeeklyHours(proProfile.businessHours),
+    licenseDoc: proProfile.licenseDoc ?? defaultLicenseDoc(),
+    insuranceDoc: proProfile.insuranceDoc ?? defaultInsuranceDoc(),
+    insuranceExpires: proProfile.insuranceExpires ?? "2027-09",
+    insuranceCoverage: ["$500,000", "$1,000,000", "$2,000,000"].includes(proProfile.insuranceCoverage)
+      ? proProfile.insuranceCoverage
+      : "$1,000,000",
+    acceptedPayments: normalizeAcceptedPayments(proProfile.acceptedPayments),
+  });
+  const [docErrors, setDocErrors] = useState<{ license?: string; insurance?: string }>({});
+  const [hoursMode, setHoursMode] = useState<"all" | "custom">(() =>
+    allDaysMatch(normalizeWeeklyHours(proProfile.businessHours)) ? "all" : "custom",
+  );
 
   // Inline "Add Service" state
   const [newService, setNewService] = useState({
@@ -67,7 +121,16 @@ export function ProProfileForm() {
   }
 
   function handleSaveAll() {
-    dispatch(updateProProfile(formData));
+    const startingFromServices = formData.services.length
+      ? Math.min(...formData.services.map((service) => service.price))
+      : formData.startingPrice;
+    dispatch(
+      updateProProfile({
+        ...formData,
+        startingPrice: startingFromServices,
+        responseTime: proProfile.responseTime,
+      }),
+    );
     dispatch(
       updateUser({
         name: formData.contactName,
@@ -78,7 +141,7 @@ export function ProProfileForm() {
         zip: formData.zip,
       })
     );
-    showToast("Profile & services updated successfully! Changes are live on your public storefront.");
+    showToast("Listing updated.");
   }
 
   // Service helpers
@@ -107,12 +170,89 @@ export function ProProfileForm() {
     }));
   }
 
+  function cloneDay(day: DaySchedule): DaySchedule {
+    return { status: day.status, slots: day.slots.map((slot) => ({ ...slot })) };
+  }
+
+  function writeDayHours(days: Weekday[], nextDay: DaySchedule) {
+    setFormData((prev) => ({
+      ...prev,
+      businessHours: applyHoursToDays(nextDay, days, prev.businessHours),
+    }));
+  }
+
+  function targetDays(day: Weekday): Weekday[] {
+    return hoursMode === "all" ? WEEK_DAYS.map((item) => item.key) : [day];
+  }
+
+  function updateDayHours(day: Weekday, next: DaySchedule) {
+    writeDayHours(targetDays(day), next);
+  }
+
+  function changeHoursMode(mode: "all" | "custom") {
+    setHoursMode(mode);
+    if (mode === "all") {
+      writeDayHours(
+        WEEK_DAYS.map((item) => item.key),
+        cloneDay(formData.businessHours.monday),
+      );
+    }
+  }
+
+  function addBreak(day: Weekday) {
+    const current = formData.businessHours[day];
+    if (current.slots.length >= 2) return;
+    const first = current.slots[0] ?? { open: "8:00 AM", close: "6:00 PM" };
+    updateDayHours(day, {
+      ...current,
+      slots: [
+        { open: first.open, close: "12:00 PM" },
+        { open: "1:00 PM", close: first.close },
+      ],
+    });
+  }
+
+  function removeSlot(day: Weekday, index: number) {
+    const current = formData.businessHours[day];
+    if (current.slots.length <= 1) return;
+    updateDayHours(day, {
+      ...current,
+      slots: current.slots.filter((_, slotIndex) => slotIndex !== index),
+    });
+  }
+
+  function updateSlot(day: Weekday, index: number, field: "open" | "close", value: string) {
+    const current = formData.businessHours[day];
+    updateDayHours(day, {
+      ...current,
+      slots: current.slots.map((slot, slotIndex) =>
+        slotIndex === index ? { ...slot, [field]: value } : slot,
+      ),
+    });
+  }
+
+  function handleCredentialUpload(kind: "license" | "insurance", file: File) {
+    const message = validateCredentialFile(file);
+    setDocErrors((prev) => ({ ...prev, [kind]: message ?? undefined }));
+    if (message) return;
+
+    const next = fileFromUpload(file);
+    setFormData((prev) => {
+      const key = kind === "license" ? "licenseDoc" : "insuranceDoc";
+      const current = prev[key];
+      if (current?.previewUrl) URL.revokeObjectURL(current.previewUrl);
+      return { ...prev, [key]: next };
+    });
+    showToast(kind === "license" ? "License file sent for review" : "Insurance file sent for review");
+  }
+
+
   // Payment methods toggle
-  function togglePayment(payment: string) {
+  function togglePayment(payment: (typeof PAYMENT_METHODS)[number]) {
     setFormData((prev) => {
       const exists = prev.acceptedPayments.includes(payment);
       const next = exists
-        ? prev.acceptedPayments.filter((p) => p !== payment)
+        ? prev.acceptedPayments.filter((item) => item !== payment)
         : [...prev.acceptedPayments, payment];
       return { ...prev, acceptedPayments: next };
     });
@@ -147,7 +287,7 @@ export function ProProfileForm() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-16">
+    <div className="mx-auto max-w-5xl space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-2xl bg-title px-5 py-3 text-white shadow-xl animate-in slide-in-from-bottom-5">
@@ -159,214 +299,45 @@ export function ProProfileForm() {
       {/* 1. Header Banner & Live Profile Shortcut */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line/70 pb-5">
         <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <h1 className="font-display text-[24px] sm:text-[28px] font-bold text-title tracking-tight leading-tight">
-              Business Profile &amp; Services
-            </h1>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
-              <Check className="h-3 w-3 text-emerald-600" />
-              Storefront Live
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-muted">
-            Manage your public storefront profile, trade services, pricing, and operating schedule.
-          </p>
+          <h1 className="font-display text-2xl font-bold text-title tracking-tight leading-tight">
+            Business Profile
+          </h1>
+          <p className="mt-1 text-sm text-muted">What homeowners see on your listing.</p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <Link
-            href="/browse-pros/pro-1"
-            target="_blank"
-            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-4 py-2 text-xs sm:text-sm font-semibold text-title shadow-2xs hover:border-primary hover:text-primary transition"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            <span>View Public Storefront ↗</span>
-          </Link>
-          <Button
-            type="button"
-            onClick={handleSaveAll}
-            className="shadow-xs text-xs sm:text-sm font-semibold px-5"
-          >
-            Save All Changes
-          </Button>
-        </div>
+        <Button
+          type="button"
+          onClick={handleSaveAll}
+          className="shadow-xs text-sm font-semibold px-5 shrink-0"
+        >
+          Save Changes
+        </Button>
       </div>
 
-      {/* 2. Professional Navigation Tabs (Proper Icons, No Sparkles) */}
-      <div className="flex gap-2 sm:gap-2.5 overflow-x-auto pb-1 border-b border-line/60 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {[
+      <Tabs
+        value={activeTab}
+        onChange={setActiveTab}
+        items={[
           { key: "services", label: "Services & Rates", icon: Wrench, count: formData.services.length },
           { key: "overview", label: "Business Info", icon: Building2 },
           { key: "hours", label: "Hours & Payments", icon: Clock },
           { key: "credentials", label: "Licenses & Verification", icon: ShieldCheck },
           { key: "portfolio", label: "Project Photos", icon: ImageIcon, count: formData.portfolio.length },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const active = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key as typeof activeTab)}
-              className={cn(
-                "inline-flex items-center gap-2 px-3.5 py-2 rounded-lg font-display text-xs sm:text-sm font-medium transition-all whitespace-nowrap cursor-pointer",
-                active
-                  ? "bg-title text-white shadow-2xs font-semibold"
-                  : "bg-white text-muted hover:text-title border border-line/80 hover:bg-slate-50"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              <span>{tab.label}</span>
-              {typeof tab.count === "number" && (
-                <span
-                  className={cn(
-                    "ml-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                    active ? "bg-white/20 text-white" : "bg-slate-100 text-muted"
-                  )}
-                >
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+        ]}
+      />
 
       {/* ============================================================ */}
       {/* TAB 1: SERVICES & RATES                                      */}
       {/* ============================================================ */}
       {activeTab === "services" && (
         <div className="space-y-6">
-          {/* SPECIAL PROMOTIONAL DISCOUNT CARD */}
-          <Card className="rounded-xl border border-line/80 bg-white p-5 sm:p-6 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-lg bg-slate-100 text-slate-700 border border-slate-200/60 shrink-0">
-                  <Percent className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-display text-base font-semibold text-title">
-                    First-Time Customer Discount
-                  </h3>
-                  <p className="text-xs text-muted mt-0.5">
-                    Optional promotional discount displayed on your public profile header to attract new clients.
-                  </p>
-                </div>
-              </div>
-
-              {/* Offer Active Switch */}
-              <label className="inline-flex items-center gap-2 cursor-pointer self-start sm:self-auto bg-slate-50 border border-line/80 rounded-lg px-3 py-1.5 hover:bg-slate-100 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={formData.specialOffer.active}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      specialOffer: { ...prev.specialOffer, active: e.target.checked },
-                    }))
-                  }
-                  className="h-4 w-4 rounded accent-primary cursor-pointer"
-                />
-                <span className="text-xs font-medium text-title">
-                  {formData.specialOffer.active ? "Discount Active" : "Discount Inactive"}
-                </span>
-              </label>
-            </div>
-
-            {formData.specialOffer.active && (
-              <div className="mt-4 grid gap-4 sm:grid-cols-3 pt-4 border-t border-line/50">
-                <Field label="Offer Headline">
-                  <TextField
-                    value={formData.specialOffer.title}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        specialOffer: { ...prev.specialOffer, title: e.target.value },
-                      }))
-                    }
-                    placeholder="e.g. $25 Off First Diagnostic Call"
-                  />
-                </Field>
-
-                <Field label="Badge Text">
-                  <TextField
-                    value={formData.specialOffer.discount}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        specialOffer: { ...prev.specialOffer, discount: e.target.value },
-                      }))
-                    }
-                    placeholder="e.g. $25 OFF"
-                  />
-                </Field>
-
-                <Field label="Eligibility Note" className="sm:col-span-3">
-                  <TextField
-                    value={formData.specialOffer.terms}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        specialOffer: { ...prev.specialOffer, terms: e.target.value },
-                      }))
-                    }
-                    placeholder="e.g. Valid for all first-time residential homeowners in Austin"
-                  />
-                </Field>
-              </div>
-            )}
-          </Card>
-
-          {/* BASE STARTING PRICE & RESPONSE TIME */}
-          <Card className="rounded-xl border border-line/80 bg-white p-5 sm:p-6 shadow-xs">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Profile Starting Rate ($)">
-                <div className="relative">
-                  <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
-                  <TextField
-                    type="number"
-                    min={1}
-                    value={formData.startingPrice}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        startingPrice: Number(e.target.value) || 0,
-                      }))
-                    }
-                    className="pl-9"
-                    placeholder="95"
-                  />
-                </div>
-                <p className="mt-1 text-[11px] text-muted">
-                  Shown as &ldquo;Starting from ${formData.startingPrice}&rdquo; on your public profile.
-                </p>
-              </Field>
-
-              <Field label="Typical Response Time">
-                <TextField
-                  value={formData.responseTime}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setFormData((prev) => ({ ...prev, responseTime: e.target.value }))
-                  }
-                  placeholder="e.g. Usually responds within 1 hour"
-                />
-                <p className="mt-1 text-[11px] text-muted">
-                  Displays your expected response speed to homeowner inquiries.
-                </p>
-              </Field>
-            </div>
-          </Card>
-
-          {/* ITEMIZED SERVICES CATALOG */}
           <Card className="rounded-2xl border border-line/80 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-display text-base sm:text-[17px] font-bold text-title">
-                  Services Offered &amp; Rates ({formData.services.length})
+                <h3 className="font-display text-base font-bold text-title">
+                  Services ({formData.services.length})
                 </h3>
-                <p className="text-xs text-muted">
-                  Homeowners can select and request quotes directly for these specific services.
-                </p>
+                <p className="text-xs text-muted">Lowest price is shown as your starting rate.</p>
               </div>
 
               <Button
@@ -487,7 +458,7 @@ export function ProProfileForm() {
         <Card className="rounded-2xl border border-line/80 bg-white p-6 shadow-2xs space-y-5">
           <div>
             <h3 className="font-display text-base sm:text-[17px] font-bold text-title">Business Information</h3>
-            <p className="text-xs text-muted">Core business details presented to Austin homeowners.</p>
+            <p className="text-xs text-muted">Name, contact, and where you work.</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -513,25 +484,10 @@ export function ProProfileForm() {
               />
             </Field>
 
-            <Field label="Primary Trade">
-              <NativeSelect
-                value={formData.categorySlug}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                  const slug = e.target.value;
-                  const cat = categories.find((c) => c.slug === slug);
-                  setFormData({
-                    ...formData,
-                    categorySlug: slug,
-                    trade: cat?.name ?? "Plumbing",
-                  });
-                }}
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.slug}>
-                    {c.name}
-                  </option>
-                ))}
-              </NativeSelect>
+            <Field label="Trade">
+              <p className="flex min-h-[50px] items-center rounded-[10px] border border-line bg-smoke px-4 text-[16px] text-title">
+                {formData.trade}
+              </p>
             </Field>
 
             <Field label="Business Phone">
@@ -606,17 +562,7 @@ export function ProProfileForm() {
               />
             </Field>
 
-            <Field label="Profile Pitch / Tagline" className="sm:col-span-2">
-              <TextField
-                value={formData.tagline}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, tagline: e.target.value })
-                }
-                placeholder="e.g. Master Licensed Plumber serving residential Austin & Central Texas"
-              />
-            </Field>
-
-            <Field label="Business Bio" className="sm:col-span-2">
+            <Field label="About" className="sm:col-span-2">
               <TextArea
                 value={formData.bio}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
@@ -624,7 +570,7 @@ export function ProProfileForm() {
                 }
                 className="min-h-[85px]"
                 rows={3}
-                placeholder="Describe your background, craftsmanship, and customer commitment..."
+                placeholder="What you do and the area you cover."
               />
             </Field>
           </div>
@@ -638,49 +584,121 @@ export function ProProfileForm() {
         <div className="space-y-6">
           <Card className="rounded-2xl border border-line/80 bg-white p-6 shadow-2xs space-y-4">
             <div>
-              <h3 className="font-display text-base sm:text-[17px] font-bold text-title">Business Operating Hours</h3>
-              <p className="text-xs text-muted">When homeowners can reach you for service appointments.</p>
+              <h3 className="font-display text-base font-bold text-title">Business hours</h3>
+              <p className="text-xs text-muted">
+                Same hours every day, or customize each day. Closed days stay available to reopen.
+              </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Field label="Monday – Friday">
-                <TextField
-                  value={formData.businessHours.weekdays}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      businessHours: { ...prev.businessHours, weekdays: e.target.value },
-                    }))
-                  }
-                  placeholder="7:30 AM – 6:00 PM"
-                />
-              </Field>
+            <Tabs
+              value={hoursMode}
+              onChange={changeHoursMode}
+              items={[
+                { key: "all", label: "All days" },
+                { key: "custom", label: "Customize" },
+              ]}
+            />
 
-              <Field label="Saturday">
-                <TextField
-                  value={formData.businessHours.saturday}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      businessHours: { ...prev.businessHours, saturday: e.target.value },
-                    }))
-                  }
-                  placeholder="8:00 AM – 4:00 PM"
-                />
-              </Field>
+            <div className="rounded-xl border border-line divide-y divide-line/70">
+              {(hoursMode === "all" ? WEEK_DAYS.slice(0, 1) : WEEK_DAYS).map((day) => {
+                const hours = formData.businessHours[day.key];
+                const isOpen = hours.status === "open";
+                return (
+                  <div key={day.key} className="px-3 py-3 space-y-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-title">
+                        {hoursMode === "all" ? "Every day" : day.label}
+                      </p>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isOpen}
+                        onClick={() =>
+                          updateDayHours(day.key, {
+                            ...hours,
+                            status: isOpen ? "closed" : "open",
+                          })
+                        }
+                        className="inline-flex items-center gap-2"
+                      >
+                        <span
+                          className={cn(
+                            "relative h-6 w-10 rounded-full transition-colors",
+                            isOpen ? "bg-emerald-600" : "bg-slate-300",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform",
+                              isOpen && "translate-x-4",
+                            )}
+                          />
+                        </span>
+                        <span className={cn("text-xs font-semibold", isOpen ? "text-title" : "text-muted")}>
+                          {isOpen ? "Open" : "Closed"}
+                        </span>
+                      </button>
+                    </div>
 
-              <Field label="Sunday">
-                <TextField
-                  value={formData.businessHours.sunday}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      businessHours: { ...prev.businessHours, sunday: e.target.value },
-                    }))
-                  }
-                  placeholder="Closed / Emergency Only"
-                />
-              </Field>
+                    {isOpen ? (
+                      <div className="space-y-2">
+                        {hours.slots.map((slot, index) => (
+                          <div key={`${day.key}-${index}`} className="flex flex-wrap items-center gap-2">
+                            <select
+                              value={TIME_OPTIONS.includes(slot.open) ? slot.open : TIME_OPTIONS[0]}
+                              onChange={(event) => updateSlot(day.key, index, "open", event.target.value)}
+                              className="min-h-10 rounded-[10px] border border-line bg-white px-3 text-sm text-title outline-none focus:border-primary"
+                            >
+                              {TIME_OPTIONS.map((time) => (
+                                <option key={`${day.key}-${index}-open-${time}`} value={time}>
+                                  {time}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="text-sm text-muted">to</span>
+                            <select
+                              value={
+                                TIME_OPTIONS.includes(slot.close)
+                                  ? slot.close
+                                  : TIME_OPTIONS[TIME_OPTIONS.length - 1]
+                              }
+                              onChange={(event) => updateSlot(day.key, index, "close", event.target.value)}
+                              className="min-h-10 rounded-[10px] border border-line bg-white px-3 text-sm text-title outline-none focus:border-primary"
+                            >
+                              {TIME_OPTIONS.map((time) => (
+                                <option key={`${day.key}-${index}-close-${time}`} value={time}>
+                                  {time}
+                                </option>
+                              ))}
+                            </select>
+                            {index > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => removeSlot(day.key, index)}
+                                className="text-xs font-semibold text-muted hover:text-title"
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </div>
+                        ))}
+                        {hours.slots.length < 2 ? (
+                          <button
+                            type="button"
+                            onClick={() => addBreak(day.key)}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add break
+                          </button>
+                        ) : (
+                          <p className="text-[11px] text-muted">Closed between these hours.</p>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Emergency Toggle */}
@@ -706,43 +724,28 @@ export function ProProfileForm() {
             </div>
           </Card>
 
-          {/* ACCEPTED DIRECT PAYMENTS */}
-          <Card className="rounded-2xl border border-line/80 bg-white p-6 shadow-2xs space-y-3">
+          <Card className="rounded-2xl border border-line/80 bg-white p-6 shadow-2xs space-y-4">
             <div>
-              <h3 className="font-display text-base sm:text-[17px] font-bold text-title">
-                Accepted Payment Methods
-              </h3>
-              <p className="text-xs text-muted">
-                Methods homeowners can use to pay you directly upon 100% completed job.
-              </p>
+              <h3 className="font-display text-base font-bold text-title">Accepted payments</h3>
+              <p className="text-xs text-muted">What homeowners can pay you with.</p>
             </div>
 
-            <div className="flex flex-wrap gap-2.5 pt-1">
-              {[
-                "Credit/Debit Card",
-                "Zelle",
-                "Bank Transfer (ACH)",
-                "Check",
-                "Cash",
-                "Venmo",
-                "Apple Pay",
-              ].map((method) => {
+            <div className="grid gap-1 sm:grid-cols-2">
+              {PAYMENT_METHODS.map((method) => {
                 const selected = formData.acceptedPayments.includes(method);
                 return (
-                  <button
+                  <label
                     key={method}
-                    type="button"
-                    onClick={() => togglePayment(method)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold border transition-all",
-                      selected
-                        ? "border-primary bg-primary text-white shadow-2xs"
-                        : "border-line bg-white text-muted hover:border-primary/40 hover:text-title"
-                    )}
+                    className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50"
                   >
-                    <Check className={cn("h-3.5 w-3.5", selected ? "opacity-100" : "opacity-0")} />
-                    <span>{method}</span>
-                  </button>
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => togglePayment(method)}
+                      className="h-4 w-4 rounded accent-primary"
+                    />
+                    <span className="text-sm text-title">{method}</span>
+                  </label>
                 );
               })}
             </div>
@@ -754,73 +757,101 @@ export function ProProfileForm() {
       {/* TAB 4: LICENSES & VERIFICATION                               */}
       {/* ============================================================ */}
       {activeTab === "credentials" && (
-        <Card className="rounded-2xl border border-line/80 bg-white p-6 shadow-2xs space-y-5">
-          <div>
-            <h3 className="font-display text-base sm:text-[17px] font-bold text-title">
-              Licenses &amp; Verification Badges
-            </h3>
-            <p className="text-xs text-muted">
-              Official trade credentials displayed on your public storefront.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="State Trade License #">
-              <TextField
-                value={formData.licenseNumber}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, licenseNumber: e.target.value })
-                }
-                placeholder="TX-M-42981 (Master Plumber)"
-              />
-            </Field>
-
-            <Field label="State of License">
-              <TextField
-                value={formData.licenseState}
-                maxLength={2}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, licenseState: e.target.value })
-                }
-                placeholder="TX"
-              />
-            </Field>
-
-            <Field label="Insurance Carrier Name">
-              <TextField
-                value={formData.insuranceCarrier}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, insuranceCarrier: e.target.value })
-                }
-                placeholder="Next Insurance Company"
-              />
-            </Field>
-
-            <Field label="General Liability Coverage">
-              <TextField
-                value={formData.insuranceCoverage}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, insuranceCoverage: e.target.value })
-                }
-                placeholder="$1,000,000 General Liability"
-              />
-            </Field>
-          </div>
-
-          <div className="rounded-xl bg-smoke p-4 flex items-center justify-between border border-line/60">
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0" />
+        <div className="space-y-4">
+          <Card className="space-y-4 rounded-2xl border border-line/80 bg-white p-6 shadow-2xs">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-bold text-title">Background Screening</p>
-                <p className="text-[11px] text-muted">Identity and criminal background verified annually.</p>
+                <h3 className="font-display text-base font-bold text-title">Trade license</h3>
+                <p className="text-xs text-muted">Number on the certificate. Attach the same file.</p>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
-              <Check className="h-3 w-3" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="License number">
+                <TextField
+                  value={formData.licenseNumber}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, licenseNumber: e.target.value })
+                  }
+                  placeholder="TX-M-42981"
+                />
+              </Field>
+              <Field label="State">
+                <TextField
+                  value={formData.licenseState}
+                  maxLength={2}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, licenseState: e.target.value.toUpperCase() })
+                  }
+                  placeholder="TX"
+                />
+              </Field>
+            </div>
+            <CredentialAttachment
+              label="Certificate"
+              file={formData.licenseDoc}
+              error={docErrors.license}
+              onUpload={(file) => handleCredentialUpload("license", file)}
+            />
+          </Card>
+
+          <Card className="space-y-4 rounded-2xl border border-line/80 bg-white p-6 shadow-2xs">
+            <div>
+              <h3 className="font-display text-base font-bold text-title">Liability insurance</h3>
+              <p className="text-xs text-muted">Current COI. Replace before it expires.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Carrier">
+                <TextField
+                  value={formData.insuranceCarrier}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, insuranceCarrier: e.target.value })
+                  }
+                  placeholder="Next Insurance"
+                />
+              </Field>
+              <Field label="Coverage">
+                <NativeSelect
+                  value={formData.insuranceCoverage}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setFormData({ ...formData, insuranceCoverage: e.target.value })
+                  }
+                >
+                  <option value="$500,000">$500,000</option>
+                  <option value="$1,000,000">$1,000,000</option>
+                  <option value="$2,000,000">$2,000,000</option>
+                </NativeSelect>
+              </Field>
+              <Field label="Expires">
+                <TextField
+                  type="month"
+                  value={formData.insuranceExpires}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, insuranceExpires: e.target.value })
+                  }
+                />
+              </Field>
+            </div>
+            <CredentialAttachment
+              label="Certificate of insurance"
+              file={formData.insuranceDoc}
+              error={docErrors.insurance}
+              onUpload={(file) => handleCredentialUpload("insurance", file)}
+            />
+          </Card>
+
+          <Card className="flex items-center justify-between gap-3 rounded-2xl border border-line/80 bg-white p-5 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
+              <div>
+                <p className="text-sm font-semibold text-title">Background check</p>
+                <p className="text-xs text-muted">Done at signup. No file to attach.</p>
+              </div>
+            </div>
+            <Link href="/pro/application" className="text-xs font-semibold text-primary hover:underline">
               Verified
-            </span>
-          </div>
-        </Card>
+            </Link>
+          </Card>
+        </div>
       )}
 
       {/* ============================================================ */}
@@ -927,30 +958,6 @@ export function ProProfileForm() {
         </Card>
       )}
 
-      {/* Floating Save Footer Bar */}
-      <div className="sticky bottom-4 z-20 flex items-center justify-between gap-4 rounded-xl border border-line/80 bg-white/95 px-5 py-3 shadow-md backdrop-blur-md">
-        <div className="flex items-center gap-2 text-xs text-muted">
-          <Info className="h-4 w-4 text-muted shrink-0" />
-          <span>All updates immediately reflect across homeowner searches and your public storefront.</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link
-            href="/browse-pros/pro-1"
-            target="_blank"
-            className="text-xs font-medium text-muted hover:text-title transition flex items-center gap-1"
-          >
-            <span>Preview Storefront ↗</span>
-          </Link>
-          <Button
-            type="button"
-            onClick={handleSaveAll}
-            className="shadow-xs text-xs sm:text-sm font-medium px-5 rounded-lg"
-          >
-            Save Changes
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

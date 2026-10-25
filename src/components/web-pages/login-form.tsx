@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Field, TextField } from "@/components/ui/field";
 import { PasswordField } from "@/components/ui/password-field";
 import { GoogleIcon } from "@/components/ui/google-icon";
@@ -65,11 +64,11 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="p-6 md:p-8">
-      <h1 className="font-display text-[22px] sm:text-[24px] font-semibold leading-snug tracking-tight text-title">
+    <div>
+      <h1 className="font-display text-[22px] sm:text-[26px] font-semibold leading-snug tracking-tight text-title">
         {isPostJob ? "Sign in to post your request" : "Sign in to LocalHomeFix"}
       </h1>
-      <p className="mt-1.5 font-sans text-sm leading-relaxed text-[#757575]">
+      <p className="mt-2 font-sans text-sm leading-relaxed text-[#757575]">
         {isPostJob ? (
           <>
             Please sign in to continue posting your request. Don&apos;t have an account yet?{" "}
@@ -166,6 +165,6 @@ export function LoginForm() {
       </button>
 
       <AuthLinks prompt="Don't have an account?" href={signupHrefWithNext} label="Sign up free ↗" />
-    </Card>
+    </div>
   );
 }

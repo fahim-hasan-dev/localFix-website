@@ -15,7 +15,7 @@ export function AuthLinks({
   extras?: AuthLink[];
 }) {
   return (
-    <div className="mt-6 border-t border-line pt-5 text-center">
+    <div className="mt-7 border-t border-line/80 pt-6 text-center">
       <p className="text-sm text-copy">
         {prompt}{" "}
         <Link href={href} className="font-semibold text-primary">

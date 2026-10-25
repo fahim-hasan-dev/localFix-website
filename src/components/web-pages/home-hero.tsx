@@ -64,6 +64,9 @@ function guessServiceCategory(problem: string): string {
   if (p.includes("tree") || p.includes("lawn") || p.includes("grass") || p.includes("sprinkler")) {
     return "landscaping";
   }
+  if (p.includes("clean") || p.includes("maid") || p.includes("housekeep")) {
+    return "house-cleaning";
+  }
   if (p.includes("paint") || p.includes("drywall") || p.includes("door") || p.includes("deck") || p.includes("shelf") || p.includes("lock") || p.includes("fence")) {
     return "handyman";
   }
@@ -77,7 +80,7 @@ function buildDraft(problem: string, categorySlug: string, zip: string) {
     problem,
     categorySlug: guessed,
     zip,
-    title: match ? `${match.name} repair` : "Home repair request",
+    title: match ? match.name : "Home service request",
     summary: problem,
     followUps: [
       "What type of property is this?",
@@ -401,7 +404,7 @@ export function HomeHero() {
                           {suggested?.name ?? "General Home Repair"}
                         </p>
                         <p className="mt-0.5 text-xs text-[#757575]">
-                          Your request will be open for multiple vetted contractors to quote.
+                          A few questions, then matching pros you can request a quote from.
                         </p>
                       </div>
 
@@ -417,7 +420,7 @@ export function HomeHero() {
 
                     <div className="mt-3 flex flex-wrap gap-2 border-t border-primary/10 pt-2.5">
                       <Button size="sm" href={postJobHref(user)} className="flex-1 text-xs">
-                        Post Request for Quotes ↗
+                        Continue
                       </Button>
                       <Button
                         size="sm"

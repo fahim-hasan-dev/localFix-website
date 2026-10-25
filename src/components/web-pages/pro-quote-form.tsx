@@ -124,7 +124,7 @@ export function ProQuoteForm({ jobId }: { jobId: string }) {
       ))}
 
       <Card>
-        <h2 className="text-xl">Send an offer</h2>
+        <h2 className="text-xl">Send a quote</h2>
         {locked ? (
           <p className="mt-2 text-sm text-copy">
             {access.blockedReason}{" "}
@@ -132,13 +132,9 @@ export function ProQuoteForm({ jobId }: { jobId: string }) {
               Membership
             </Link>
           </p>
-        ) : access.canSeeContact ? (
-          <p className="mt-2 text-sm text-copy">
-            Contact unlocked: Maya Chen · (512) 555-0142 · maya@example.com
-          </p>
         ) : (
           <p className="mt-2 text-sm text-copy">
-            You can quote. Contact unlocks with clearance + active membership.
+            Price this request from their answers above. Homeowner pays you directly if they hire.
           </p>
         )}
         <form className="mt-5 space-y-4" onSubmit={submit}>
@@ -197,9 +193,9 @@ export function ProQuoteForm({ jobId }: { jobId: string }) {
             />
           </Field>
           {error ? <p className="text-sm text-error">{error}</p> : null}
-          {saved ? <p className="text-sm text-success">Offer sent.</p> : null}
+          {saved ? <p className="text-sm text-success">Quote sent.</p> : null}
           <Button type="submit" disabled={locked}>
-            {locked ? "Locked" : "Send offer"}
+            {locked ? "Locked" : "Send quote"}
           </Button>
         </form>
       </Card>

@@ -92,6 +92,12 @@ export interface Professional {
   availableThisWeek: boolean;
 }
 
+export interface IntakeAnswer {
+  id: string;
+  label: string;
+  value: string;
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -106,6 +112,8 @@ export interface Job {
   status: JobStatus;
   postedAt: string;
   homeownerName: string;
+  intakeAnswers?: IntakeAnswer[];
+  requestedProId?: string;
 }
 
 export interface Quote {
@@ -203,4 +211,5 @@ export interface IntakeDraft {
   title: string;
   summary: string;
   followUps: string[];
+  answers?: Record<string, string>;
 }

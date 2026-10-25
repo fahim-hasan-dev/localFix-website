@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Check,
   CheckCircle2,
+  ChevronRight,
   Clock,
   CreditCard,
-  Pause,
-  Percent,
   Play,
-  Printer,
   ShieldCheck,
   X,
 } from "lucide-react";
@@ -23,7 +22,6 @@ import {
   setSubscriptionPlan,
   updatePaymentMethod,
   unlockContact,
-  type InvoiceItem,
 } from "@/redux/slices/featuresSlice";
 import { useRoleAccess } from "@/hooks/use-role-access";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
@@ -33,10 +31,8 @@ export default function PricingPage() {
   const dispatch = useAppDispatch();
   const { applicationStatus } = useRoleAccess();
   const active = useAppSelector((state) => state.marketplace.membershipActive);
-  const paused = useAppSelector((state) => state.features.membershipPaused);
   const cancelled = useAppSelector((state) => state.features.membershipCancelled);
   const trialDaysLeft = useAppSelector((state) => state.features.trialDaysLeft ?? 67);
-  const invoices = useAppSelector((state) => state.features.invoices);
   const currentPlan = useAppSelector(
     (state) => state.features.subscriptionPlan ?? "trial"
   );
@@ -54,7 +50,6 @@ export default function PricingPage() {
 
   const [billingPreference, setBillingPreference] = useState<"annual" | "monthly">("annual");
   const [showCardModal, setShowCardModal] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [cardForm, setCardForm] = useState({
@@ -65,9 +60,8 @@ export default function PricingPage() {
     zip: "78704",
   });
 
-  const isTrialActive = active && !cancelled && !paused && currentPlan === "trial";
-  const isPaidActive = active && !cancelled && !paused && currentPlan !== "trial";
-  const isPaused = paused;
+  const isTrialActive = active && !cancelled && currentPlan === "trial";
+  const isPaidActive = active && !cancelled && currentPlan !== "trial";
   const isCancelled = cancelled;
 
   function showToast(msg: string) {
@@ -111,17 +105,6 @@ export default function PricingPage() {
     }
   }
 
-  function handleTogglePause() {
-    if (paused) {
-      dispatch(setMembershipPaused(false));
-      if (applicationStatus === "cleared") dispatch(unlockContact());
-      showToast("Subscription resumed. Your profile and quote privileges are active.");
-    } else {
-      dispatch(setMembershipPaused(true));
-      showToast("Subscription paused. Auto-billing and quote notifications are on hold.");
-    }
-  }
-
   function handleCancelAutoRenew() {
     dispatch(setMembershipCancelled(true));
     showToast("Auto-renewal cancelled. You will not be charged when your trial expires.");
@@ -147,12 +130,10 @@ export default function PricingPage() {
       {/* 1. Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line/70 pb-4 pt-1">
         <div>
-          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold text-title tracking-tight">
-            Pro Subscription &amp; Billing
+          <h1 className="font-display text-[24px] font-semibold tracking-tight text-title">
+            Billing
           </h1>
-          <p className="mt-1 text-sm text-muted">
-            Manage your subscription tier, billing cycles, payment cards, and invoices.
-          </p>
+          <p className="mt-1 text-sm text-muted">Plan and card.</p>
         </div>
 
         {/* Global Action indicator */}
@@ -166,11 +147,6 @@ export default function PricingPage() {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary border border-primary/20">
               <Check className="h-3.5 w-3.5" />
               Pro {currentPlan === "annual" ? "Annual" : "Monthly"} Active
-            </span>
-          ) : isPaused ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 border border-amber-200">
-              <Pause className="h-3 w-3" />
-              Subscription Paused
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-smoke px-3 py-1 text-xs font-semibold text-muted border border-line">
@@ -212,11 +188,6 @@ export default function PricingPage() {
               <span className="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 border border-red-200/60">
                 Cancelled
               </span>
-            ) : isPaused ? (
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 border border-amber-200/60">
-                <Pause className="h-3 w-3" />
-                Paused
-              </span>
             ) : isPaidActive ? (
               <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary border border-primary/20">
                 <Check className="h-3 w-3" />
@@ -237,37 +208,15 @@ export default function PricingPage() {
                 Start Free Trial
               </Button>
             ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleTogglePause}
-                  className="h-8 border border-line/80 text-xs font-medium text-copy hover:text-title hover:bg-slate-50 rounded-lg"
-                >
-                  {paused ? (
-                    <>
-                      <Play className="h-3.5 w-3.5 mr-1.5 text-title" />
-                      Resume Plan
-                    </>
-                  ) : (
-                    <>
-                      <Pause className="h-3.5 w-3.5 mr-1.5 text-muted" />
-                      Pause Plan
-                    </>
-                  )}
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCancelAutoRenew}
-                  className="h-8 text-xs font-medium text-muted hover:text-error hover:bg-red-50 rounded-lg"
-                >
-                  Cancel Renewal
-                </Button>
-              </>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleCancelAutoRenew}
+                className="h-8 text-xs font-medium text-muted hover:text-error hover:bg-red-50 rounded-lg"
+              >
+                Cancel renewal
+              </Button>
             )}
           </div>
         </div>
@@ -278,22 +227,18 @@ export default function PricingPage() {
             <h2 className="font-display text-xl sm:text-2xl font-bold text-title tracking-tight">
               {isCancelled
                 ? "Subscription Inactive"
-                : isPaused
-                ? "Subscription Paused"
                 : isPaidActive
                 ? currentPlan === "annual"
                   ? "Pro Annual"
                   : "Pro Monthly"
                 : "Pro 3-Month Free Trial"}
             </h2>
-            <p className="text-xs sm:text-sm text-muted leading-relaxed max-w-xl">
+            <p className="max-w-xl text-sm text-muted">
               {isCancelled
-                ? "Your subscription is cancelled. Reactivate anytime to submit quotes and contact homeowners."
-                : isPaused
-                ? "Your subscription is temporarily paused. Resume anytime to unlock direct contact and quoting privileges."
+                ? "Cancelled. Start again to quote."
                 : isPaidActive
-                ? `Your Pro subscription is in good standing. Next auto-renewal is scheduled for ${currentRenewalDate}.`
-                : "Includes full directory listing, unlimited quote submissions, direct homeowner messaging, and zero commission fees."}
+                ? `Renews ${currentRenewalDate}.`
+                : `Free through ${currentRenewalDate}.`}
             </p>
           </div>
 
@@ -318,13 +263,11 @@ export default function PricingPage() {
                   : "/ month"}
               </span>
             </div>
-            <p className="mt-0.5 text-[11px] text-muted">
-              {isTrialActive
-                ? `Free through ${currentRenewalDate}`
-                : isPaidActive
-                ? `Renews on ${currentRenewalDate}`
-                : "No active billing"}
-            </p>
+            {!isTrialActive ? (
+              <p className="mt-0.5 text-xs text-muted">
+                {isPaidActive ? `Renews ${currentRenewalDate}` : "No billing"}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -344,9 +287,7 @@ export default function PricingPage() {
                 style={{ width: `${Math.round(((90 - trialDaysLeft) / 90) * 100)}%` }}
               />
             </div>
-            <p className="mt-2 text-xs text-muted">
-              Auto-renewal date: <strong className="text-title">{currentRenewalDate}</strong> · No payment will be collected before this date.
-            </p>
+            <p className="mt-2 text-xs text-muted">No charge before {currentRenewalDate}.</p>
           </div>
         )}
       </Card>
@@ -355,141 +296,72 @@ export default function PricingPage() {
       {/* 3. PLAN SELECTION & UPGRADE PATH                             */}
       {/* ============================================================ */}
       <div className="space-y-3">
-        <div>
-          <h2 className="font-display text-base sm:text-lg font-semibold text-title tracking-tight">
-            {isTrialActive ? "Renewal Plan Selection" : "Available Subscription Plans"}
-          </h2>
-          <p className="text-xs text-muted">
-            {isTrialActive
-              ? `Choose how you'd like to be billed when your free trial concludes on ${currentRenewalDate}.`
-              : "Switch your billing frequency anytime. Changes take effect on your next cycle."}
-          </p>
-        </div>
+        <h2 className="font-display text-base font-semibold text-title">
+          {isTrialActive ? `After trial · ${currentRenewalDate}` : "Plans"}
+        </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* OPTION 1: Pro Annual (Recommended) */}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div
             className={cn(
-              "relative flex flex-col justify-between rounded-xl border p-5 sm:p-6 transition-all duration-200",
+              "flex flex-col rounded-xl border bg-white p-5",
               billingPreference === "annual" || currentPlan === "annual"
-                ? "border-primary bg-primary/[0.02] shadow-xs ring-1 ring-primary/30"
-                : "border-line/80 bg-white hover:border-slate-300 hover:shadow-xs"
+                ? "border-primary"
+                : "border-line",
             )}
           >
-            {/* Value Badge */}
-            <div className="absolute right-4 top-4">
-              <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[11px] font-semibold">
-                <Percent className="h-3 w-3" /> Save 25% ($60/yr)
-              </span>
-            </div>
-
-            <div>
-              <span className="font-display text-xs font-semibold uppercase tracking-wider text-primary">
-                Annual Billing · Best Value
-              </span>
-              <h3 className="mt-1 font-display text-lg sm:text-xl font-bold text-title">
-                Pro Annual
-              </h3>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="font-display text-2xl sm:text-3xl font-bold text-title">$14.99</span>
-                <span className="text-xs text-muted">/ month ($179.88 billed annually)</span>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-display text-base font-bold text-title">Annual</h3>
+                <p className="mt-1 font-display text-2xl font-bold text-title">
+                  $14.99 <span className="text-sm font-medium text-muted">/mo</span>
+                </p>
+                <p className="mt-1 text-xs text-muted">$179.88 billed yearly</p>
               </div>
-              <p className="mt-2 text-xs text-muted leading-relaxed">
-                Ideal for full-time specialists and trade contractors looking to maximize margin and maintain prime search visibility.
-              </p>
-
-              <ul className="mt-4 space-y-2 text-xs text-copy">
-                <li className="flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span>Includes all Pro Monthly benefits</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span><strong>Priority Search Placement:</strong> Ranked above monthly pros</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span>Featured Pro Profile trust badge</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-line/60 flex items-center justify-between gap-2">
-              <span className="text-[11px] text-muted">
-                {isTrialActive ? `Renews at $179.88 on ${currentRenewalDate}` : "Auto-renews yearly"}
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                Save 25%
               </span>
-              <Button
-                type="button"
-                size="sm"
-                variant={currentPlan === "annual" ? "secondary" : "primary"}
-                onClick={() => {
-                  setBillingPreference("annual");
-                  handleSelectPlan("annual", false);
-                }}
-                className="font-medium text-xs rounded-lg"
-              >
-                {currentPlan === "annual" ? "Renewal Plan Selected ✓" : "Select Annual Plan ↗"}
-              </Button>
             </div>
+            <Button
+              type="button"
+              size="sm"
+              variant={currentPlan === "annual" ? "secondary" : "primary"}
+              onClick={() => {
+                setBillingPreference("annual");
+                handleSelectPlan("annual", false);
+              }}
+              className="mt-5 w-full"
+            >
+              {currentPlan === "annual" ? "Selected" : "Select annual"}
+            </Button>
           </div>
 
-          {/* OPTION 2: Pro Monthly (Flexible) */}
           <div
             className={cn(
-              "relative flex flex-col justify-between rounded-xl border p-5 sm:p-6 transition-all duration-200",
+              "flex flex-col rounded-xl border bg-white p-5",
               billingPreference === "monthly" && currentPlan !== "annual"
-                ? "border-primary bg-primary/[0.02] shadow-xs ring-1 ring-primary/30"
-                : "border-line/80 bg-white hover:border-slate-300 hover:shadow-xs"
+                ? "border-primary"
+                : "border-line",
             )}
           >
             <div>
-              <span className="font-display text-xs font-semibold uppercase tracking-wider text-muted">
-                Month-to-Month Flexibility
-              </span>
-              <h3 className="mt-1 font-display text-lg sm:text-xl font-bold text-title">
-                Pro Monthly
-              </h3>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="font-display text-2xl sm:text-3xl font-bold text-title">$19.99</span>
-                <span className="text-xs text-muted">/ month (Billed monthly)</span>
-              </div>
-              <p className="mt-2 text-xs text-muted leading-relaxed">
-                Standard monthly tier. Perfect for independent contractors who prefer month-to-month flexibility with zero commitment.
+              <h3 className="font-display text-base font-bold text-title">Monthly</h3>
+              <p className="mt-1 font-display text-2xl font-bold text-title">
+                $19.99 <span className="text-sm font-medium text-muted">/mo</span>
               </p>
-
-              <ul className="mt-4 space-y-2 text-xs text-copy">
-                <li className="flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span>Full job lead board access &amp; quote submissions</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span>Direct homeowner contact details unlocked</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span>Pause or cancel anytime without penalties</span>
-                </li>
-              </ul>
+              <p className="mt-1 text-xs text-muted">Billed monthly</p>
             </div>
-
-            <div className="mt-6 pt-4 border-t border-line/60 flex items-center justify-between gap-2">
-              <span className="text-[11px] text-muted">
-                {isTrialActive ? `Renews at $19.99 on ${currentRenewalDate}` : "Auto-renews monthly"}
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                variant={currentPlan === "monthly" ? "secondary" : "ghost"}
-                onClick={() => {
-                  setBillingPreference("monthly");
-                  handleSelectPlan("monthly", false);
-                }}
-                className="font-medium text-xs border border-line/80 rounded-lg hover:bg-slate-50"
-              >
-                {currentPlan === "monthly" ? "Renewal Plan Selected ✓" : "Select Monthly Plan ↗"}
-              </Button>
-            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant={currentPlan === "monthly" ? "secondary" : "ghost"}
+              onClick={() => {
+                setBillingPreference("monthly");
+                handleSelectPlan("monthly", false);
+              }}
+              className="mt-5 w-full border border-line"
+            >
+              {currentPlan === "monthly" ? "Selected" : "Select monthly"}
+            </Button>
           </div>
         </div>
       </div>
@@ -510,9 +382,7 @@ export default function PricingPage() {
                   Primary Card
                 </span>
               </p>
-              <p className="mt-0.5 text-xs text-muted">
-                Expires {paymentMethod?.exp ?? "08/29"} · Card will only be charged when paid cycle commences.
-              </p>
+              <p className="mt-0.5 text-xs text-muted">Expires {paymentMethod?.exp ?? "08/29"}</p>
             </div>
           </div>
 
@@ -528,74 +398,13 @@ export default function PricingPage() {
         </div>
       </Card>
 
-      {/* ============================================================ */}
-      {/* 5. INVOICES & RECEIPTS HISTORY TABLE                         */}
-      {/* ============================================================ */}
-      <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-6 shadow-xs">
-        <div className="flex items-center justify-between border-b border-line/70 pb-3.5">
-          <div>
-            <h2 className="font-display text-lg font-bold text-title">
-              Invoices &amp; Receipts
-            </h2>
-            <p className="text-xs text-muted">
-              Download payment receipts and view upcoming renewal charges.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-line/70 text-muted uppercase font-sans text-[11px] tracking-wider">
-                <th className="py-2.5 font-semibold">Invoice #</th>
-                <th className="py-2.5 font-semibold">Billing Date</th>
-                <th className="py-2.5 font-semibold hidden sm:table-cell">Description</th>
-                <th className="py-2.5 font-semibold text-right">Amount</th>
-                <th className="py-2.5 font-semibold text-center">Status</th>
-                <th className="py-2.5 font-semibold text-right">Receipt</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line/60">
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-smoke/40 transition-colors">
-                  <td className="py-3 font-semibold text-title">
-                    {inv.id.toUpperCase()}
-                  </td>
-                  <td className="py-3 text-copy">
-                    {inv.date}
-                  </td>
-                  <td className="py-3 text-muted hidden sm:table-cell">
-                    {inv.description ?? (inv.amount === "$0.00" ? "3-Month Free Trial" : "Pro Membership")}
-                  </td>
-                  <td className="py-3 text-right font-display text-[13px] font-bold text-title">
-                    {inv.amount}
-                  </td>
-                  <td className="py-3 text-center">
-                    {inv.status === "paid" ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                        <Check className="h-3 w-3" /> Paid
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-primary border border-primary/20">
-                        <Clock className="h-3 w-3" /> Upcoming
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedInvoice(inv)}
-                      className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-                    >
-                      <span>View ↗</span>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <Link
+        href="/pro/transactions"
+        className="flex items-center justify-between rounded-xl border border-line bg-white px-5 py-4 hover:border-primary/40"
+      >
+        <span className="font-display text-sm font-semibold text-title">Transaction history</span>
+        <ChevronRight className="h-4 w-4 text-muted" />
+      </Link>
 
       {/* ============================================================ */}
       {/* MODAL 1: UPDATE PAYMENT CARD MODAL                           */}
@@ -689,80 +498,6 @@ export default function PricingPage() {
         </div>
       )}
 
-      {/* ============================================================ */}
-      {/* MODAL 2: VIEW / PRINT RECEIPT MODAL                         */}
-      {/* ============================================================ */}
-      {selectedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-[22px] border border-line bg-white p-6 shadow-xl animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-line pb-3">
-              <div>
-                <h3 className="font-display text-lg font-bold text-title">
-                  Invoice Receipt: {selectedInvoice.id.toUpperCase()}
-                </h3>
-                <p className="text-xs text-muted">LocalHomeFix Subscription Billing</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedInvoice(null)}
-                className="text-muted hover:text-title"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3.5 text-xs text-copy">
-              <div className="flex justify-between border-b border-line/60 pb-2.5">
-                <span className="text-muted">Billed To</span>
-                <span className="font-semibold text-title">Luis Ortega (Ortega Plumbing)</span>
-              </div>
-              <div className="flex justify-between border-b border-line/60 pb-2.5">
-                <span className="text-muted">Issue Date</span>
-                <span className="font-semibold text-title">{selectedInvoice.date}</span>
-              </div>
-              <div className="flex justify-between border-b border-line/60 pb-2.5">
-                <span className="text-muted">Description</span>
-                <span className="font-semibold text-title">
-                  {selectedInvoice.description ?? "Pro Membership Subscription"}
-                </span>
-              </div>
-              <div className="flex justify-between border-b border-line/60 pb-2.5">
-                <span className="text-muted">Payment Method</span>
-                <span className="font-semibold text-title">{paymentMethod?.brand} •••• {paymentMethod?.last4}</span>
-              </div>
-              <div className="flex justify-between text-sm pt-2">
-                <span className="font-bold text-title">Total Amount</span>
-                <span className="font-display text-lg font-bold text-primary">
-                  {selectedInvoice.amount}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2 border-t border-line pt-4">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  if (typeof window !== "undefined") window.print();
-                }}
-                className="text-xs border border-line"
-              >
-                <Printer className="h-3.5 w-3.5 mr-1" />
-                Print / Save PDF
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setSelectedInvoice(null)}
-                className="text-xs"
-              >
-                Done
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

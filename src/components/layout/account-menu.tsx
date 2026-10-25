@@ -3,15 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Bookmark,
-  Briefcase,
   ChevronDown,
   LayoutDashboard,
   LogOut,
-  MessageSquare,
-  PlusCircle,
   Repeat,
-  Star,
   UserRound,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -99,7 +94,6 @@ export function AccountMenu({ user }: { user: User }) {
             </div>
           </div>
 
-          {/* Role-specific Navigation Links */}
           <div className="p-2 space-y-0.5">
             <Link
               href={dashboardHref}
@@ -107,75 +101,16 @@ export function AccountMenu({ user }: { user: User }) {
               className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 font-display text-xs sm:text-sm font-medium text-title hover:bg-smoke transition-colors"
             >
               <LayoutDashboard className="h-4 w-4 text-primary" />
-              {isPro ? "Pro Dashboard" : "My Requests"}
+              {isPro ? "Dashboard" : "My Requests"}
             </Link>
-
-            {!isPro ? (
-              <>
-                <Link
-                  href="/account/post-job"
-                  role="menuitem"
-                  className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 font-display text-xs sm:text-sm font-medium text-title hover:bg-smoke transition-colors"
-                >
-                  <PlusCircle className="h-4 w-4 text-primary" />
-                  Post a Request
-                </Link>
-                <Link
-                  href="/account/messages"
-                  role="menuitem"
-                  className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 font-display text-xs sm:text-sm font-medium text-title hover:bg-smoke transition-colors"
-                >
-                  <MessageSquare className="h-4 w-4 text-primary" />
-                  Messages
-                </Link>
-                <Link
-                  href="/account/saved"
-                  role="menuitem"
-                  className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 font-display text-xs sm:text-sm font-medium text-title hover:bg-smoke transition-colors"
-                >
-                  <Bookmark className="h-4 w-4 text-primary" />
-                  Saved Pros
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/pro/jobs"
-                  role="menuitem"
-                  className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 font-display text-xs sm:text-sm font-medium text-title hover:bg-smoke transition-colors"
-                >
-                  <Briefcase className="h-4 w-4 text-primary" />
-                  Available Jobs
-                </Link>
-                <Link
-                  href="/pro/messages"
-                  role="menuitem"
-                  className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 font-display text-xs sm:text-sm font-medium text-title hover:bg-smoke transition-colors"
-                >
-                  <MessageSquare className="h-4 w-4 text-primary" />
-                  Client Messages
-                </Link>
-                <Link
-                  href="/pro/reviews"
-                  role="menuitem"
-                  className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 font-display text-xs sm:text-sm font-medium text-title hover:bg-smoke transition-colors"
-                >
-                  <Star className="h-4 w-4 text-amber-500" />
-                  Customer Reviews
-                </Link>
-              </>
-            )}
-
-            <div className="border-t border-line/60 my-1 pt-1">
-              <Link
-                href={profileHref}
-                role="menuitem"
-                className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 font-display text-xs sm:text-sm font-medium text-title hover:bg-smoke transition-colors"
-              >
-                <UserRound className="h-4 w-4 text-muted" />
-                {isPro ? "Business Profile" : "Profile & Addresses"}
-              </Link>
-            </div>
+            <Link
+              href={profileHref}
+              role="menuitem"
+              className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 font-display text-xs sm:text-sm font-medium text-title hover:bg-smoke transition-colors"
+            >
+              <UserRound className="h-4 w-4 text-muted" />
+              Profile
+            </Link>
           </div>
 
           {/* Demo Role Switcher */}

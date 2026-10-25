@@ -36,6 +36,7 @@ export const photos = {
     "pest-control": "/images/services/pest-control.jpg",
     plumbing: "/images/services/plumbing.jpg",
     roofing: "/images/services/roofing.jpg",
+    "house-cleaning": u("photo-1581578731548-c64695cc6952", 1600),
   } as Record<string, string>,
   /** Extra portfolio shots — kept trade-pure */
   portfolio: {

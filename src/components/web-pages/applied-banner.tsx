@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 export function AppliedBanner() {
@@ -10,11 +9,7 @@ export function AppliedBanner() {
   return (
     <p className="rounded-[10px] bg-[#E8F6EE] px-4 py-3 text-sm text-copy">
       <span className="font-semibold text-title">Submitted. </span>
-      Next:{" "}
-      <Link href="/pro/verification" className="font-semibold text-primary">
-        Verification
-      </Link>
-      , then membership.
+      We will review these items, then you can start membership.
     </p>
   );
 }

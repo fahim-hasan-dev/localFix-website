@@ -118,6 +118,8 @@ const marketplaceSlice = createSlice({
         propertyType?: PropertyType | "";
         homeownerName: string;
         asDraft?: boolean;
+        intakeAnswers?: Job["intakeAnswers"];
+        requestedProId?: string;
       }>,
     ) {
       const payload = action.payload;
@@ -135,6 +137,8 @@ const marketplaceSlice = createSlice({
         status: payload.asDraft ? "draft" : "getting_quotes",
         postedAt: new Date().toISOString().slice(0, 10),
         homeownerName: payload.homeownerName,
+        intakeAnswers: payload.intakeAnswers,
+        requestedProId: payload.requestedProId,
       };
       state.extraJobs.unshift(job);
       persist(state);

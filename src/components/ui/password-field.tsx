@@ -5,7 +5,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const controlClass =
-  "w-full min-h-[50px] rounded-[10px] border border-line bg-white px-4 pr-12 text-[16px] text-title outline-none transition-colors placeholder:text-muted focus:border-primary";
+  "w-full min-h-[50px] rounded-[10px] border border-line bg-white px-4 pr-12 text-[16px] text-title outline-none transition-colors placeholder:text-[14px] placeholder:text-muted focus:border-primary";
 
 export function PasswordField({
   className,

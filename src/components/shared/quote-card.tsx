@@ -3,13 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  AlertCircle,
   Calendar,
   Check,
   CheckCircle2,
-  Clock,
-  Package,
-  Shield,
   ShieldCheck,
   Star,
   X,
@@ -160,13 +156,7 @@ export function QuoteCard({
                 <span className="inline-flex items-center gap-1 font-semibold text-title">
                   <Star className="h-3 w-3 fill-accent text-accent" />
                   {pro.rating.toFixed(1)}
-                  {pro.reviewCount ? (
-                    <span className="font-normal text-muted">({pro.reviewCount})</span>
-                  ) : null}
                 </span>
-              ) : null}
-              {pro?.yearsInBusiness ? (
-                <span className="text-stone-500">{pro.yearsInBusiness} in business</span>
               ) : null}
             </div>
           </div>
@@ -197,104 +187,13 @@ export function QuoteCard({
         </div>
       </div>
 
-      {/* Price Header */}
-      <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 border-b border-line/60 pb-4">
-        <div>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-            Quote Amount
-          </span>
-          <div className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-title">
-            {price}
-          </div>
-        </div>
-        {quote.paymentTerms ? (
-          <span className="text-xs text-muted self-center">
-            {quote.paymentTerms}
-          </span>
-        ) : null}
-      </div>
-
-      {/* Scope of Work */}
-      <div className="mt-4">
-        <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-          Scope of Work
-        </h4>
-        <p className="mt-1 text-sm leading-relaxed text-stone-700">
-          {quote.scope}
+      <p className="mt-4 font-display text-2xl font-bold tracking-tight text-title">{price}</p>
+      {quote.scope ? <p className="mt-2 text-sm leading-relaxed text-stone-700">{quote.scope}</p> : null}
+      {quote.proposedSchedule || quote.availability ? (
+        <p className="mt-2 text-sm text-muted">
+          {quote.proposedSchedule || quote.availability}
         </p>
-      </div>
-
-      {/* Structured Terms List - Clean, unboxed typography */}
-      <div className="mt-4 pt-4 border-t border-line/60 grid grid-cols-2 sm:grid-cols-3 gap-y-3.5 gap-x-6 text-xs">
-        {quote.availability && (
-          <div className="flex items-start gap-2.5">
-            <Clock className="h-4 w-4 shrink-0 text-stone-400 mt-0.5" />
-            <div className="min-w-0">
-              <span className="block text-[11px] text-muted">Availability</span>
-              <span className="font-medium text-stone-800">{quote.availability}</span>
-            </div>
-          </div>
-        )}
-
-        {quote.proposedSchedule && (
-          <div className="flex items-start gap-2.5">
-            <Calendar className="h-4 w-4 shrink-0 text-primary mt-0.5" />
-            <div className="min-w-0">
-              <span className="block text-[11px] text-muted">Proposed Schedule</span>
-              <span className="font-medium text-stone-800">{quote.proposedSchedule}</span>
-            </div>
-          </div>
-        )}
-
-        {quote.estimatedDuration && (
-          <div className="flex items-start gap-2.5">
-            <Clock className="h-4 w-4 shrink-0 text-stone-400 mt-0.5" />
-            <div className="min-w-0">
-              <span className="block text-[11px] text-muted">Est. Duration</span>
-              <span className="font-medium text-stone-800">{quote.estimatedDuration}</span>
-            </div>
-          </div>
-        )}
-
-        {quote.materialsIncluded != null && (
-          <div className="flex items-start gap-2.5">
-            <Package className="h-4 w-4 shrink-0 text-stone-400 mt-0.5" />
-            <div className="min-w-0">
-              <span className="block text-[11px] text-muted">Materials</span>
-              <span className="font-medium text-stone-800">
-                {quote.materialsIncluded ? "Materials Included" : "Materials Not Included"}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {quote.warranty && (
-          <div className="flex items-start gap-2.5">
-            <Shield className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
-            <div className="min-w-0">
-              <span className="block text-[11px] text-muted">Warranty</span>
-              <span className="font-medium text-stone-800">{quote.warranty}</span>
-            </div>
-          </div>
-        )}
-
-        {quote.expiresAt && (
-          <div className="flex items-start gap-2.5">
-            <AlertCircle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
-            <div className="min-w-0">
-              <span className="block text-[11px] text-muted">Offer Expires</span>
-              <span className="font-medium text-stone-800">{quote.expiresAt}</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {quote.exclusions && (
-        <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
-          <span className="shrink-0 font-medium text-stone-600">Not included:</span>
-          <span>{quote.exclusions}</span>
-        </p>
-      )}
+      ) : null}
 
       {/* Action Buttons: Accept & Reject Only */}
       {canHire && !hiredId && !closed ? (

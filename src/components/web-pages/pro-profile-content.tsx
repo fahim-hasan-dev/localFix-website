@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs } from "@/components/ui/tabs";
 import { photos } from "@/lib/media";
 import {
   serviceLines,
@@ -37,6 +38,12 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import type { Professional } from "@/types";
 import { GuaranteeCard } from "@/components/shared/guarantee-protection";
 import { cn } from "@/lib/cn";
+import {
+  defaultWeeklyHours,
+  groupWeeklyHours,
+  normalizeWeeklyHours,
+  todayWeekday,
+} from "@/lib/business-hours";
 
 function initials(name: string) {
   return name
@@ -48,6 +55,7 @@ function initials(name: string) {
 }
 
 export function ProProfileContent({ pro }: { pro: Professional }) {
+  // Listing sections: about, services, photos, reviews. No FAQ list.
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
@@ -57,7 +65,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
     state.features.reviews.filter((item) => item.proId === pro.id)
   );
 
-  const [activeTab, setActiveTab] = useState<"about" | "services" | "photos" | "reviews" | "faqs">("about");
+  const [activeTab, setActiveTab] = useState<"about" | "services" | "photos" | "reviews">("about");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [selectedPhotoCategory, setSelectedPhotoCategory] = useState("all");
   const [selectedReviewTag, setSelectedReviewTag] = useState("all");
@@ -99,11 +107,12 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   const categoryServices = tradeDefaultServices[pro.categorySlug] ?? tradeDefaultServices.plumbing ?? [];
   const displayServices = isDemoPro && proProfile?.services?.length ? proProfile.services : categoryServices;
 
-  const businessHours = isDemoPro && proProfile?.businessHours ? proProfile.businessHours : {
-    weekdays: "7:30 AM – 6:00 PM",
-    saturday: pro.emergency ? "8:00 AM – 4:00 PM" : "9:00 AM – 1:00 PM",
-    sunday: pro.emergency ? "Emergency dispatch only" : "Closed",
-  };
+  const businessHours = normalizeWeeklyHours(
+    isDemoPro && proProfile?.businessHours ? proProfile.businessHours : defaultWeeklyHours(),
+  );
+  const hourGroups = groupWeeklyHours(businessHours);
+  const todayHours = businessHours[todayWeekday()];
+  const openToday = todayHours.status === "open";
 
   const similarJobsCount = Math.max(7, Math.round(pro.jobsCompleted * 0.12));
 
@@ -259,33 +268,6 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
     });
   }, [displayServices, selectedCategoryFilter]);
 
-  const faqs = [
-    {
-      q: "How does pricing and payment work?",
-      a: "You receive a clear, upfront itemized estimate before any work begins. Once the job is completed to your satisfaction, you pay the contractor directly via Card, Zelle, Check, or Cash with zero platform markups.",
-    },
-    {
-      q: "Do you offer free estimates or diagnostics?",
-      a: `For standard repairs within our ${pro.radiusMiles}-mile service area, we provide transparent upfront estimates. If a comprehensive diagnostic teardown is needed, the diagnostic fee is credited directly toward your repair cost upon approval.`,
-    },
-    {
-      q: `Are you licensed and insured in ${pro.state}?`,
-      a: pro.licensed
-        ? `Yes. Active state trade licensing and $1,000,000 General Liability coverage. All credentials are fully verified by LocalHomeFix.`
-        : `Yes. Active $1,000,000 General Liability insurance coverage. We strictly comply with all local municipal guidelines and safety standards.`,
-    },
-    {
-      q: "What warranty do you provide on completed work?",
-      a: "We back all completed labor with a 1-year contractor workmanship warranty. All replacement hardware, parts, and equipment carry their full manufacturer warranty.",
-    },
-    {
-      q: "How quickly can you start or dispatch?",
-      a: pro.emergency
-        ? `We offer priority same-day emergency dispatch across ${pro.city} and standard appointments within 24–48 hours.`
-        : `Standard service calls are usually booked within 24–48 hours, with flexible morning and afternoon arrival windows.`,
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-white pb-20">
       {/* 1. BREADCRUMBS BAR */}
@@ -401,31 +383,28 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
         {/* 4. SUB-NAVIGATION TAB RIBBON */}
         <div className="sticky top-[74px] z-30 border-t border-line/70 bg-white/95 backdrop-blur-md shadow-xs">
           <div className="container-site flex items-center justify-between gap-4">
-            <div className="flex gap-2 sm:gap-6 overflow-x-auto py-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {[
-                { id: "sec-about", tabId: "about", label: "About" },
-                { id: "sec-services", tabId: "services", label: "Services" },
-                { id: "sec-photos", tabId: "photos", label: `Photos (${galleryPhotos.length})` },
-                { id: "sec-reviews", tabId: "reviews", label: `Reviews (${allReviews.length})` },
-                { id: "sec-faqs", tabId: "faqs", label: "FAQs" },
-              ].map((tab) => (
-                <button
-                  key={tab.tabId}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(tab.tabId as typeof activeTab);
-                    scrollToSection(tab.id);
-                  }}
-                  className={cn(
-                    "shrink-0 px-2 py-3 text-xs sm:text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
-                    activeTab === tab.tabId
-                      ? "border-primary text-primary font-semibold"
-                      : "border-transparent text-muted hover:text-title"
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div className="overflow-x-auto py-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <Tabs
+                value={activeTab}
+                onChange={(key) => {
+                  setActiveTab(key);
+                  scrollToSection(
+                    key === "about"
+                      ? "sec-about"
+                      : key === "services"
+                        ? "sec-services"
+                        : key === "photos"
+                          ? "sec-photos"
+                          : "sec-reviews",
+                  );
+                }}
+                items={[
+                  { key: "about", label: "About" },
+                  { key: "services", label: "Services" },
+                  { key: "photos", label: "Photos", count: galleryPhotos.length },
+                  { key: "reviews", label: "Reviews", count: allReviews.length },
+                ]}
+              />
             </div>
           </div>
         </div>
@@ -542,37 +521,41 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                     <Clock className="h-3.5 w-3.5 text-zinc-400" />
                     Business Hours
                   </h3>
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Open today
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 text-xs font-medium",
+                      openToday ? "text-emerald-700" : "text-muted",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        openToday ? "bg-emerald-500" : "bg-zinc-400",
+                      )}
+                    />
+                    {openToday ? "Open today" : "Closed today"}
                   </span>
                 </div>
 
-                {businessHours ? (
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex justify-between py-1 text-copy border-b border-line/30">
-                      <span className="text-muted">Monday – Friday</span>
-                      <span className="font-medium text-title">{businessHours.weekdays}</span>
-                    </div>
-                    <div className="flex justify-between py-1 text-copy border-b border-line/30">
-                      <span className="text-muted">Saturday</span>
-                      <span className="font-medium text-title">{businessHours.saturday}</span>
-                    </div>
-                    <div className="flex justify-between py-1 text-copy border-b border-line/30">
-                      <span className="text-muted">Sunday</span>
+                <div className="space-y-0 text-xs">
+                  {hourGroups.map((group) => (
+                    <div
+                      key={group.label}
+                      className="flex justify-between gap-3 border-b border-line/30 py-1.5 last:border-0"
+                    >
+                      <span className="text-muted">{group.label}</span>
                       <span
                         className={cn(
                           "font-medium",
-                          pro.emergency ? "text-amber-700 font-semibold" : "text-muted"
+                          group.status === "closed" && "text-muted",
+                          group.status === "open" && "text-title",
                         )}
                       >
-                        {businessHours.sunday}
+                        {group.value}
                       </span>
                     </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted">Business hours available upon inquiry.</p>
-                )}
+                  ))}
+                </div>
               </div>
             </div>
           </section>
@@ -864,7 +847,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                   </p>
 
                   {rev.reply && (
-                    <div className="rounded-xl bg-surface/60 border border-line/60 p-3.5 space-y-1">
+                    <div className="space-y-1 rounded-xl border border-line border-l-[3px] border-l-primary bg-white p-3.5">
                       <div className="flex items-center gap-2">
                         <span className="font-display text-xs font-bold text-title">
                           Response from {pro.name}
@@ -880,84 +863,61 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
               ))}
             </div>
           </section>
-
-          {/* ============================================================ */}
-          {/* SECTION 4: FREQUENTLY ASKED QUESTIONS                       */}
-          {/* ============================================================ */}
-          <section id="sec-faqs" className="scroll-mt-[135px] space-y-4">
-            <h2 className="font-display text-xl sm:text-[22px] font-semibold text-title tracking-tight">
-              Frequently Asked Questions
-            </h2>
-
-            <div className="divide-y divide-line/60">
-              {faqs.map((faq, i) => (
-                <div key={i} className="py-3.5 first:pt-1 space-y-1">
-                  <h3 className="font-display text-sm sm:text-[15px] font-semibold text-title">
-                    {faq.q}
-                  </h3>
-                  <p className="font-sans text-xs sm:text-sm text-muted leading-relaxed">
-                    {faq.a}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
 
         {/* Right Column (4 cols): ELEVATED STICKY ACTION CARD */}
         <aside className="lg:col-span-4 lg:sticky lg:top-[135px] space-y-3.5">
           <div className="rounded-2xl border border-line/80 bg-white p-5 sm:p-6 shadow-md space-y-5">
-            {/* Price & Response Speed Header */}
             <div>
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-display text-3xl font-bold text-title tracking-tight">
-                    ${effectiveStartingPrice}
-                  </span>
-                  <span className="text-xs font-medium text-muted">starting estimate</span>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-display text-[26px] font-semibold leading-none tracking-tight text-title">
+                      ${effectiveStartingPrice}
+                    </span>
+                    <span className="font-sans text-sm text-muted">starting estimate</span>
+                  </div>
+                  <p className="mt-2 font-sans text-sm leading-5 text-muted">
+                    Itemized estimate agreed before any work begins.
+                  </p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 border border-emerald-200/80 shrink-0">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50 px-2.5 py-1 font-sans text-xs font-medium text-emerald-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Replies in {replyTime}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-muted leading-relaxed">
-                Itemized estimate agreed before any work begins.
-              </p>
             </div>
 
-            {/* Clean Key Specs (Unboxed, Senior Product Designer layout) */}
-            <div className="space-y-2.5 pt-3.5 border-t border-line/60 text-xs">
-              <div className="flex items-center justify-between py-0.5">
-                <span className="text-muted flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
-                  Service Area
+            <div className="space-y-3 border-t border-line/60 pt-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2 font-sans text-sm text-muted">
+                  <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                  Service area
                 </span>
-                <span className="font-semibold text-title text-right">
+                <span className="font-display text-sm font-medium text-title text-right">
                   {pro.city} (~{pro.radiusMiles} mi)
                 </span>
               </div>
 
-              <div className="flex items-center justify-between py-0.5">
-                <span className="text-muted flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2 font-sans text-sm text-muted">
+                  <Clock className="h-4 w-4 shrink-0 text-primary" />
                   Availability
                 </span>
-                <span className="font-semibold text-emerald-700 text-right">
-                  {pro.availableThisWeek ? "Available This Week" : "Book 3–5 Days"}
+                <span className="font-display text-sm font-medium text-right text-emerald-700">
+                  {pro.availableThisWeek ? "Available this week" : "Book 3–5 days"}
                 </span>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-2.5 pt-1">
+            <div className="space-y-2.5">
               {quoteHref ? (
                 <Button
                   href={quoteHref}
-                  size="md"
-                  className="w-full justify-center shadow-xs"
+                  size="sm"
+                  className="w-full justify-center text-sm font-medium shadow-xs"
                 >
-                  Request a Free Quote ↗
+                  Request a quote
                 </Button>
               ) : null}
 
@@ -965,18 +925,17 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 <Button
                   href={messageHref}
                   variant="ghost"
-                  size="md"
-                  className="w-full justify-center"
+                  size="sm"
+                  className="w-full justify-center text-sm font-medium"
                 >
-                  <MessageSquare className="h-4 w-4 mr-1" />
-                  Message Directly ↗
+                  <MessageSquare className="h-4 w-4" />
+                  Message
                 </Button>
               ) : null}
             </div>
 
-            {/* Single, Reassuring Trust Footnote */}
-            <p className="pt-2 text-center text-[11px] text-muted border-t border-line/50">
-              Direct contractor hiring · Zero booking markup
+            <p className="border-t border-line/50 pt-3 text-center font-sans text-sm text-muted">
+              Pay the pro directly. No booking fee.
             </p>
           </div>
 

@@ -7,9 +7,12 @@ import {
   CheckCircle2,
   Clock,
   FileCheck2,
+  Inbox,
+  MessageSquare,
   ShieldCheck,
   Star,
   Truck,
+  UserPlus,
   Wrench,
   X,
 } from "lucide-react";
@@ -21,7 +24,6 @@ import { WorkOrderReceipt } from "@/components/shared/work-order-receipt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
-import { useRoleAccess } from "@/hooks/use-role-access";
 import {
   selectBooking,
   selectChangeRequests,
@@ -33,7 +35,6 @@ import {
   getCategory,
   getPro,
   professionals,
-  propertyTypeLabels,
   threadsForJob,
   urgencyLabels,
 } from "@/Mockdata";
@@ -68,7 +69,6 @@ export function RequestDetail({
   viewer?: "homeowner" | "pro";
 }) {
   const dispatch = useAppDispatch();
-  const { access } = useRoleAccess();
   const job = useAppSelector((state) => selectJob(state, id));
   const quotes = useAppSelector((state) => selectQuotesForJob(state, id));
   const booking = useAppSelector((state) => selectBooking(state, id));
@@ -142,22 +142,10 @@ export function RequestDetail({
     );
   }
 
-  const homeownerLabel = isProView
-    ? access.canSeeContact
-      ? job.homeownerName
-      : "Homeowner · contact locked"
-    : job.homeownerName;
   const category = getCategory(job.categorySlug);
   const messages = threadsForJob(job.id);
   const hiredPro = hiredQuote ? getPro(hiredQuote.proId) : null;
-  const meta = [
-    category?.name,
-    isProView ? `${job.city}, ${job.state} · ZIP ${job.zip}` : `${job.city}, ${job.state} ${job.zip}`,
-    urgencyLabels[job.urgency],
-    job.budget,
-    job.propertyType ? propertyTypeLabels[job.propertyType] : null,
-    `Posted ${job.postedAt}`,
-  ].filter(Boolean);
+  const meta = [category?.name, `${job.city}, ${job.state}`, urgencyLabels[job.urgency]].filter(Boolean);
   const invitePool = professionals.filter(
     (pro) =>
       pro.clearance === "cleared" &&
@@ -190,14 +178,32 @@ export function RequestDetail({
           <div className="min-w-0">
             <h1 className="text-[26px] sm:text-[28px] font-bold text-title tracking-tight">{job.title}</h1>
             <p className="mt-2 text-sm text-muted">{meta.join(" · ")}</p>
-            {isProView ? <p className="mt-1 text-sm text-copy font-medium">Posted by {homeownerLabel}</p> : null}
           </div>
           <StatusBadge status={job.status} />
         </div>
         <div className="mt-4">
           <StatusTracker status={job.status} />
         </div>
-        <p className="mt-4 text-[16px] leading-7 text-copy">{job.description}</p>
+        {job.requestedProId ? (
+          <p className="mt-3 text-sm text-copy">
+            Quote requested from{" "}
+            <span className="font-semibold text-title">
+              {getPro(job.requestedProId)?.name ?? "a pro"}
+            </span>
+          </p>
+        ) : null}
+        {job.intakeAnswers?.length ? (
+          <dl className="mt-4 divide-y divide-line/70 rounded-2xl border border-line/80">
+            {job.intakeAnswers.map((item) => (
+              <div key={item.id} className="flex items-start justify-between gap-4 px-4 py-3">
+                <dt className="text-sm text-muted">{item.label}</dt>
+                <dd className="text-right text-sm font-medium text-title">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : job.description ? (
+          <p className="mt-4 text-[16px] leading-7 text-copy">{job.description}</p>
+        ) : null}
         {photosForJob.length ? (
           <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
             {photosForJob.map((src) => (
@@ -683,108 +689,152 @@ export function RequestDetail({
         </Card>
       ) : null}
 
-      {canHire && job.status !== "cancelled" && job.status !== "completed" && !hiredQuoteId ? (
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="Invite a pro" className="min-w-[220px] flex-1">
-            <NativeSelect value={inviteId} onChange={(event) => setInviteId(event.target.value)}>
-              <option value="">Select</option>
-              {invitePool.map((pro) => (
-                <option key={pro.id} value={pro.id}>
-                  {pro.name} ({pro.trade})
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Button
-            type="button"
-            size="sm"
-            disabled={!inviteId}
-            onClick={() => {
-              dispatch(invitePro({ jobId: id, proId: inviteId }));
-              dispatch(
-                addNotification({
-                  title: "Pro invited",
-                  body: "Invite sent.",
-                  href: `/account/jobs/${id}`,
-                  createdAt: "Just now",
-                  role: "homeowner",
-                }),
-              );
-              setInviteId("");
-              setSavedMsg("Invite sent.");
-            }}
-          >
-            Invite
-          </Button>
-          {invited.length ? <p className="text-sm text-muted">Invited: {invited.length}</p> : null}
-        </div>
-      ) : null}
-
-      <div>
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-xl">Offers</h2>
-          <p className="text-sm text-muted">
-            {quotes.length} · compare side by side before you hire
-          </p>
-        </div>
-        {/* New: proper compare modal — replaces old inline table */}
-        {compareSet.length >= 2 ? (
-          <QuoteComparePanel
-            quotes={compareSet}
-            jobId={id}
-            onClose={() => setCompareIds([])}
-          />
-        ) : null}
-        {sortedQuotes.length === 0 ? (
-          <p className="mt-2 text-sm text-copy">No offers yet.</p>
-        ) : (
-          <div className="mt-3 space-y-3">
-            {sortedQuotes.map((quote) => (
-              <QuoteCard
-                key={quote.id}
-                quote={quote}
-                canHire={canHire && job.status !== "cancelled" && job.status !== "disputed"}
-                compareMode={canHire && !hiredQuoteId}
-                selected={compareIds.includes(quote.id)}
-                onToggleCompare={() =>
-                  setCompareIds((ids) =>
-                    ids.includes(quote.id)
-                      ? ids.filter((x) => x !== quote.id)
-                      : ids.length >= 3
-                        ? ids
-                        : [...ids, quote.id],
-                  )
-                }
+      {!isProView ? (
+        <>
+          <Card>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-display text-base font-semibold text-title">Offers</h2>
+              {sortedQuotes.length ? (
+                <span className="text-xs text-muted">{sortedQuotes.length}</span>
+              ) : null}
+            </div>
+            {compareSet.length >= 2 ? (
+              <QuoteComparePanel
+                quotes={compareSet}
+                jobId={id}
+                onClose={() => setCompareIds([])}
               />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-xl">Messages</h2>
-          {inboxHref ? (
-            <Link href={inboxHref} className="font-display text-sm font-bold text-primary">
-              Open inbox
-            </Link>
-          ) : null}
-        </div>
-        {messages.length === 0 ? (
-          <p className="mt-2 text-sm text-copy">No messages yet.</p>
-        ) : (
-          <ul className="mt-3 divide-y divide-line border-y border-line">
-            {messages.map((thread) => (
-              <li key={thread.id} className="py-3">
-                <p className="font-display text-sm font-bold text-title">{thread.otherParty}</p>
-                <p className="mt-1 text-sm text-copy">
-                  {thread.lastSender === "homeowner" ? "You" : thread.otherParty}: {thread.lastMessage}
+            ) : null}
+            {sortedQuotes.length === 0 ? (
+              <div className="mt-4 rounded-xl border border-dashed border-line/80 bg-surface px-4 py-8 text-center">
+                <p className="text-sm font-medium text-title">
+                  {job.requestedProId
+                    ? `Waiting on ${getPro(job.requestedProId)?.name ?? "the pro"}`
+                    : "No quotes yet"}
                 </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                <p className="mt-1 text-xs text-muted">
+                  {job.requestedProId
+                    ? "They have your answers and can send a price."
+                    : "Quotes from matched pros will show up here."}
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {sortedQuotes.map((quote) => (
+                  <QuoteCard
+                    key={quote.id}
+                    quote={quote}
+                    canHire={canHire && job.status !== "cancelled" && job.status !== "disputed"}
+                    compareMode={canHire && !hiredQuoteId}
+                    selected={compareIds.includes(quote.id)}
+                    onToggleCompare={() =>
+                      setCompareIds((ids) =>
+                        ids.includes(quote.id)
+                          ? ids.filter((x) => x !== quote.id)
+                          : ids.length >= 3
+                            ? ids
+                            : [...ids, quote.id],
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-display text-base font-semibold text-title">Messages</h2>
+              {inboxHref ? (
+                <Link href={inboxHref} className="text-xs font-semibold text-primary hover:underline">
+                  Inbox
+                </Link>
+              ) : null}
+            </div>
+            {messages.length === 0 ? (
+              <div className="mt-4 rounded-xl border border-dashed border-line/80 bg-surface px-4 py-8 text-center">
+                <MessageSquare className="mx-auto h-5 w-5 text-muted" />
+                <p className="mt-2 text-sm font-medium text-title">No messages yet</p>
+                <p className="mt-1 text-xs text-muted">Chat opens after a pro replies to this request.</p>
+                {inboxHref ? (
+                  <Button href={inboxHref} variant="ghost" size="sm" className="mt-3">
+                    <Inbox className="h-3.5 w-3.5" />
+                    Open inbox
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              <ul className="mt-4 divide-y divide-line/70 overflow-hidden rounded-xl border border-line/80">
+                {messages.map((thread) => (
+                  <li key={thread.id} className="px-4 py-3">
+                    <p className="text-sm font-semibold text-title">{thread.otherParty}</p>
+                    <p className="mt-1 text-sm text-copy">
+                      {thread.lastSender === "homeowner" ? "You" : thread.otherParty}: {thread.lastMessage}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          {canHire && !job.requestedProId && job.status !== "cancelled" && job.status !== "completed" && !hiredQuoteId ? (
+            <Card>
+              <div className="flex items-start gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-smoke text-title">
+                  <UserPlus className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-display text-base font-semibold text-title">Invite a pro</h2>
+                  <p className="mt-0.5 text-xs text-muted">Send this request to someone specific.</p>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <NativeSelect
+                      value={inviteId}
+                      onChange={(event) => setInviteId(event.target.value)}
+                      className="min-w-0 flex-1 rounded-xl"
+                    >
+                      <option value="">Choose a pro</option>
+                      {invitePool.map((pro) => (
+                        <option key={pro.id} value={pro.id}>
+                          {pro.name} · {pro.trade}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!inviteId}
+                      onClick={() => {
+                        dispatch(invitePro({ jobId: id, proId: inviteId }));
+                        dispatch(
+                          addNotification({
+                            title: "Pro invited",
+                            body: "Invite sent.",
+                            href: `/account/jobs/${id}`,
+                            createdAt: "Just now",
+                            role: "homeowner",
+                          }),
+                        );
+                        setInviteId("");
+                        setSavedMsg("Invite sent.");
+                      }}
+                    >
+                      Send invite
+                    </Button>
+                  </div>
+                  {invited.length ? (
+                    <p className="mt-3 text-xs text-muted">
+                      Invited:{" "}
+                      {invited
+                        .map((proId) => getPro(proId)?.name ?? "Pro")
+                        .join(", ")}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </Card>
+          ) : null}
+        </>
+      ) : null}
 
       {canHire && job.status === "completed" ? (
         <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
@@ -896,18 +946,19 @@ export function RequestDetail({
       ) : null}
 
       {canHire && job.status !== "cancelled" ? (
-        <details className="rounded-[12px] border border-line bg-white p-4">
-          <summary className="cursor-pointer font-display text-sm font-bold text-title">
-            Report a problem / open dispute
+        <details className="rounded-[20px] border border-line/80 bg-white p-5 shadow-xs">
+          <summary className="cursor-pointer text-sm font-semibold text-title">
+            Report a problem
           </summary>
-          <p className="mt-2 text-sm text-copy">
-            Use this for safety issues, no-shows, or unresolved quality problems. Opens a disputed status on this job.
+          <p className="mt-3 text-sm text-muted">
+            Use this for a no-show, safety issue, or work that was not resolved.
           </p>
           <TextArea
-            className="mt-3"
+            className="mt-3 rounded-xl"
             value={disputeNote}
             onChange={(event) => setDisputeNote(event.target.value)}
             placeholder="What happened?"
+            rows={3}
           />
           <Button
             type="button"

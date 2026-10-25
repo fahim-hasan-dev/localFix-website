@@ -1,12 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import {
-  Check,
   CheckCircle2,
   Copy,
-  ExternalLink,
   MessageSquare,
   Send,
   Share2,
@@ -15,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Tabs } from "@/components/ui/tabs";
 import { TextArea, TextField } from "@/components/ui/field";
 import { replyToReview, addNotification } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
@@ -68,15 +66,13 @@ export default function ProReviewsPage() {
   // Calculate statistics
   const stats = useMemo(() => {
     if (!reviews.length) {
-      return { avg: 5.0, total: 0, repliedCount: 0, needsReplyCount: 0, fiveStarCount: 0, fourStarCount: 0 };
+      return { avg: 5.0, total: 0, repliedCount: 0, needsReplyCount: 0 };
     }
     const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
     const avg = Number((sum / reviews.length).toFixed(1));
     const repliedCount = reviews.filter((r) => Boolean(r.reply)).length;
     const needsReplyCount = reviews.filter((r) => !r.reply).length;
-    const fiveStarCount = reviews.filter((r) => r.rating === 5).length;
-    const fourStarCount = reviews.filter((r) => r.rating === 4).length;
-    return { avg, total: reviews.length, repliedCount, needsReplyCount, fiveStarCount, fourStarCount };
+    return { avg, total: reviews.length, repliedCount, needsReplyCount };
   }, [reviews]);
 
   // Star Rating Breakdown (5 to 1) for visual distribution
@@ -153,17 +149,9 @@ export default function ProReviewsPage() {
       {/* 1. Header with Title & Direct Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line/70 pb-4 pt-1">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-[22px] sm:text-[26px] font-semibold text-title tracking-tight">
-              Client Reviews &amp; Reputation
-            </h1>
-            <span className="inline-flex items-center rounded-full bg-smoke px-2.5 py-0.5 text-xs font-semibold text-primary border border-primary/20">
-              {stats.total} Total
-            </span>
-          </div>
-          <p className="mt-0.5 text-xs sm:text-sm text-muted">
-            Manage client reviews, respond to homeowner feedback, and build trust in Austin.
-          </p>
+          <h1 className="font-display text-[24px] font-semibold tracking-tight text-title">
+            Reviews
+          </h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -195,18 +183,13 @@ export default function ProReviewsPage() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-center">
           {/* Left Column: Overall Rating Score */}
           <div className="md:col-span-4 flex flex-col items-center md:items-start text-center md:text-left md:border-r border-line/70 md:pr-6">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-              Overall Rating
-            </span>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="font-display text-4xl sm:text-5xl font-bold text-title tracking-tight">
+            <div className="mt-0 flex items-baseline gap-2">
+              <span className="font-display text-4xl font-bold tracking-tight text-title">
                 {stats.avg.toFixed(1)}
               </span>
-              <span className="text-xs font-medium text-muted">out of 5.0</span>
             </div>
 
-            {/* Stars display */}
-            <div className="mt-2.5 flex items-center gap-1 text-amber-500">
+            <div className="mt-2 flex items-center gap-1 text-amber-500">
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
@@ -222,23 +205,10 @@ export default function ProReviewsPage() {
               ))}
             </div>
 
-            <p className="mt-2 font-sans text-xs text-muted">
-              Based on <strong className="text-title">{stats.total} verified reviews</strong>
-            </p>
-
-            <div className="mt-3.5 inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 border border-emerald-200/60">
-              <CheckCircle2 className="h-3 w-3" />
-              <span>{stats.repliedCount} of {stats.total} reviews replied</span>
-            </div>
+            <p className="mt-2 text-xs text-muted">{stats.total} reviews</p>
           </div>
 
-          {/* Right Column: Star Rating Distribution (5★ to 1★) */}
-          <div className="md:col-span-8 space-y-2">
-            <div className="flex items-center justify-between text-xs text-muted pb-1 font-medium">
-              <span className="font-semibold text-title">Rating Breakdown</span>
-              <span className="text-[11px] text-muted">Click a tier to filter</span>
-            </div>
-
+          <div className="md:col-span-8 space-y-1">
             {breakdown.map(({ star, count, percentage, filterKey }) => {
               const isSelected = selectedFilter === filterKey;
               return (
@@ -249,17 +219,15 @@ export default function ProReviewsPage() {
                     setSelectedFilter((prev) => (prev === filterKey ? "all" : filterKey))
                   }
                   className={cn(
-                    "w-full group flex items-center gap-3 rounded-lg px-2.5 py-1.5 text-xs transition-colors cursor-pointer",
+                    "group flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-1.5 text-xs transition-colors",
                     isSelected
-                      ? "bg-slate-100 text-title font-semibold ring-1 ring-slate-300"
-                      : "hover:bg-slate-50 text-title"
+                      ? "bg-slate-100 font-semibold text-title"
+                      : "text-title hover:bg-slate-50"
                   )}
                 >
-                  {/* Star count label */}
-                  <span className="w-14 text-left flex items-center gap-1 font-medium text-title shrink-0">
+                  <span className="flex w-10 shrink-0 items-center gap-1 font-medium text-title">
                     <span>{star}</span>
-                    <Star className="h-3 w-3 fill-amber-400 text-amber-500 shrink-0" />
-                    <span className="text-[11px] font-normal text-muted">star</span>
+                    <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-500" />
                   </span>
 
                   {/* Visual Progress Bar Track */}
@@ -288,85 +256,25 @@ export default function ProReviewsPage() {
 
       {/* 3. Filter Tabs Row */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setSelectedFilter("all")}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-xs transition-all cursor-pointer",
-              selectedFilter === "all"
-                ? "bg-title text-white font-medium shadow-2xs"
-                : "bg-white text-muted hover:text-title border border-line/80 hover:bg-slate-50"
-            )}
-          >
-            All Reviews ({stats.total})
-          </button>
+        <Tabs
+          value={selectedFilter}
+          onChange={setSelectedFilter}
+          items={[
+            { key: "all", label: "All", count: stats.total },
+            { key: "needs-reply", label: "Needs reply", count: stats.needsReplyCount },
+            { key: "replied", label: "Replied", count: stats.repliedCount },
+          ]}
+        />
 
-          <button
-            type="button"
-            onClick={() => setSelectedFilter("needs-reply")}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-all cursor-pointer",
-              selectedFilter === "needs-reply"
-                ? "bg-title text-white font-medium shadow-2xs"
-                : "bg-white text-muted hover:text-title border border-line/80 hover:bg-slate-50"
-            )}
-          >
-            Needs Reply ({stats.needsReplyCount})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedFilter("replied")}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-xs transition-all cursor-pointer",
-              selectedFilter === "replied"
-                ? "bg-title text-white font-medium shadow-2xs"
-                : "bg-white text-muted hover:text-title border border-line/80 hover:bg-slate-50"
-            )}
-          >
-            Replied ({stats.repliedCount})
-          </button>
-
-          {stats.fiveStarCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setSelectedFilter("5-star")}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-xs transition-all cursor-pointer",
-                selectedFilter === "5-star"
-                  ? "bg-title text-white font-medium shadow-2xs"
-                  : "bg-white text-muted hover:text-title border border-line/80 hover:bg-slate-50"
-              )}
-            >
-              5 Stars ({stats.fiveStarCount})
-            </button>
-          )}
-
-          {stats.fourStarCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setSelectedFilter("4-star")}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-xs transition-all cursor-pointer",
-                selectedFilter === "4-star"
-                  ? "bg-title text-white font-medium shadow-2xs"
-                  : "bg-white text-muted hover:text-title border border-line/80 hover:bg-slate-50"
-              )}
-            >
-              4 Stars ({stats.fourStarCount})
-            </button>
-          )}
-        </div>
-
-        <Link
-          href="/browse-pros/pro-1#sec-reviews"
-          target="_blank"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-        >
-          <span>View Public Storefront</span>
-          <ExternalLink className="h-3.5 w-3.5" />
-        </Link>
+        <Tabs
+          value={selectedFilter}
+          onChange={(key) => setSelectedFilter(key === selectedFilter ? "all" : key)}
+          items={([5, 4, 3, 2, 1] as const).map((star) => ({
+            key: `${star}-star` as FilterType,
+            label: `${star}`,
+            icon: Star,
+          }))}
+        />
       </div>
 
       {/* 4. Review Cards List */}
@@ -401,14 +309,9 @@ export default function ProReviewsPage() {
                     </div>
 
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-display text-sm sm:text-base font-semibold text-title">
-                          {review.author}
-                        </span>
-                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200/60">
-                          <Check className="h-3 w-3 stroke-[3]" /> Verified Hire
-                        </span>
-                      </div>
+                      <p className="font-display text-sm font-semibold text-title sm:text-base">
+                        {review.author}
+                      </p>
                       <p className="text-xs text-muted">
                         Austin, TX · {review.createdAt}
                       </p>

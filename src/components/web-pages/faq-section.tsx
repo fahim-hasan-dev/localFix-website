@@ -28,8 +28,8 @@ export function FaqSection({
   const dynamicDescription =
     description ||
     (tab === "homeowner"
-      ? "Clear answers about hiring local specialists, comparing quotes, state licensing standards, and paying with $0 middleman fees."
-      : "Everything trade professionals need to know about our 3-month free trial, 0% commission fees, TDLR license checks, and local lead alerts.");
+      ? "See how to post a request, compare quotes, and pay your pro. Ask us if something is still unclear."
+      : "See how to join, get requests, and get paid. Apply if you want to take jobs.");
 
   return (
     <section id="faq" className={cn("bg-surface py-[var(--section-sm)] md:py-[var(--section)]", className)}>
@@ -68,25 +68,19 @@ export function FaqSection({
                 href="/pro-register"
                 className="group inline-flex items-center gap-3.5 rounded-full border border-primary bg-primary pl-5 pr-2 py-2 font-display text-xs sm:text-sm font-medium text-white shadow-2xs transition-all duration-300 hover:bg-primary/90 hover:shadow-xs"
               >
-                <span>Join as a Pro (3 Mo Free)</span>
+                <span>Join as a Pro</span>
                 <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-primary transition-colors duration-300">
                   <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </span>
               </Link>
             )}
           </div>
-
-          <p className="mt-4 text-xs text-muted/80">
-            {tab === "homeowner"
-              ? "Need urgent assistance? Average email response is under 2 hours."
-              : "Questions about your trade license? Our compliance team audits in 24h."}
-          </p>
         </div>
 
         {/* Right Column: Audience Switcher Header + Accordion Cards */}
         <div className="space-y-4">
           {/* Top Segmented Audience Switcher (Gestalt Law of Proximity: positioned right on top of questions) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line/70">
+          <div className="flex items-center pb-3 border-b border-line/70">
             <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200/70 shadow-2xs">
               <button
                 type="button"
@@ -138,10 +132,6 @@ export function FaqSection({
                 </span>
               </button>
             </div>
-
-            <span className="text-xs text-muted font-medium hidden sm:inline">
-              Showing {displayItems.length} verified answers
-            </span>
           </div>
 
           {/* Accordion Questions List */}

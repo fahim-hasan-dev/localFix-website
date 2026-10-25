@@ -8,11 +8,10 @@ import {
   CheckCircle2,
   Calendar,
   ShieldCheck,
-  MapPin,
   Star,
-  ArrowUpRight,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Tabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/cn";
 
 export type YearlyMetrics = {
@@ -100,56 +99,11 @@ export const yearlyData: Record<number, YearlyMetrics> = {
 };
 
 const recentCompletedJobs = [
-  {
-    id: "comp-1",
-    client: "Maya Chen",
-    location: "Austin, 78701",
-    service: "Kitchen Sink Leak & P-Trap Repair",
-    description: "Replaced degraded PVC P-trap assembly with brass slip joints, resealed strainer basket, and pressure-tested under 60 PSI load.",
-    date: "Oct 14, 2026",
-    amount: "$280.00",
-    rating: 5,
-  },
-  {
-    id: "comp-2",
-    client: "Jordan Hale",
-    location: "Austin, 78745",
-    service: "Emergency Pipe Pressure Diagnostics",
-    description: "Diagnosed pinhole micro-fracture in 3/4\" copper trunk line behind garage firewall; isolated main shutoff and installed sweat coupling.",
-    date: "Sep 28, 2026",
-    amount: "$450.00",
-    rating: 4.8,
-  },
-  {
-    id: "comp-3",
-    client: "Elena Ruiz",
-    location: "Austin, 78702",
-    service: "Main Supply Line Resealing",
-    description: "Excavated meter transition coupling, rebuilt compression collar with vulcanized sleeve, and verified flow rate across all fixtures.",
-    date: "Sep 15, 2026",
-    amount: "$320.00",
-    rating: 5,
-  },
-  {
-    id: "comp-4",
-    client: "Sam Okonkwo",
-    location: "Round Rock, 78664",
-    service: "Water Heater Valve Replacement",
-    description: "Installed heavy-duty brass temperature & pressure (T&P) relief valve, flushed 15 gal mineral sediment, and verified burner ignition at 120°F.",
-    date: "Aug 29, 2026",
-    amount: "$520.00",
-    rating: 5,
-  },
-  {
-    id: "comp-5",
-    client: "David Miller",
-    location: "Austin, 78704",
-    service: "Garbage Disposal Installation",
-    description: "Uninstalled jammed 1/2 HP contractor unit, mounted sound-dampened 3/4 HP Insinkerator with new sink flange and dedicated GFCI cord.",
-    date: "Aug 12, 2026",
-    amount: "$240.00",
-    rating: 5,
-  },
+  { id: "comp-1", client: "Maya Chen", service: "Kitchen sink leak", date: "Oct 14, 2026", amount: "$280" },
+  { id: "comp-2", client: "Jordan Hale", service: "Pipe diagnostics", date: "Sep 28, 2026", amount: "$450" },
+  { id: "comp-3", client: "Elena Ruiz", service: "Supply line reseal", date: "Sep 15, 2026", amount: "$320" },
+  { id: "comp-4", client: "Sam Okonkwo", service: "Water heater valve", date: "Aug 29, 2026", amount: "$520" },
+  { id: "comp-5", client: "David Miller", service: "Garbage disposal", date: "Aug 12, 2026", amount: "$240" },
 ];
 
 type AnalyticsTab = "overview" | "revenue" | "jobs";
@@ -176,44 +130,15 @@ export function ProAnalytics() {
       {/* 1. STANDARD SEGMENTED CONTROL TABS + UNIFIED PERIOD SELECTOR             */}
       {/* ========================================================================= */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line/70 pb-3">
-        <div className="inline-flex rounded-xl bg-stone-100/80 p-1 border border-line/60">
-          <button
-            type="button"
-            onClick={() => setActiveTab("overview")}
-            className={cn(
-              "rounded-lg px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer",
-              activeTab === "overview"
-                ? "bg-white text-title shadow-2xs"
-                : "text-stone-500 hover:text-title"
-            )}
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("revenue")}
-            className={cn(
-              "rounded-lg px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer",
-              activeTab === "revenue"
-                ? "bg-white text-title shadow-2xs"
-                : "text-stone-500 hover:text-title"
-            )}
-          >
-            Revenue Analytics
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("jobs")}
-            className={cn(
-              "rounded-lg px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer",
-              activeTab === "jobs"
-                ? "bg-white text-title shadow-2xs"
-                : "text-stone-500 hover:text-title"
-            )}
-          >
-            Jobs &amp; Clients
-          </button>
-        </div>
+        <Tabs
+          value={activeTab}
+          onChange={setActiveTab}
+          items={[
+            { key: "overview", label: "Overview" },
+            { key: "revenue", label: "Revenue Analytics" },
+            { key: "jobs", label: "History" },
+          ]}
+        />
 
         {/* Unified Year / Period Selector */}
         <div className="flex items-center gap-2 self-start sm:self-auto rounded-xl border border-line bg-white px-3 py-1.5 shadow-2xs">
@@ -236,104 +161,69 @@ export function ProAnalytics() {
       {/* 2. EXECUTIVE KPI CARDS (Standardized, uncluttered, executive sizes)       */}
       {/* ========================================================================= */}
       <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Card 1: Total Revenue */}
-        <Card className="rounded-xl border border-line/80 bg-white p-4 sm:p-5 shadow-2xs transition-all hover:border-slate-300">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-              Total Earnings ({selectedYear})
+        <Card className="flex h-full min-h-0 flex-col justify-between rounded-xl border border-line/80 bg-white p-4 shadow-2xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-xs font-semibold uppercase tracking-wider text-muted">
+              Earnings
             </span>
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-slate-700">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-700">
               <DollarSign className="h-3.5 w-3.5" />
             </span>
           </div>
-          <div className="mt-2.5 flex items-baseline justify-between">
-            <span className="font-display text-2xl font-bold tracking-tight text-title">
+          <div className="mt-3 flex items-baseline justify-between gap-2">
+            <span className="truncate font-display text-2xl font-bold tracking-tight text-title">
               ${activeData.totalRevenue.toLocaleString()}
             </span>
-            <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
+            <span className="inline-flex shrink-0 items-center text-xs font-semibold text-emerald-600">
               <TrendingUp className="mr-0.5 h-3 w-3" />
               {activeData.growthRate}
             </span>
           </div>
-          <div className="mt-2.5 flex items-center justify-between border-t border-line/60 pt-2 text-xs text-muted">
-            <span>Direct homeowner payouts</span>
-            <span className="font-medium text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[11px] border border-slate-200/60">
-              $0 Fee Paid
-            </span>
-          </div>
         </Card>
 
-        {/* Card 2: Completed Jobs */}
-        <Card className="rounded-xl border border-line/80 bg-white p-4 sm:p-5 shadow-2xs transition-all hover:border-slate-300">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-              Completed Jobs ({selectedYear})
+        <Card className="flex h-full min-h-0 flex-col justify-between rounded-xl border border-line/80 bg-white p-4 shadow-2xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-xs font-semibold uppercase tracking-wider text-muted">
+              Completed jobs
             </span>
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-slate-700">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-700">
               <CheckCircle2 className="h-3.5 w-3.5" />
             </span>
           </div>
-          <div className="mt-2.5 flex items-baseline justify-between">
-            <span className="font-display text-2xl font-bold tracking-tight text-title">
-              {activeData.completedJobs} <span className="text-sm font-normal text-muted">Jobs</span>
-            </span>
-            <span className="text-xs text-muted">128 All-time</span>
-          </div>
-          <div className="mt-2.5 flex items-center justify-between border-t border-line/60 pt-2 text-xs text-muted">
-            <span>Avg. ticket price</span>
-            <span className="font-semibold text-title text-xs">
-              ${activeData.avgTicket} / job
-            </span>
-          </div>
+          <p className="mt-3 truncate font-display text-2xl font-bold tracking-tight text-title">
+            {activeData.completedJobs}
+          </p>
         </Card>
 
-        {/* Card 3: Total Clients */}
-        <Card className="rounded-xl border border-line/80 bg-white p-4 sm:p-5 shadow-2xs transition-all hover:border-slate-300">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-              Total Clients ({selectedYear})
+        <Card className="flex h-full min-h-0 flex-col justify-between rounded-xl border border-line/80 bg-white p-4 shadow-2xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-xs font-semibold uppercase tracking-wider text-muted">
+              Clients
             </span>
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-slate-700">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-700">
               <Users className="h-3.5 w-3.5" />
             </span>
           </div>
-          <div className="mt-2.5 flex items-baseline justify-between">
-            <span className="font-display text-2xl font-bold tracking-tight text-title">
-              {activeData.totalClients} <span className="text-sm font-normal text-muted">Clients</span>
-            </span>
-            <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 border border-slate-200/60">
-              {activeData.repeatClients} Repeat
-            </span>
-          </div>
-          <div className="mt-2.5 flex items-center justify-between border-t border-line/60 pt-2 text-xs text-muted">
-            <span>Retention rate</span>
-            <span className="font-semibold text-title text-xs">
-              {Math.round((activeData.repeatClients / activeData.totalClients) * 100)}% Returning
-            </span>
-          </div>
+          <p className="mt-3 truncate font-display text-2xl font-bold tracking-tight text-title">
+            {activeData.totalClients}
+          </p>
         </Card>
 
-        {/* Card 4: Pro Rating & Clearance */}
-        <Card className="rounded-xl border border-line/80 bg-white p-4 sm:p-5 shadow-2xs transition-all hover:border-slate-300">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-              Reputation &amp; Trust
+        <Card className="flex h-full min-h-0 flex-col justify-between rounded-xl border border-line/80 bg-white p-4 shadow-2xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-xs font-semibold uppercase tracking-wider text-muted">
+              Rating
             </span>
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-slate-700">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-700">
               <ShieldCheck className="h-3.5 w-3.5" />
             </span>
           </div>
-          <div className="mt-2.5 flex items-baseline justify-between">
-            <span className="font-display text-2xl font-bold tracking-tight text-title flex items-center gap-1">
-              4.8 <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
+          <div className="mt-3 flex items-baseline justify-between gap-2">
+            <span className="flex items-center gap-1 font-display text-2xl font-bold tracking-tight text-title">
+              4.8
+              <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-500" />
             </span>
-            <span className="text-xs text-muted">36 Reviews</span>
-          </div>
-          <div className="mt-2.5 flex items-center justify-between border-t border-line/60 pt-2 text-xs text-muted">
-            <span>Austin Clearance</span>
-            <span className="font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[11px] border border-emerald-200/60">
-              Licensed &amp; Insured
-            </span>
+            <span className="shrink-0 text-xs text-muted">36 reviews</span>
           </div>
         </Card>
       </div>
@@ -346,34 +236,11 @@ export function ProAnalytics() {
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Income Trend Chart */}
             <Card className="p-5 sm:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/70 pb-3.5">
-                <div>
-                  <h2 className="font-display text-base font-bold text-title flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-primary" />
-                    Monthly Income Overview
-                  </h2>
-                  <p className="mt-0.5 text-xs text-muted">
-                    Annual revenue breakdown • 100% direct payouts
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 rounded-lg border border-line bg-slate-50/80 px-2.5 py-1 text-xs font-semibold text-title shadow-2xs">
-                    <span className="text-muted font-normal">Year:</span>
-                    <select
-                      value={selectedYear}
-                      onChange={(e) => setSelectedYear(Number(e.target.value))}
-                      className="bg-transparent font-bold text-title outline-none cursor-pointer focus:text-primary"
-                      aria-label="Filter monthly income by year"
-                    >
-                      <option value={2026}>2026</option>
-                      <option value={2025}>2025</option>
-                      <option value={2024}>2024</option>
-                    </select>
-                  </div>
-                  <span className="font-display text-xs font-bold text-primary rounded-lg bg-primary/10 px-2.5 py-1 hidden sm:inline">
-                    ${activeData.totalRevenue.toLocaleString()}
-                  </span>
-                </div>
+              <div className="border-b border-line/70 pb-3.5">
+                <h2 className="font-display text-base font-bold text-title flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-primary" />
+                  Monthly Income Overview
+                </h2>
               </div>
 
               {/* Chart Graphics */}
@@ -448,34 +315,11 @@ export function ProAnalytics() {
 
             {/* Clients & Work Volume Chart */}
             <Card className="p-5 sm:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/70 pb-3.5">
-                <div>
-                  <h2 className="font-display text-base font-bold text-title flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    Clients &amp; Work Volume
-                  </h2>
-                  <p className="mt-0.5 text-xs text-muted">
-                    Unique clients served &amp; job completion pace
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 rounded-lg border border-line bg-slate-50/80 px-2.5 py-1 text-xs font-semibold text-title shadow-2xs">
-                    <span className="text-muted font-normal">Year:</span>
-                    <select
-                      value={selectedYear}
-                      onChange={(e) => setSelectedYear(Number(e.target.value))}
-                      className="bg-transparent font-bold text-title outline-none cursor-pointer focus:text-primary"
-                      aria-label="Filter work volume by year"
-                    >
-                      <option value={2026}>2026</option>
-                      <option value={2025}>2025</option>
-                      <option value={2024}>2024</option>
-                    </select>
-                  </div>
-                  <span className="font-display text-xs font-bold text-emerald-800 rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1 hidden sm:inline">
-                    {activeData.totalClients} Clients
-                  </span>
-                </div>
+              <div className="border-b border-line/70 pb-3.5">
+                <h2 className="font-display text-base font-bold text-title flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  Clients &amp; Work Volume
+                </h2>
               </div>
 
               {/* Chart Graphics */}
@@ -549,67 +393,6 @@ export function ProAnalytics() {
             </Card>
           </div>
 
-          {/* Recent Completed Jobs Table */}
-          <Card className="p-5 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 pb-4">
-              <div>
-                <h2 className="font-display text-base font-bold text-title">
-                  Recent Completed Jobs &amp; Payouts
-                </h2>
-                <p className="mt-0.5 text-xs text-muted">
-                  Homeowners paid you directly upon 100% job satisfaction ($0 middleman fee).
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveTab("jobs")}
-                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                View all jobs ({activeData.completedJobs}) <ArrowUpRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-line/70 text-muted uppercase tracking-wider text-[11px]">
-                    <th className="py-2.5 font-semibold">Client &amp; Location</th>
-                    <th className="py-2.5 font-semibold">Service Performed</th>
-                    <th className="py-2.5 font-semibold">Date</th>
-                    <th className="py-2.5 font-semibold">Direct Payout</th>
-                    <th className="py-2.5 font-semibold text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line/60">
-                  {recentCompletedJobs.slice(0, 4).map((job) => (
-                    <tr key={job.id} className="hover:bg-smoke/50 transition-colors">
-                      <td className="py-3">
-                        <p className="font-semibold text-title">{job.client}</p>
-                        <p className="text-[11px] text-muted flex items-center gap-1 mt-0.5">
-                          <MapPin className="h-3 w-3" />
-                          {job.location}
-                        </p>
-                      </td>
-                      <td className="py-3 max-w-xs sm:max-w-sm pr-4">
-                        <p className="font-semibold text-title leading-snug">{job.service}</p>
-                        <p className="mt-0.5 text-[11px] leading-relaxed text-muted line-clamp-2">
-                          {job.description}
-                        </p>
-                      </td>
-                      <td className="py-3 text-muted">{job.date}</td>
-                      <td className="py-3 font-display font-bold text-title text-sm">{job.amount}</td>
-                      <td className="py-3 text-right">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          Paid Direct
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
         </div>
       )}
 
@@ -695,95 +478,24 @@ export function ProAnalytics() {
       {/* 5. TAB 3: JOBS & CLIENTS (Complete Job Ledger & Retention Analysis)      */}
       {/* ========================================================================= */}
       {activeTab === "jobs" && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          <Card className="p-5 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 pb-4">
-              <div>
-                <h2 className="font-display text-base font-bold text-title">
-                  All Completed Jobs &amp; Client Ledger ({selectedYear})
-                </h2>
-                <p className="mt-0.5 text-xs text-muted">
-                  Full historical records of client requests, ratings received, and payouts.
+        <Card className="overflow-hidden rounded-xl p-0 hover:shadow-xs">
+          <ul className="divide-y divide-line/70">
+            {recentCompletedJobs.map((job) => (
+              <li
+                key={job.id}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-6 py-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_7rem_4.5rem]"
+              >
+                <p className="truncate text-sm font-semibold text-title">{job.client}</p>
+                <p className="hidden truncate text-sm text-muted sm:block">{job.service}</p>
+                <p className="hidden text-sm text-muted sm:block">{job.date}</p>
+                <p className="text-right text-sm font-semibold text-title">{job.amount}</p>
+                <p className="col-span-2 truncate text-sm text-muted sm:hidden">
+                  {job.service} · {job.date}
                 </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-800">
-                  {activeData.completedJobs} Total Completed
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-line/70 text-muted uppercase tracking-wider text-[11px]">
-                    <th className="py-2.5 font-semibold">Client Name</th>
-                    <th className="py-2.5 font-semibold">Location</th>
-                    <th className="py-2.5 font-semibold">Service Details</th>
-                    <th className="py-2.5 font-semibold">Completion Date</th>
-                    <th className="py-2.5 font-semibold">Rating</th>
-                    <th className="py-2.5 font-semibold text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line/60">
-                  {recentCompletedJobs.map((job) => (
-                    <tr key={job.id} className="hover:bg-smoke/50 transition-colors">
-                      <td className="py-3 font-semibold text-title">{job.client}</td>
-                      <td className="py-3 text-muted">{job.location}</td>
-                      <td className="py-3 max-w-xs sm:max-w-sm pr-4">
-                        <p className="font-semibold text-title leading-snug">{job.service}</p>
-                        <p className="mt-0.5 text-[11px] leading-relaxed text-muted line-clamp-2">
-                          {job.description}
-                        </p>
-                      </td>
-                      <td className="py-3 text-muted">{job.date}</td>
-                      <td className="py-3">
-                        <span className="inline-flex items-center gap-0.5 font-semibold text-title">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-500" />
-                          {job.rating}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right font-display font-bold text-title text-sm">
-                        {job.amount}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-
-          {/* Retention Stats Card */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card className="p-4 border-line/80">
-              <span className="block text-[11px] font-semibold text-muted uppercase">Repeat Homeowners</span>
-              <span className="font-display text-2xl font-bold text-title mt-1 block">
-                {activeData.repeatClients}
-              </span>
-              <span className="text-xs text-muted mt-1 block">
-                Satisfied returning clients
-              </span>
-            </Card>
-            <Card className="p-4 border-line/80">
-              <span className="block text-[11px] font-semibold text-muted uppercase">Repeat Rate</span>
-              <span className="font-display text-2xl font-bold text-emerald-600 mt-1 block">
-                {Math.round((activeData.repeatClients / activeData.totalClients) * 100)}%
-              </span>
-              <span className="text-xs text-muted mt-1 block">
-                Well above industry avg (18%)
-              </span>
-            </Card>
-            <Card className="p-4 border-line/80">
-              <span className="block text-[11px] font-semibold text-muted uppercase">Average Rating</span>
-              <span className="font-display text-2xl font-bold text-title mt-1 flex items-center gap-1">
-                4.8 <Star className="h-5 w-5 fill-amber-400 text-amber-500" />
-              </span>
-              <span className="text-xs text-muted mt-1 block">
-                36 verified reviews
-              </span>
-            </Card>
-          </div>
-        </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
     </div>
   );

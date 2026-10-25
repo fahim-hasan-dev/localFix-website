@@ -1,7 +1,13 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { defaultWeeklyHours, type WeeklyHours } from "@/lib/business-hours";
+import {
+  defaultInsuranceDoc,
+  defaultLicenseDoc,
+  type CredentialFile,
+} from "@/lib/credential-file";
 import type { JobStatus } from "@/types";
 
-export type LeadAction = "saved" | "declined" | "scheduled" | "open";
+export type LeadAction = "saved" | "declined" | "scheduled" | "open" | "accepted";
 
 export interface AppNotification {
   id: string;
@@ -106,19 +112,18 @@ export interface ProProfileData {
   yearsInBusiness: string;
   responseTime: string;
   emergency: boolean;
-  businessHours: {
-    weekdays: string;
-    saturday: string;
-    sunday: string;
-  };
+  businessHours: WeeklyHours;
   acceptedPayments: string[];
   services: ProServiceItem[];
   specialOffer: ProSpecialOffer;
   includedPerks: string[];
   licenseNumber: string;
   licenseState: string;
+  licenseDoc: CredentialFile | null;
   insuranceCarrier: string;
   insuranceCoverage: string;
+  insuranceExpires: string;
+  insuranceDoc: CredentialFile | null;
   portfolio: { title: string; image: string }[];
 }
 
@@ -271,17 +276,14 @@ const initialState: FeaturesState = {
     yearsInBusiness: "10+ years",
     responseTime: "Usually under 1 hour",
     emergency: true,
-    businessHours: {
-      weekdays: "7:30 AM – 6:00 PM",
-      saturday: "8:00 AM – 4:00 PM",
-      sunday: "Emergency Only",
-    },
+    businessHours: defaultWeeklyHours(),
     acceptedPayments: [
       "Apple Pay",
       "Cash",
+      "Check",
+      "Credit or debit",
       "Google Pay",
       "PayPal",
-      "Stripe",
       "Venmo",
       "Zelle",
     ],
@@ -335,10 +337,13 @@ const initialState: FeaturesState = {
       "OEM certified plumbing parts",
       "Direct payment on 100% completion ($0 platform fee)",
     ],
-    licenseNumber: "TX-M-42981 (Master Plumber)",
+    licenseNumber: "TX-M-42981",
     licenseState: "TX",
-    insuranceCarrier: "Next Insurance Company",
-    insuranceCoverage: "$1,000,000 General Liability",
+    licenseDoc: defaultLicenseDoc(),
+    insuranceCarrier: "Next Insurance",
+    insuranceCoverage: "$1,000,000",
+    insuranceExpires: "2027-09",
+    insuranceDoc: defaultInsuranceDoc(),
     portfolio: [
       {
         title: "Kitchen supply line repair",
@@ -506,10 +511,7 @@ const featuresSlice = createSlice({
       state.proProfile = {
         ...state.proProfile,
         ...action.payload,
-        businessHours: {
-          ...state.proProfile.businessHours,
-          ...(action.payload.businessHours ?? {}),
-        },
+        businessHours: action.payload.businessHours ?? state.proProfile.businessHours,
         specialOffer: {
           ...state.proProfile.specialOffer,
           ...(action.payload.specialOffer ?? {}),

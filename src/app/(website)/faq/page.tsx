@@ -13,7 +13,7 @@ export default function FaqPage() {
       />
       <FaqSection
         title="Common questions"
-        description="Find answers to common questions about booking, quoting, and verified trade specialists."
+        description="See how to post a request, compare quotes, and pay your pro. Ask us if something is still unclear."
         className="bg-white"
       />
     </>

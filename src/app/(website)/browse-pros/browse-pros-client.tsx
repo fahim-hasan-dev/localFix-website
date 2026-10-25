@@ -216,7 +216,6 @@ export function BrowseProsClient() {
               value={filters.sort}
               onChange={(event) => dispatch(setSort(event.target.value as typeof filters.sort))}
             >
-              <option value="recommended">Recommended</option>
               <option value="rated">Highest rated</option>
               <option value="reviews">Most reviews</option>
               <option value="nearest">Nearest (Distance)</option>

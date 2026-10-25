@@ -29,7 +29,7 @@ function getSidebarIcon(label: string) {
   if (norm.includes("saved")) return Bookmark;
   if (norm.includes("notification")) return Bell;
   if (norm.includes("review")) return Star;
-  if (norm.includes("application")) return FileCheck;
+  if (norm.includes("application") || norm.includes("verif")) return FileCheck;
   if (norm.includes("dispute")) return ShieldCheck;
   if (norm.includes("professional") || norm.includes("member")) return UserRound;
   if (norm.includes("profile")) return UserRound;
@@ -59,6 +59,7 @@ export function DashboardSidebar({
             pathname === item.href ||
             (item.href === "/account" && pathname.startsWith("/account/jobs")) ||
             (item.href === "/pro/jobs" && pathname.startsWith("/pro/jobs/")) ||
+            (item.href === "/pro/pricing" && pathname.startsWith("/pro/transactions")) ||
             (item.href === "/admin/applications" && pathname.startsWith("/admin/applications")) ||
             (item.href === "/account/messages" && pathname.startsWith("/account/messages")) ||
             (item.href === "/pro/messages" && pathname.startsWith("/pro/messages"));

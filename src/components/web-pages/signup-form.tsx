@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Field, TextField } from "@/components/ui/field";
 import { PasswordField } from "@/components/ui/password-field";
 import { GoogleIcon } from "@/components/ui/google-icon";
@@ -147,7 +146,7 @@ export function SignupForm() {
 
   if (step === "otp") {
     return (
-      <Card className="p-6 md:p-8">
+      <div>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
           Step 2 of 2
         </span>
@@ -209,19 +208,19 @@ export function SignupForm() {
             </button>
           </div>
         </form>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="p-5 sm:p-7">
+    <div>
       <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
         Step 1 of 2
       </span>
-      <h1 className="mt-2.5 font-display text-[22px] sm:text-[24px] font-semibold leading-snug tracking-tight text-title">
+      <h1 className="mt-3 font-display text-[22px] sm:text-[26px] font-semibold leading-snug tracking-tight text-title">
         Create a free account
       </h1>
-      <p className="mt-1 font-sans text-sm leading-relaxed text-[#757575]">
+      <p className="mt-2 font-sans text-sm leading-relaxed text-[#757575]">
         {needsAccountForRequest
           ? "You need a homeowner account to create a request. Signup is free."
           : "Choose your role. Homeowners are free. Pros apply for review."}
@@ -230,7 +229,7 @@ export function SignupForm() {
       <div
         role="tablist"
         aria-label="Account type"
-        className="mt-4 sm:mt-5 grid grid-cols-2 rounded-full border border-line bg-smoke p-1"
+        className="mt-6 grid grid-cols-2 rounded-full border border-line bg-smoke p-1"
       >
         {(
           [
@@ -259,8 +258,8 @@ export function SignupForm() {
         })}
       </div>
 
-      <form className="mt-5 space-y-3" onSubmit={submitDetails}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1.5fr_1fr]">
+      <form className="mt-7 space-y-5" onSubmit={submitDetails}>
+        <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-[1.5fr_1fr]">
           <Field label="Full name">
             <TextField
               required
@@ -282,7 +281,7 @@ export function SignupForm() {
           </Field>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2">
           <Field label="Email">
             <TextField
               required
@@ -305,7 +304,7 @@ export function SignupForm() {
           </Field>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2">
           <Field label="Password">
             <PasswordField
               required
@@ -326,7 +325,7 @@ export function SignupForm() {
           </Field>
         </div>
 
-        <label className="flex items-start gap-2.5 pt-1 text-xs leading-5 text-copy">
+        <label className="flex items-start gap-2.5 pt-1 text-sm leading-6 text-copy">
           <input type="checkbox" required className="mt-0.5 h-4 w-4 rounded accent-primary" />
           <span>
             I agree to the{" "}
@@ -347,7 +346,7 @@ export function SignupForm() {
       </form>
 
       {/* Or Divider */}
-      <div className="relative my-4 flex items-center justify-center">
+      <div className="relative my-6 flex items-center justify-center">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-line/80" />
         </div>
@@ -371,6 +370,6 @@ export function SignupForm() {
         href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login"}
         label="Sign in ↗"
       />
-    </Card>
+    </div>
   );
 }

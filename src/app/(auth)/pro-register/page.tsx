@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Steps } from "antd";
+import { CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/cn";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import { AuthLinks } from "@/components/web-pages/auth-links";
 import { PasswordField } from "@/components/ui/password-field";
@@ -13,7 +13,8 @@ import { loginAs } from "@/redux/slices/authSlice";
 import { saveApplicationDraft, submitApplication } from "@/redux/slices/featuresSlice";
 import { useAppDispatch } from "@/redux/hooks";
 
-const steps = ["Account", "Business", "Service area"];
+const steps = ["Account", "Business", "Service area", "Background check"];
+type CheckStatus = "idle" | "running" | "clear";
 
 type FormState = {
   name: string;
@@ -43,6 +44,8 @@ export default function ProRegisterPage() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(empty);
   const [error, setError] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [checkStatus, setCheckStatus] = useState<CheckStatus>("idle");
   const dispatch = useAppDispatch();
   const router = useRouter();
 
@@ -50,10 +53,24 @@ export default function ProRegisterPage() {
     setForm((prev) => ({ ...prev, ...partial }));
   }
 
+  function runBackgroundCheck() {
+    setError("");
+    if (!consent) {
+      setError("Consent is required to run the background check.");
+      return;
+    }
+    setCheckStatus("running");
+    window.setTimeout(() => setCheckStatus("clear"), 1600);
+  }
+
   function next() {
     setError("");
-    if (step < 2) {
+    if (step < 3) {
       setStep((value) => value + 1);
+      return;
+    }
+    if (checkStatus !== "clear") {
+      setError("Run the background check to finish applying.");
       return;
     }
     dispatch(
@@ -62,6 +79,7 @@ export default function ProRegisterPage() {
           Object.entries(form).map(([key, value]) => [key, String(value)]),
         ),
         savedAt: new Date().toISOString(),
+        backgroundCheck: "clear",
       }),
     );
     dispatch(submitApplication());
@@ -82,7 +100,7 @@ export default function ProRegisterPage() {
   }
 
   return (
-    <Card className="max-w-none">
+    <div>
       <h1 className="font-display text-[22px] sm:text-[24px] font-semibold leading-snug tracking-tight text-title">
         Join as a professional
       </h1>
@@ -90,12 +108,37 @@ export default function ProRegisterPage() {
         {step === 0 && "Create your professional account to connect directly with Austin homeowners."}
         {step === 1 && "Tell homeowners about your trade specialty and craftsmanship experience."}
         {step === 2 && "Set your local service territory and service coverage radius."}
+        {step === 3 && "Last step: run a background check. Checkr API will plug in later — this is the frontend only."}
       </p>
 
-      <div className="mt-5">
-        <Steps current={step} items={steps.map((title) => ({ title }))} size="small" />
-      </div>
-      <div className="mt-6 space-y-3">
+      <ol className="relative mt-6 grid grid-cols-4">
+        <span className="absolute top-3 right-[12.5%] left-[12.5%] h-px bg-line" aria-hidden />
+        {steps.map((title, index) => {
+          const done = index < step;
+          const current = index === step;
+          return (
+            <li key={title} className="relative flex flex-col items-center gap-1.5">
+              <span
+                className={cn(
+                  "relative z-10 grid h-6 w-6 place-items-center rounded-full text-[11px] font-bold",
+                  done || current ? "bg-primary text-white" : "bg-white text-muted ring-1 ring-line",
+                )}
+              >
+                {index + 1}
+              </span>
+              <span
+                className={cn(
+                  "whitespace-nowrap text-center font-display text-[12px] font-semibold",
+                  current ? "text-title" : "text-muted",
+                )}
+              >
+                {title}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="mt-7 space-y-5">
         {step === 0 ? (
           <>
             <Field label="Full name *">
@@ -176,6 +219,52 @@ export default function ProRegisterPage() {
             </Field>
           </>
         ) : null}
+        {step === 3 ? (
+          <div className="rounded-2xl border border-line bg-surface/50 p-4">
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                <ShieldCheck className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="font-display text-base font-semibold text-title">Background check</h2>
+                <p className="mt-1 text-sm text-copy">
+                  Identity and criminal screening before your listing can go public. No Checkr API yet — this run is a demo on the frontend.
+                </p>
+              </div>
+            </div>
+
+            <label className="mt-4 flex items-start gap-2.5 text-sm text-copy">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-line"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                disabled={checkStatus === "running"}
+              />
+              I authorize a background check on the information I just submitted.
+            </label>
+
+            <div className="mt-4">
+              {checkStatus === "idle" ? (
+                <Button type="button" variant="ghost" onClick={runBackgroundCheck}>
+                  Run background check
+                </Button>
+              ) : null}
+              {checkStatus === "running" ? (
+                <p className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Checking…
+                </p>
+              ) : null}
+              {checkStatus === "clear" ? (
+                <p className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Clear — you can submit
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
       {error ? <p className="mt-4 text-sm text-error">{error}</p> : null}
       <div className="mt-6 flex flex-wrap gap-2">
@@ -184,11 +273,11 @@ export default function ProRegisterPage() {
             ← Back
           </Button>
         ) : null}
-        <Button type="button" onClick={next}>
-          {step < 2 ? "Next ↗" : "Submit application ↗"}
+        <Button type="button" onClick={next} disabled={step === 3 && checkStatus === "running"}>
+          {step < 3 ? "Next ↗" : "Submit application ↗"}
         </Button>
       </div>
       <AuthLinks prompt="Already have an account?" href="/login?role=pro" label="Sign in ↗" />
-    </Card>
+    </div>
   );
 }

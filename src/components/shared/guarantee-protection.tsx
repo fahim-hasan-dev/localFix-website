@@ -169,7 +169,7 @@ export function GuaranteeCard({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-1">
-              <h5 className="font-display text-sm font-bold text-title">
+              <h5 className="font-display text-sm font-semibold tracking-tight text-title">
                 LocalHomeFix Guarantee
               </h5>
               {showPrice && (
@@ -178,20 +178,20 @@ export function GuaranteeCard({
                 </span>
               )}
             </div>
-            <p className="mt-1 text-xs text-muted leading-relaxed">
-              If you hire this pro, you&apos;re covered by our workmanship &amp; property protection guarantee.{" "}
+            <p className="mt-1 font-sans text-sm leading-5 text-muted">
+              If you hire this pro, you&apos;re covered for workmanship and property.{" "}
               {onLearnMore ? (
                 <button
                   type="button"
                   onClick={handleOpen}
-                  className="font-semibold text-primary hover:underline inline-block cursor-pointer"
+                  className="font-display text-sm font-medium text-primary hover:underline inline cursor-pointer"
                 >
                   Learn more
                 </button>
               ) : (
                 <Link
                   href="/guarantee"
-                  className="font-semibold text-primary hover:underline inline-block"
+                  className="font-display text-sm font-medium text-primary hover:underline"
                 >
                   Learn more
                 </Link>

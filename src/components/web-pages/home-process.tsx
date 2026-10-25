@@ -1,10 +1,5 @@
-"use client";
-
 import { ArrowRight, ClipboardPen, Handshake, Receipt, Scale } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { Button } from "@/components/ui/button";
-import { useAppSelector } from "@/redux/hooks";
-import { postJobHref } from "@/lib/role-access";
 
 const steps = [
   {
@@ -34,8 +29,6 @@ const steps = [
 ];
 
 export function HomeProcess() {
-  const user = useAppSelector((state) => state.auth.user);
-
   return (
     <section className="bg-surface py-[var(--section-sm)] md:py-[var(--section)]">
       <div className="container-site">
@@ -83,12 +76,6 @@ export function HomeProcess() {
               </div>
             );
           })}
-        </div>
-
-        <div className="mt-14 sm:mt-16 flex justify-center">
-          <Button href={postJobHref(user)} size="lg">
-            Post your request free ↗
-          </Button>
         </div>
       </div>
     </section>

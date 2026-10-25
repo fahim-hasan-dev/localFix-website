@@ -11,7 +11,6 @@ const items = [
   { href: "/pro/jobs", label: "Available jobs" },
   { href: "/pro/messages", label: "Messages" },
   { href: "/pro/application", label: "Application" },
-  { href: "/pro/verification", label: "Verification" },
   { href: "/pro/reviews", label: "Reviews" },
   { href: "/pro/pricing", label: "Subscription" },
   { href: "/pro/profile", label: "Profile" },

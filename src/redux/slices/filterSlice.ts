@@ -26,7 +26,7 @@ const initialState: FilterState = {
   query: "",
   category: "",
   zip: "",
-  sort: "recommended",
+  sort: "rated",
   minPrice: "",
   maxPrice: "",
   budgetTier: "",
