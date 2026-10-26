@@ -34,8 +34,6 @@ import { useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/cn";
 import type { Job } from "@/types";
 
-type HomeownerTab = "active" | "all";
-
 export default function AccountPage() {
   const user = useAppSelector((state) => state.auth.user);
   const state = useAppSelector((state) => state);
@@ -45,24 +43,19 @@ export default function AccountPage() {
   );
   const quotes = useAppSelector(selectAllQuotes);
   const bookings = state.marketplace.bookings;
-
-  const [activeTab, setActiveTab] = useState<HomeownerTab>("active");
   const [searchQuery, setSearchQuery] = useState("");
 
   const activeRequests = grouped.awaitingQuotes;
-  const allRequests = grouped.all;
 
   const filteredJobs = useMemo(() => {
-    const list = activeTab === "active" ? activeRequests : allRequests;
-
-    if (!searchQuery.trim()) return list;
+    if (!searchQuery.trim()) return activeRequests;
     const q = searchQuery.toLowerCase().trim();
-    return list.filter((job) => {
+    return activeRequests.filter((job) => {
       const cat = getCategory(job.categorySlug)?.name.toLowerCase() ?? "";
       const text = `${job.title} ${job.description} ${job.city} ${job.zip} ${cat}`.toLowerCase();
       return text.includes(q);
     });
-  }, [activeTab, activeRequests, allRequests, searchQuery]);
+  }, [activeRequests, searchQuery]);
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -74,7 +67,7 @@ export default function AccountPage() {
             Service Requests
           </h1>
           <p className="mt-0.5 text-xs sm:text-sm text-muted">
-            Requests you posted. Click any request to view incoming quotes and hire a pro.
+            Track your repair requests. Click to view incoming quotes and hire a pro.
           </p>
         </div>
 
@@ -88,40 +81,8 @@ export default function AccountPage() {
         </Button>
       </div>
 
-      {/* 2. Simple Tabs: Active Requests vs All History */}
-      <div className="border-b border-line/70">
-        <nav className="flex space-x-2 sm:space-x-4" aria-label="Requests view">
-          {[
-            { id: "active" as const, label: "Active Requests", count: activeRequests.length },
-            { id: "all" as const, label: "All History", count: allRequests.length },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "flex items-center gap-2 border-b-2 py-3 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-colors cursor-pointer",
-                activeTab === tab.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted hover:text-title",
-              )}
-            >
-              <span>{tab.label}</span>
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[11px] font-bold",
-                  activeTab === tab.id ? "bg-primary text-white" : "bg-smoke text-muted",
-                )}
-              >
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* 3. Search Filter */}
-      {grouped.all.length > 0 && (
+      {/* 2. Search Filter */}
+      {activeRequests.length > 0 && (
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
@@ -134,30 +95,19 @@ export default function AccountPage() {
         </div>
       )}
 
-      {/* 4. Request List */}
-      {grouped.all.length === 0 ? (
+      {/* 3. Request List */}
+      {activeRequests.length === 0 ? (
         <div className="mt-4">
           <EmptyState
-            title="No repair requests yet"
-            description="Post a project request to start receiving itemized quotes from verified local contractors with zero middleman markup."
+            title="No open repair requests"
+            description="Post a request to receive upfront quotes from verified local contractors in your area."
             actionLabel="Post a Request"
             href="/account/post-job"
           />
         </div>
       ) : filteredJobs.length === 0 ? (
         <Card className="rounded-[20px] border border-line/80 bg-white p-8 text-center">
-          <p className="font-display text-sm font-semibold text-title">No requests in this tab.</p>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-3 rounded-full border border-line"
-            onClick={() => {
-              setActiveTab("all");
-              setSearchQuery("");
-            }}
-          >
-            Show All Requests
-          </Button>
+          <p className="font-display text-sm font-semibold text-title">No matching requests found.</p>
         </Card>
       ) : (
         <div className="space-y-3">
@@ -308,21 +258,13 @@ export default function AccountPage() {
                       >
                         View in Bookings ↗
                       </Button>
-                    ) : jobQuotes.length >= 2 ? (
+                    ) : jobQuotes.length > 0 ? (
                       <Button
                         href={`/account/jobs/${job.id}`}
                         size="sm"
                         className="rounded-full text-xs font-semibold shadow-xs"
                       >
-                        Compare Quotes ({jobQuotes.length}) ↗
-                      </Button>
-                    ) : jobQuotes.length === 1 ? (
-                      <Button
-                        href={`/account/jobs/${job.id}`}
-                        size="sm"
-                        className="rounded-full text-xs font-semibold shadow-xs"
-                      >
-                        Review Quote ↗
+                        View Quotes ({jobQuotes.length}) ↗
                       </Button>
                     ) : (
                       <Button
