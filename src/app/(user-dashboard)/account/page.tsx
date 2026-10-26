@@ -27,8 +27,8 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { getCategory, getPro, urgencyLabels } from "@/Mockdata";
 import {
   jobCardSummary,
+  selectAllJobs,
   selectAllQuotes,
-  selectHomeownerJobsGrouped,
 } from "@/lib/marketplace";
 import { useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/cn";
@@ -36,16 +36,21 @@ import type { Job } from "@/types";
 
 export default function AccountPage() {
   const user = useAppSelector((state) => state.auth.user);
-  const state = useAppSelector((state) => state);
-  const grouped = useMemo(
-    () => selectHomeownerJobsGrouped(state, user?.name ?? "Homeowner"),
-    [state, user?.name],
-  );
+  const allJobs = useAppSelector(selectAllJobs);
   const quotes = useAppSelector(selectAllQuotes);
-  const bookings = state.marketplace.bookings;
+  const bookings = useAppSelector((state) => state.marketplace.bookings);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const activeRequests = grouped.awaitingQuotes;
+  const activeRequests = useMemo(() => {
+    const name = user?.name ?? "Homeowner";
+    const mine =
+      !name || name === "Homeowner" || name === "Maya Chen"
+        ? allJobs.filter((j) => j.homeownerName === "Maya Chen" || j.homeownerName === "Homeowner")
+        : allJobs.filter((j) => j.homeownerName === name || j.homeownerName === "Maya Chen");
+    return mine.filter((j) =>
+      ["draft", "active", "getting_quotes", "quotes_in"].includes(j.status),
+    );
+  }, [allJobs, user?.name]);
 
   const filteredJobs = useMemo(() => {
     if (!searchQuery.trim()) return activeRequests;
