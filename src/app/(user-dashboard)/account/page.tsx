@@ -34,7 +34,7 @@ import { useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/cn";
 import type { Job } from "@/types";
 
-type HomeownerTab = "open" | "quotes" | "all" | "booked";
+type HomeownerTab = "active" | "all";
 
 export default function AccountPage() {
   const user = useAppSelector((state) => state.auth.user);
@@ -45,34 +45,15 @@ export default function AccountPage() {
   );
   const quotes = useAppSelector(selectAllQuotes);
   const bookings = state.marketplace.bookings;
-  const completions = state.marketplace.completions;
 
-  const [activeTab, setActiveTab] = useState<HomeownerTab>("open");
+  const [activeTab, setActiveTab] = useState<HomeownerTab>("active");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const openRequests = grouped.awaitingQuotes;
-  const quotesReadyRequests = useMemo(
-    () => grouped.awaitingQuotes.filter((j) => quotes.some((q) => q.jobId === j.id)),
-    [grouped.awaitingQuotes, quotes],
-  );
-  const bookedJobs = useMemo(
-    () => [...grouped.active, ...grouped.completed],
-    [grouped.active, grouped.completed],
-  );
-
-  const tabCounts = {
-    open: openRequests.length,
-    quotes: quotesReadyRequests.length,
-    all: grouped.all.length,
-    booked: bookedJobs.length,
-  };
+  const activeRequests = grouped.awaitingQuotes;
+  const allRequests = grouped.all;
 
   const filteredJobs = useMemo(() => {
-    let list: Job[] = [];
-    if (activeTab === "open") list = openRequests;
-    else if (activeTab === "quotes") list = quotesReadyRequests;
-    else if (activeTab === "booked") list = bookedJobs;
-    else list = grouped.all;
+    const list = activeTab === "active" ? activeRequests : allRequests;
 
     if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase().trim();
@@ -81,7 +62,7 @@ export default function AccountPage() {
       const text = `${job.title} ${job.description} ${job.city} ${job.zip} ${cat}`.toLowerCase();
       return text.includes(q);
     });
-  }, [activeTab, openRequests, quotesReadyRequests, bookedJobs, grouped.all, searchQuery]);
+  }, [activeTab, activeRequests, allRequests, searchQuery]);
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -90,70 +71,30 @@ export default function AccountPage() {
         <div>
           <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight flex items-center gap-2.5">
             <ClipboardList className="h-6 w-6 text-primary" />
-            Service Requests &amp; Quotes
+            Service Requests
           </h1>
           <p className="mt-0.5 text-xs sm:text-sm text-muted">
-            Track incoming proposals from verified local contractors, compare itemized pricing, and confirm bookings.
+            Requests you posted. Click any request to view incoming quotes and hire a pro.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <Button
-            href="/account/bookings"
-            variant="ghost"
-            size="sm"
-            className="rounded-full text-xs font-semibold border border-line hover:border-primary/40 hover:text-primary"
-          >
-            My Bookings ↗
-          </Button>
-          <Button
-            href="/account/post-job"
-            size="sm"
-            className="rounded-full gap-1.5 shadow-xs font-semibold"
-          >
-            <Plus className="h-4 w-4" />
-            New Request
-          </Button>
-        </div>
+        <Button
+          href="/account/post-job"
+          size="sm"
+          className="rounded-full gap-1.5 shadow-xs font-semibold self-start sm:self-auto"
+        >
+          <Plus className="h-4 w-4" />
+          New Request
+        </Button>
       </div>
 
-      {/* 2. Top Alert Banner for Active Bookings */}
-      {bookedJobs.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/[0.04] p-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-              <CalendarCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-title">
-                You have {bookedJobs.length} confirmed booking{bookedJobs.length > 1 ? "s" : ""}
-              </p>
-              <p className="text-xs text-muted">
-                Track arrival schedules, on-site repairs, and direct settlement receipts in My Bookings.
-              </p>
-            </div>
-          </div>
-          <Button
-            href="/account/bookings"
-            size="sm"
-            className="rounded-full text-xs font-semibold shadow-xs"
-          >
-            Go to My Bookings →
-          </Button>
-        </div>
-      )}
-
-      {/* 3. Lifecycle Tab Bar */}
+      {/* 2. Simple Tabs: Active Requests vs All History */}
       <div className="border-b border-line/70">
-        <nav className="flex space-x-1 sm:space-x-3" aria-label="Requests lifecycle">
-          {(
-            [
-              { id: "open", label: "Open Requests", count: tabCounts.open },
-              { id: "quotes", label: "Quotes Ready", count: tabCounts.quotes },
-              { id: "all", label: "All Requests", count: tabCounts.all },
-              { id: "booked", label: "Booked Pros", count: tabCounts.booked },
-            ] as const
-          ).map((tab) => (
+        <nav className="flex space-x-2 sm:space-x-4" aria-label="Requests view">
+          {[
+            { id: "active" as const, label: "Active Requests", count: activeRequests.length },
+            { id: "all" as const, label: "All History", count: allRequests.length },
+          ].map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -168,7 +109,7 @@ export default function AccountPage() {
               <span>{tab.label}</span>
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.2 text-[11px] font-bold",
+                  "rounded-full px-2 py-0.5 text-[11px] font-bold",
                   activeTab === tab.id ? "bg-primary text-white" : "bg-smoke text-muted",
                 )}
               >
@@ -242,7 +183,7 @@ export default function AccountPage() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    {/* Header Badges: Only Category, Status, and Direct if applicable */}
+                    {/* Clean Header Badges */}
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-md bg-smoke px-2 py-0.5 text-[11px] font-semibold text-title/80">
                         {getCategory(job.categorySlug)?.name}
@@ -255,7 +196,19 @@ export default function AccountPage() {
                         </span>
                       )}
 
-                      <StatusBadge status={job.status} />
+                      {!isHired ? (
+                        jobQuotes.length > 0 ? (
+                          <span className="rounded-full bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                            {jobQuotes.length} Quote{jobQuotes.length > 1 ? "s" : ""} Received
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-muted">
+                            Awaiting Quotes
+                          </span>
+                        )
+                      ) : (
+                        <StatusBadge status={job.status} />
+                      )}
 
                       {job.status === "awaiting_confirm" && (
                         <span className="rounded-full bg-emerald-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 animate-pulse">
