@@ -275,6 +275,7 @@ export function QuoteDetail({
             {quote.warranty ? <SpecBlockItem icon={ShieldCheck} label="Warranty Guarantee" value={quote.warranty} /> : null}
             {quote.paymentTerms ? <SpecBlockItem icon={Wallet} label="Direct Payment" value={quote.paymentTerms} /> : null}
             {quote.exclusions ? <SpecBlockItem icon={Ban} label="Not Included" value={quote.exclusions} /> : null}
+            {quote.expiresAt ? <SpecBlockItem icon={Clock} label="Quote Valid Until" value={quote.expiresAt} /> : null}
           </div>
 
           {quote.notes ? (

@@ -8,6 +8,7 @@ import {
   Clock,
   FileCheck2,
   Layers,
+  MapPin,
   MessageSquare,
   ShieldCheck,
   Sparkles,
@@ -237,7 +238,12 @@ export function RequestDetail({
   const photosForJob = storedPhotos.length ? storedPhotos : job.photos ?? [];
   const category = getCategory(job.categorySlug);
   const hiredPro = hiredQuote ? getPro(hiredQuote.proId) : null;
-  const meta = [category?.name, `${job.city}, ${job.state}`, urgencyLabels[job.urgency]].filter(Boolean);
+  const meta = [
+    category?.name,
+    `${job.city}, ${job.state} ${job.zip}`,
+    urgencyLabels[job.urgency],
+    isProView ? `Client: ${job.homeownerName}` : null,
+  ].filter(Boolean);
 
   const workActive =
     job.status === "hired" ||
@@ -256,13 +262,25 @@ export function RequestDetail({
 
   const requestedPro = job.requestedProId ? getPro(job.requestedProId) : null;
   const requestFacts = jobRequestFacts(job);
-  const requestSummary = jobCardSummary(job);
 
   return (
     <div className="space-y-4">
-      <Link href={backHref} className="inline-flex font-display text-sm font-semibold text-primary">
-        ← {backLabel}
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href={backHref} className="inline-flex font-display text-sm font-semibold text-primary">
+          ← {backLabel}
+        </Link>
+        {isProView ? (
+          <Button
+            href={`/pro/messages?dm=${job.id}`}
+            size="sm"
+            variant="ghost"
+            className="rounded-full text-xs font-semibold border border-line"
+          >
+            <MessageSquare className="h-3.5 w-3.5 mr-1 text-primary" />
+            Message {job.homeownerName}
+          </Button>
+        ) : null}
+      </div>
 
       <div className="rounded-[16px] border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -284,9 +302,20 @@ export function RequestDetail({
           </div>
           <StatusBadge status={job.status} />
         </div>
-        {requestSummary ? (
-          <p className="mt-3 line-clamp-3 text-sm leading-6 text-copy">{requestSummary}</p>
+
+        {/* Full Detailed Description Input -> Output */}
+        {job.description ? (
+          <div className="mt-3.5 rounded-xl border border-line/70 bg-smoke/40 p-3.5">
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
+              Project Description
+            </h2>
+            <p className="mt-1 text-xs sm:text-sm leading-relaxed text-copy whitespace-pre-line">
+              {job.description}
+            </p>
+          </div>
         ) : null}
+
+        {/* Request Facts (Property, Budget, Materials, Timing) */}
         {requestFacts.length ? (
           <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted border-t border-line/60 pt-3">
             {requestFacts.map((fact) => (
@@ -297,12 +326,24 @@ export function RequestDetail({
             ))}
           </div>
         ) : null}
+
+        {/* Attached Photos */}
         {photosForJob.length ? (
-          <div className="mt-3 flex gap-2">
-            {photosForJob.slice(0, 4).map((src) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={src} src={src} alt="" className="h-12 w-12 rounded-lg object-cover" />
-            ))}
+          <div className="mt-4 border-t border-line/60 pt-3">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">
+              Attached Photos ({photosForJob.length})
+            </p>
+            <div className="flex flex-wrap gap-2.5">
+              {photosForJob.map((src, idx) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={idx}
+                  src={src}
+                  alt={`Job photo ${idx + 1}`}
+                  className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl border border-line object-cover shadow-2xs hover:opacity-95 transition"
+                />
+              ))}
+            </div>
           </div>
         ) : null}
 
@@ -438,11 +479,27 @@ export function RequestDetail({
               <dt className="text-xs text-muted font-medium">Assigned Contractor</dt>
               <dd className="font-semibold text-title flex items-center gap-1.5 mt-0.5">
                 <span>{hiredPro?.name ?? "Professional"}</span>
+                {hiredPro?.clearance === "cleared" ? (
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                ) : null}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted font-medium">Client / Homeowner</dt>
+              <dd className="font-semibold text-title flex items-center gap-1.5 mt-0.5">
+                <span>{job.homeownerName}</span>
               </dd>
             </div>
             <div>
               <dt className="text-xs text-muted font-medium">Agreed Total Price</dt>
               <dd className="font-display text-lg font-bold text-title mt-0.5">${booking.agreedPrice}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted font-medium">Service Location</dt>
+              <dd className="font-semibold text-title mt-0.5 flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-primary" />
+                <span>{job.city}, {job.state} {job.zip}</span>
+              </dd>
             </div>
             <div>
               <dt className="text-xs text-muted font-medium">Appointment &amp; Arrival Window</dt>
