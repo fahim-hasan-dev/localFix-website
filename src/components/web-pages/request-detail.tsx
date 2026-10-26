@@ -1,18 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
+  Ban,
   Check,
   CheckCircle2,
   Clock,
   FileCheck2,
-  Layers,
   MapPin,
   MessageSquare,
   ShieldCheck,
-  Sparkles,
   Star,
+  Trash2,
   Truck,
   Wrench,
   X,
@@ -24,7 +25,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import {
-  jobCardSummary,
   jobRequestFacts,
   paymentMethodLabels,
   selectBooking,
@@ -39,13 +39,12 @@ import {
   urgencyLabels,
 } from "@/Mockdata";
 import {
-  acknowledgeChangeRequest,
-  addChangeRequest,
+  addQuote,
   confirmBooking,
+  deleteJob,
   homeownerConfirmComplete,
   proMarkComplete,
   requestReschedule,
-  resolveChangeRequest,
   setPaymentArrangement,
 } from "@/redux/slices/marketplaceSlice";
 import {
@@ -71,7 +70,7 @@ export function RequestDetail({
   id,
   backHref,
   backLabel,
-  inboxHref,
+  inboxHref: _inboxHref,
   canHire = false,
   viewer = "homeowner",
 }: {
@@ -82,6 +81,7 @@ export function RequestDetail({
   canHire?: boolean;
   viewer?: "homeowner" | "pro";
 }) {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const job = useAppSelector((state) => selectJob(state, id));
   const quotes = useAppSelector((state) => selectQuotesForJob(state, id));
@@ -93,14 +93,47 @@ export function RequestDetail({
   const marketplaceReady = useAppSelector((state) => state.marketplace.hydrated);
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[id]);
   const hiredQuote = quotes.find((quote) => quote.id === hiredQuoteId);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [reviewRating, setReviewRating] = useState<number>(5);
+
+  const isJobBooked = Boolean(
+    job && ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm"].includes(job.status)
+  );
+
+  function handleConfirmCancel() {
+    if (!job) return;
+    if (isJobBooked) {
+      dispatch(setJobStatus({ jobId: job.id, status: "cancelled" }));
+      dispatch(
+        addNotification({
+          title: "Booking Cancelled",
+          body: `Your booking for "${job.title}" has been cancelled.`,
+          href: "/account/bookings",
+          createdAt: new Date().toISOString(),
+          role: "homeowner",
+        }),
+      );
+      setSavedMsg("Booking cancelled.");
+      setShowCancelModal(false);
+    } else {
+      dispatch(deleteJob(job.id));
+      dispatch(
+        addNotification({
+          title: "Request Deleted",
+          body: `Your service request "${job.title}" has been deleted.`,
+          href: "/account",
+          createdAt: new Date().toISOString(),
+          role: "homeowner",
+        }),
+      );
+      router.push(backHref);
+    }
+  }
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [reviewBody, setReviewBody] = useState("");
   const [savedMsg, setSavedMsg] = useState("");
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleWindow, setRescheduleWindow] = useState("10:00 AM – 12:00 PM (Late Morning)");
-  const [changeAmount, setChangeAmount] = useState("");
-  const [changeReason, setChangeReason] = useState("");
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -111,7 +144,6 @@ export function RequestDetail({
   const [settleInspected, setSettleInspected] = useState(true);
   const [arrangePay, setArrangePay] = useState<DirectPaymentMethod>("cash");
   const [selectedReviewTags, setSelectedReviewTags] = useState<string[]>([]);
-  const [wouldRecommend, setWouldRecommend] = useState<"yes" | "neutral" | "no">("yes");
   const existingReview = useAppSelector((state) =>
     state.features.reviews.find((item) => item.jobId === id)
   );
@@ -206,6 +238,28 @@ export function RequestDetail({
     [quotes],
   );
 
+  const requestedPro = job?.requestedProId ? getPro(job.requestedProId) : null;
+
+  useEffect(() => {
+    if (!job || !requestedPro || quotes.length > 0) return;
+    dispatch(
+      addQuote({
+        jobId: job.id,
+        proId: requestedPro.id,
+        priceType: "fixed",
+        amount: requestedPro.startingPrice || 140,
+        scope: `Full service for ${job.title} based on your project description.`,
+        availability: job.urgency === "asap" ? "Same day / tomorrow" : "Next 1–3 business days",
+        estimatedDuration: "2–3 hours",
+        proposedSchedule: "Tomorrow 10:00 AM – 12:00 PM",
+        paymentTerms: "Direct to pro upon job completion (Cash, Card, or Zelle).",
+        warranty: "30-day workmanship guarantee",
+        materialsIncluded: true,
+        notes: "I have reviewed your request and would be glad to help you with this project.",
+      }),
+    );
+  }, [dispatch, job, quotes.length, requestedPro]);
+
   if (!marketplaceReady) {
     return (
       <div className="rounded-[16px] border border-line bg-white p-6">
@@ -260,7 +314,6 @@ export function RequestDetail({
     "Flexible (Anytime during business hours)",
   ];
 
-  const requestedPro = job.requestedProId ? getPro(job.requestedProId) : null;
   const requestFacts = jobRequestFacts(job);
 
   return (
@@ -269,17 +322,40 @@ export function RequestDetail({
         <Link href={backHref} className="inline-flex font-display text-sm font-semibold text-primary">
           ← {backLabel}
         </Link>
-        {isProView ? (
-          <Button
-            href={`/pro/messages?dm=${job.id}`}
-            size="sm"
-            variant="ghost"
-            className="rounded-full text-xs font-semibold border border-line"
-          >
-            <MessageSquare className="h-3.5 w-3.5 mr-1 text-primary" />
-            Message {job.homeownerName}
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {!isProView && job.status !== "completed" && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCancelModal(true)}
+              className="rounded-full text-xs font-semibold text-muted hover:text-error hover:bg-error/10 gap-1.5 cursor-pointer"
+            >
+              {isJobBooked ? (
+                <>
+                  <Ban className="h-3.5 w-3.5 text-error" />
+                  <span className="text-error font-medium">Cancel Booking</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5 text-error" />
+                  <span className="text-error font-medium">Delete Request</span>
+                </>
+              )}
+            </Button>
+          )}
+          {isProView ? (
+            <Button
+              href={`/pro/messages?dm=${job.id}`}
+              size="sm"
+              variant="ghost"
+              className="rounded-full text-xs font-semibold border border-line"
+            >
+              <MessageSquare className="h-3.5 w-3.5 mr-1 text-primary" />
+              Message {job.homeownerName}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <div className="rounded-[16px] border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
@@ -303,16 +379,11 @@ export function RequestDetail({
           <StatusBadge status={job.status} />
         </div>
 
-        {/* Full Detailed Description Input -> Output */}
+        {/* Project Description */}
         {job.description ? (
-          <div className="mt-3.5 rounded-xl border border-line/70 bg-smoke/40 p-3.5">
-            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
-              Project Description
-            </h2>
-            <p className="mt-1 text-xs sm:text-sm leading-relaxed text-copy whitespace-pre-line">
-              {job.description}
-            </p>
-          </div>
+          <p className="mt-3 text-xs sm:text-sm leading-relaxed text-copy whitespace-pre-line">
+            {job.description}
+          </p>
         ) : null}
 
         {/* Request Facts (Property, Budget, Materials, Timing) */}
@@ -347,30 +418,19 @@ export function RequestDetail({
           </div>
         ) : null}
 
-        {canHire && job.status !== "cancelled" && job.status !== "completed" && job.status !== "disputed" ? (
-          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line/70 pt-3">
+        {canHire && job.status === "cancelled" && !hiredQuoteId ? (
+          <div className="mt-3 flex items-center justify-between border-t border-line/70 pt-3">
+            <span className="text-xs font-medium text-muted">Request cancelled.</span>
             <button
               type="button"
-              className="text-xs font-semibold text-muted hover:text-title"
+              className="text-xs font-semibold text-primary hover:underline cursor-pointer"
               onClick={() => {
-                dispatch(setJobStatus({ jobId: id, status: "cancelled" }));
-                setSavedMsg("Request closed.");
+                dispatch(setJobStatus({ jobId: id, status: "getting_quotes" }));
+                setSavedMsg("Reposted.");
               }}
             >
-              Cancel
+              Repost Request
             </button>
-            {!hiredQuoteId ? (
-              <button
-                type="button"
-                className="text-xs font-semibold text-muted hover:text-title"
-                onClick={() => {
-                  dispatch(setJobStatus({ jobId: id, status: "getting_quotes" }));
-                  setSavedMsg("Reposted.");
-                }}
-              >
-                Repost
-              </button>
-            ) : null}
           </div>
         ) : null}
         {savedMsg ? <p className="mt-2 text-xs font-medium text-success">{savedMsg}</p> : null}
@@ -805,131 +865,7 @@ export function RequestDetail({
         </Card>
       ) : null}
 
-      {/* Change requests */}
-      {(isProView || canHire) && hiredQuoteId && workActive ? (
-        <Card>
-          <h2 className="text-lg">Change requests</h2>
-          <p className="mt-1 text-sm text-copy">
-            Extra work or price changes need both parties to acknowledge before the agreed job value updates.
-          </p>
-          {isProView || canHire ? (
-            <div className="mt-4 grid gap-3 sm:grid-cols-[140px_1fr_auto]">
-              <Field label="Extra ($)">
-                <TextField
-                  type="number"
-                  min={1}
-                  value={changeAmount}
-                  onChange={(e) => setChangeAmount(e.target.value)}
-                  placeholder="75"
-                />
-              </Field>
-              <Field label="Why">
-                <TextField
-                  value={changeReason}
-                  onChange={(e) => setChangeReason(e.target.value)}
-                  placeholder="Corroded shutoff valve needs replace"
-                />
-              </Field>
-              <div className="flex items-end">
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!changeAmount || changeReason.trim().length < 6}
-                  onClick={() => {
-                    dispatch(
-                      addChangeRequest({
-                        jobId: id,
-                        amount: Number(changeAmount),
-                        reason: changeReason.trim(),
-                        proposedBy: isProView ? "pro" : "homeowner",
-                      }),
-                    );
-                    dispatch(
-                      addNotification({
-                        title: "Price change proposed",
-                        body: `+$${changeAmount} needs both parties to acknowledge before the agreed job value updates.`,
-                        href: isProView ? `/account/jobs/${id}` : `/pro/jobs/${id}`,
-                        createdAt: "Just now",
-                        role: isProView ? "homeowner" : "pro",
-                      }),
-                    );
-                    setChangeAmount("");
-                    setChangeReason("");
-                    setSavedMsg("Change request sent.");
-                  }}
-                >
-                  Send
-                </Button>
-              </div>
-            </div>
-          ) : null}
-          <ul className="mt-4 space-y-2">
-            {changeRequests.length === 0 ? (
-              <li className="text-sm text-muted">No change requests yet.</li>
-            ) : (
-              changeRequests.map((cr) => (
-                <li
-                  key={cr.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-line px-3 py-2 text-sm"
-                >
-                  <span>
-                    <span className="font-semibold text-title">+${cr.amount}</span> — {cr.reason}
-                    <span className="ml-2 text-muted">({cr.status})</span>
-                    {cr.status === "pending" ? (
-                      <span className="ml-2 text-xs text-muted">
-                        {cr.homeownerAcknowledged ? "Homeowner acknowledged" : "Needs homeowner"}
-                        {" · "}
-                        {cr.proAcknowledged ? "Pro acknowledged" : "Needs pro"}
-                      </span>
-                    ) : null}
-                  </span>
-                  {canHire && cr.status === "pending" && !cr.homeownerAcknowledged ? (
-                    <span className="flex gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => {
-                          dispatch(acknowledgeChangeRequest({ id: cr.id, party: "homeowner" }));
-                          setSavedMsg(
-                            cr.proAcknowledged
-                              ? "Both parties acknowledged — agreed price updated."
-                              : "Your acknowledgment recorded. Waiting on the professional.",
-                          );
-                        }}
-                      >
-                        Acknowledge
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => dispatch(resolveChangeRequest({ id: cr.id, status: "rejected" }))}
-                      >
-                        Reject
-                      </Button>
-                    </span>
-                  ) : isProView && cr.status === "pending" && !cr.proAcknowledged ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => {
-                        dispatch(acknowledgeChangeRequest({ id: cr.id, party: "pro" }));
-                        setSavedMsg(
-                          cr.homeownerAcknowledged
-                            ? "Both parties acknowledged — agreed price updated."
-                            : "Your acknowledgment recorded. Waiting on the homeowner.",
-                        );
-                      }}
-                    >
-                      Acknowledge
-                    </Button>
-                  ) : null}
-                </li>
-              ))
-            )}
-          </ul>
-        </Card>
-      ) : null}
+
 
       {!isProView ? (
         <>
@@ -949,19 +885,59 @@ export function RequestDetail({
             </div>
             {sortedQuotes.length === 0 ? (
               requestedPro ? (
-                <div className="mt-3 flex items-center gap-3 rounded-2xl border border-line/80 px-3.5 py-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-title text-sm font-semibold text-white">
-                    {initials(requestedPro.name)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-display text-sm font-semibold text-title">{requestedPro.name}</p>
-                    <p className="text-xs text-muted">Waiting for a quote</p>
-                  </div>
-                  {inboxHref ? (
-                    <Link href={inboxHref} className="text-xs font-semibold text-primary hover:underline">
-                      Message
+                <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-line/80 bg-white p-3.5 sm:px-4 sm:py-3.5 shadow-xs">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Link
+                      href={`/browse-pros/${requestedPro.id}`}
+                      title={`View ${requestedPro.name}'s profile`}
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-title text-sm font-semibold text-white transition hover:ring-2 hover:ring-primary/40"
+                    >
+                      {initials(requestedPro.name)}
                     </Link>
-                  ) : null}
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/browse-pros/${requestedPro.id}`}
+                        className="truncate font-display text-sm font-bold text-title hover:text-primary transition-colors hover:underline block"
+                      >
+                        {requestedPro.name}
+                      </Link>
+                      <p className="mt-0.5 text-xs text-muted flex items-center gap-1.5">
+                        <span>★ {requestedPro.rating.toFixed(1)}</span>
+                        <span>•</span>
+                        <span>Starting at ${requestedPro.startingPrice}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 border-t border-line/50 pt-2.5 sm:border-0 sm:pt-0">
+                    <span className="font-display text-base font-bold text-title">
+                      ${requestedPro.startingPrice || 140} fixed
+                    </span>
+                    <Button
+                      onClick={() => {
+                        dispatch(
+                          addQuote({
+                            jobId: job.id,
+                            proId: requestedPro.id,
+                            priceType: "fixed",
+                            amount: requestedPro.startingPrice || 140,
+                            scope: `Full service for ${job.title} based on your project description.`,
+                            availability: job.urgency === "asap" ? "Same day / tomorrow" : "Next 1–3 business days",
+                            estimatedDuration: "2–3 hours",
+                            proposedSchedule: "Tomorrow 10:00 AM – 12:00 PM",
+                            paymentTerms: "Direct to pro upon job completion.",
+                            warranty: "30-day workmanship guarantee",
+                            materialsIncluded: true,
+                            notes: "I have reviewed your request and would be glad to help.",
+                          }),
+                        );
+                      }}
+                      size="sm"
+                      className="rounded-full text-xs font-semibold shadow-2xs"
+                    >
+                      View Quotation →
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <p className="mt-3 text-sm text-muted">Quotes from matched pros will show here.</p>
@@ -1533,6 +1509,42 @@ export function RequestDetail({
                 className="rounded-full text-xs font-semibold"
               >
                 {existingReview ? "Save Changes" : "Submit Review"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Cancel Request Confirmation Modal */}
+      {showCancelModal && job ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-error/10 text-error">
+              {isJobBooked ? <Ban className="h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
+            </div>
+            <h3 className="font-display text-lg font-bold text-title mt-3">
+              {isJobBooked ? "Cancel Booking?" : "Delete Request?"}
+            </h3>
+            <p className="mt-1.5 text-xs sm:text-sm text-muted leading-relaxed">
+              {isJobBooked
+                ? `Are you sure you want to cancel this booking? The assigned pro will be notified.`
+                : "Are you sure you want to delete this request? This cannot be undone."}
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCancelModal(false)}
+                className="rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                {isJobBooked ? "Keep Booking" : "Cancel"}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleConfirmCancel}
+                className="rounded-xl text-xs font-semibold bg-error hover:bg-error/90 text-white shadow-xs cursor-pointer"
+              >
+                {isJobBooked ? "Cancel Booking" : "Delete"}
               </Button>
             </div>
           </div>

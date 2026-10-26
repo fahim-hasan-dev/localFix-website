@@ -9,6 +9,7 @@ import {
   Clock,
   CreditCard,
   Play,
+  Receipt,
   ShieldCheck,
   X,
 } from "lucide-react";
@@ -400,9 +401,17 @@ export default function PricingPage() {
 
       <Link
         href="/pro/transactions"
-        className="flex items-center justify-between rounded-xl border border-line bg-white px-5 py-4 hover:border-primary/40"
+        className="flex items-center justify-between rounded-2xl border border-line/80 bg-white p-4 sm:p-5 hover:border-primary/40 hover:shadow-xs transition"
       >
-        <span className="font-display text-sm font-semibold text-title">Transaction history</span>
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+            <Receipt className="h-5 w-5" />
+          </div>
+          <div>
+            <span className="font-display text-sm font-bold text-title block">Subscription Billing &amp; Invoices</span>
+            <span className="text-xs text-muted">View past monthly invoices, receipts, and membership statements</span>
+          </div>
+        </div>
         <ChevronRight className="h-4 w-4 text-muted" />
       </Link>
 

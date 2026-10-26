@@ -8,7 +8,9 @@ import { useAppSelector } from "@/redux/hooks";
 
 const items = [
   { href: "/pro", label: "Overview" },
-  { href: "/pro/jobs", label: "Jobs & Schedule" },
+  { href: "/pro/bookings", label: "My Bookings" },
+  { href: "/pro/jobs", label: "Quote Requests & Leads" },
+  { href: "/pro/services", label: "Services & Pricing" },
   { href: "/pro/messages", label: "Messages" },
   { href: "/pro/application", label: "Application" },
   { href: "/pro/reviews", label: "Reviews" },

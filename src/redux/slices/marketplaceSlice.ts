@@ -708,6 +708,14 @@ const marketplaceSlice = createSlice({
       }
       persist(state);
     },
+    deleteJob(state, action: PayloadAction<string>) {
+      const jobId = action.payload;
+      state.extraJobs = state.extraJobs.filter((j) => j.id !== jobId);
+      delete state.hiredByJob[jobId];
+      delete state.bookings[jobId];
+      delete state.completions[jobId];
+      persist(state);
+    },
     startMembership(state) {
       state.membershipActive = true;
       persist(state);
@@ -722,6 +730,7 @@ const marketplaceSlice = createSlice({
 export const {
   hydrateMarketplace,
   addJob,
+  deleteJob,
   addQuote,
   hireQuote,
   rejectSiblingOffers,

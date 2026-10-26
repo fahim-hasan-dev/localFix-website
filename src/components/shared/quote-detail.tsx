@@ -200,19 +200,40 @@ export function QuoteDetail({
       <article className="overflow-hidden rounded-[16px] border border-line/80 bg-white shadow-xs">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line/70 px-5 py-4 sm:px-6">
           <div className="flex min-w-0 items-start gap-3">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-title text-base font-semibold text-white">
-              {(pro?.name ?? "P").charAt(0)}
-            </span>
+            {pro ? (
+              <Link
+                href={`/browse-pros/${pro.id}`}
+                title={`View ${pro.name}'s profile`}
+                className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-title text-base font-semibold text-white transition hover:ring-2 hover:ring-primary/40 cursor-pointer"
+              >
+                {pro.name.charAt(0)}
+              </Link>
+            ) : (
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-title text-base font-semibold text-white">
+                P
+              </span>
+            )}
             <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-2 font-display text-lg font-semibold text-title">
-                {pro?.name ?? "Professional"}
+              <div className="flex flex-wrap items-center gap-2">
+                {pro ? (
+                  <Link
+                    href={`/browse-pros/${pro.id}`}
+                    className="font-display text-lg font-semibold text-title hover:text-primary transition-colors hover:underline"
+                  >
+                    {pro.name}
+                  </Link>
+                ) : (
+                  <span className="font-display text-lg font-semibold text-title">
+                    Professional
+                  </span>
+                )}
                 {pro?.clearance === "cleared" ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
                     <ShieldCheck className="h-3 w-3" />
                     Verified
                   </span>
                 ) : null}
-              </p>
+              </div>
               <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
                 {pro?.rating ? (
                   <span className="inline-flex items-center gap-1 font-semibold text-title">

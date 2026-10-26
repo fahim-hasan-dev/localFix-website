@@ -10,7 +10,9 @@ import {
   Plus,
   ShieldCheck,
   Trash2,
+  Upload,
   Wrench,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -75,8 +77,8 @@ export function ProProfileForm() {
   const proProfile = useAppSelector((state) => state.features.proProfile);
 
   const [activeTab, setActiveTab] = useState<
-    "services" | "overview" | "hours" | "credentials" | "portfolio"
-  >("services");
+    "overview" | "hours" | "credentials" | "portfolio"
+  >("overview");
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -97,20 +99,12 @@ export function ProProfileForm() {
     allDaysMatch(normalizeWeeklyHours(proProfile.businessHours)) ? "all" : "custom",
   );
 
-  // Inline "Add Service" state
-  const [newService, setNewService] = useState({
-    name: "",
-    price: 95,
-    unit: "starting rate",
-    description: "",
-  });
-  const [showAddService, setShowAddService] = useState(false);
-
-  // Inline "Add Photo" state
+  // Modal "Add Photo" state
   const [newPhoto, setNewPhoto] = useState({
     title: "",
-    image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80",
+    image: "",
   });
+  const [photoPreview, setPhotoPreview] = useState("");
   const [showAddPhoto, setShowAddPhoto] = useState(false);
 
   if (!user) return null;
@@ -144,31 +138,7 @@ export function ProProfileForm() {
     showToast("Listing updated.");
   }
 
-  // Service helpers
-  function handleAddService() {
-    if (!newService.name.trim()) return;
-    const item: ProServiceItem = {
-      id: `srv-${Date.now()}`,
-      name: newService.name.trim(),
-      price: Number(newService.price) || 50,
-      unit: newService.unit.trim() || "starting rate",
-      description: newService.description.trim(),
-    };
-    setFormData((prev) => ({
-      ...prev,
-      services: [...prev.services, item],
-    }));
-    setNewService({ name: "", price: 95, unit: "starting rate", description: "" });
-    setShowAddService(false);
-    showToast("Service added");
-  }
 
-  function handleRemoveService(id: string) {
-    setFormData((prev) => ({
-      ...prev,
-      services: prev.services.filter((s) => s.id !== id),
-    }));
-  }
 
   function cloneDay(day: DaySchedule): DaySchedule {
     return { status: day.status, slots: day.slots.map((slot) => ({ ...slot })) };
@@ -259,24 +229,34 @@ export function ProProfileForm() {
   }
 
   // Photo helpers
+  function handlePhotoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const preview = URL.createObjectURL(file);
+    setPhotoPreview(preview);
+    if (!newPhoto.title) {
+      const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+      setNewPhoto((prev) => ({ ...prev, title: cleanName.charAt(0).toUpperCase() + cleanName.slice(1) }));
+    }
+  }
+
   function handleAddPhoto() {
-    if (!newPhoto.title.trim()) return;
+    const imgSrc = photoPreview || newPhoto.image || "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80";
+    const caption = newPhoto.title.trim() || "Completed project";
     setFormData((prev) => ({
       ...prev,
       portfolio: [
         ...prev.portfolio,
         {
-          title: newPhoto.title.trim(),
-          image: newPhoto.image.trim(),
+          title: caption,
+          image: imgSrc,
         },
       ],
     }));
-    setNewPhoto({
-      title: "",
-      image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80",
-    });
+    setNewPhoto({ title: "", image: "" });
+    setPhotoPreview("");
     setShowAddPhoto(false);
-    showToast("Photo added to portfolio");
+    showToast("Photo uploaded to portfolio!");
   }
 
   function handleRemovePhoto(index: number) {
@@ -318,138 +298,12 @@ export function ProProfileForm() {
         value={activeTab}
         onChange={setActiveTab}
         items={[
-          { key: "services", label: "Services & Rates", icon: Wrench, count: formData.services.length },
           { key: "overview", label: "Business Info", icon: Building2 },
           { key: "hours", label: "Hours & Payments", icon: Clock },
           { key: "credentials", label: "Licenses & Verification", icon: ShieldCheck },
           { key: "portfolio", label: "Project Photos", icon: ImageIcon, count: formData.portfolio.length },
         ]}
       />
-
-      {/* ============================================================ */}
-      {/* TAB 1: SERVICES & RATES                                      */}
-      {/* ============================================================ */}
-      {activeTab === "services" && (
-        <div className="space-y-6">
-          <Card className="rounded-2xl border border-line/80 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-display text-base font-bold text-title">
-                  Services ({formData.services.length})
-                </h3>
-                <p className="text-xs text-muted">Lowest price is shown as your starting rate.</p>
-              </div>
-
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowAddService(!showAddService)}
-                className="border border-line text-xs font-semibold"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1 text-primary" />
-                Add Service
-              </Button>
-            </div>
-
-            {/* Inline Add Service Form */}
-            {showAddService && (
-              <div className="rounded-xl border border-primary/25 bg-smoke/60 p-4 space-y-3 animate-in fade-in">
-                <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                  New Service Item
-                </p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <Field label="Service Name" className="sm:col-span-2">
-                    <TextField
-                      value={newService.name}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setNewService({ ...newService, name: e.target.value })
-                      }
-                      placeholder="e.g. Tankless Water Heater Flush"
-                    />
-                  </Field>
-                  <Field label="Price ($)">
-                    <TextField
-                      type="number"
-                      value={newService.price}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setNewService({ ...newService, price: Number(e.target.value) || 0 })
-                      }
-                      placeholder="120"
-                    />
-                  </Field>
-                  <Field label="Rate Type">
-                    <TextField
-                      value={newService.unit}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setNewService({ ...newService, unit: e.target.value })
-                      }
-                      placeholder="e.g. starting rate, per fixture"
-                    />
-                  </Field>
-                  <Field label="Scope Description" className="sm:col-span-2">
-                    <TextField
-                      value={newService.description}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setNewService({ ...newService, description: e.target.value })
-                      }
-                      placeholder="e.g. Includes full system flush, diagnostic inspection, and seal verification."
-                    />
-                  </Field>
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setShowAddService(false)}
-                    className="text-xs"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleAddService}
-                    className="text-xs font-semibold"
-                  >
-                    Add Service
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Services List */}
-            <div className="divide-y divide-line/50">
-              {formData.services.map((srv) => (
-                <div key={srv.id} className="py-3.5 flex items-start justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <p className="font-display text-[15px] font-bold text-title">{srv.name}</p>
-                      <span className="font-semibold text-primary text-xs bg-smoke px-2 py-0.5 rounded-md border border-primary/20">
-                        ${srv.price}
-                      </span>
-                      <span className="text-xs text-muted">/ {srv.unit}</span>
-                    </div>
-                    {srv.description && (
-                      <p className="text-xs text-copy">{srv.description}</p>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveService(srv.id)}
-                    className="text-muted hover:text-rose-600 transition p-1"
-                    title="Remove Service"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      )}
 
       {/* ============================================================ */}
       {/* TAB 2: BUSINESS INFO                                         */}
@@ -871,23 +725,125 @@ export function ProProfileForm() {
             <Button
               type="button"
               size="sm"
-              variant="ghost"
-              onClick={() => setShowAddPhoto(!showAddPhoto)}
-              className="border border-line text-xs font-semibold"
+              onClick={() => {
+                setPhotoPreview("");
+                setNewPhoto({ title: "", image: "" });
+                setShowAddPhoto(true);
+              }}
+              className="text-xs font-semibold"
             >
-              <Plus className="h-3.5 w-3.5 mr-1 text-primary" />
-              Add Photo
+              <Upload className="h-3.5 w-3.5 mr-1" />
+              Upload Photo
             </Button>
           </div>
 
-          {/* Add Photo Form */}
+          {/* Upload Photo Modal */}
           {showAddPhoto && (
-            <div className="rounded-xl border border-primary/25 bg-smoke/60 p-4 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                Add Project Photo
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Project Caption">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+              <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-line space-y-5 animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between border-b border-line pb-4">
+                  <div>
+                    <h3 className="font-display text-base font-bold text-title">
+                      Upload Project Photo
+                    </h3>
+                    <p className="text-xs text-muted mt-0.5">
+                      Showcase past jobs to build trust with prospective clients.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPhoto(false)}
+                    className="p-1.5 rounded-lg text-muted hover:text-title hover:bg-smoke transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* File Dropzone / Preview */}
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold text-title block">
+                    Project Image
+                  </label>
+                  {photoPreview ? (
+                    <div className="relative aspect-[16/9] w-full rounded-xl overflow-hidden border border-line bg-smoke group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photoPreview}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                      />
+                      <label
+                        htmlFor="photo-file-input"
+                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer text-white text-xs font-medium gap-1.5"
+                      >
+                        <Upload className="h-4 w-4" /> Change Photo
+                      </label>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor="photo-file-input"
+                      className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line/80 hover:border-primary/60 bg-smoke/40 hover:bg-smoke/70 p-6 cursor-pointer transition text-center"
+                    >
+                      <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-2">
+                        <Upload className="h-5 w-5" />
+                      </div>
+                      <span className="text-xs font-semibold text-title">
+                        Click to browse or drop an image
+                      </span>
+                      <span className="text-[11px] text-muted mt-0.5">
+                        PNG, JPG, or WEBP up to 5MB
+                      </span>
+                    </label>
+                  )}
+                  <input
+                    id="photo-file-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoFileChange}
+                    className="hidden"
+                  />
+
+                  {/* Sample presets if testing locally */}
+                  <div className="pt-1">
+                    <span className="text-[11px] text-muted block mb-1.5">
+                      Or select sample project image:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        {
+                          name: "Plumbing Installation",
+                          url: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80",
+                        },
+                        {
+                          name: "Kitchen Tile & Backsplash",
+                          url: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80",
+                        },
+                        {
+                          name: "HVAC & Thermostat Setup",
+                          url: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80",
+                        },
+                      ].map((preset) => (
+                        <button
+                          key={preset.name}
+                          type="button"
+                          onClick={() => {
+                            setPhotoPreview(preset.url);
+                            setNewPhoto((prev) => ({
+                              ...prev,
+                              image: preset.url,
+                              title: prev.title || preset.name,
+                            }));
+                          }}
+                          className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-line bg-smoke/50 hover:bg-smoke hover:border-primary/40 text-body transition-colors"
+                        >
+                          {preset.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <Field label="Project Caption / Description">
                   <TextField
                     value={newPhoto.title}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -896,34 +852,30 @@ export function ProProfileForm() {
                     placeholder="e.g. Tankless water heater installation"
                   />
                 </Field>
-                <Field label="Image URL">
-                  <TextField
-                    value={newPhoto.image}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setNewPhoto({ ...newPhoto, image: e.target.value })
-                    }
-                    placeholder="https://images.unsplash.com/..."
-                  />
-                </Field>
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowAddPhoto(false)}
-                  className="text-xs"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleAddPhoto}
-                  className="text-xs font-semibold"
-                >
-                  Add Photo
-                </Button>
+
+                <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-line">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowAddPhoto(false);
+                      setPhotoPreview("");
+                    }}
+                    className="text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!photoPreview && !newPhoto.image}
+                    onClick={handleAddPhoto}
+                    className="text-xs font-semibold px-4"
+                  >
+                    Upload Photo
+                  </Button>
+                </div>
               </div>
             </div>
           )}

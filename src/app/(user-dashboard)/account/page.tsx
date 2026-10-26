@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  Trash2,
   Truck,
   Wrench,
   Zap,
@@ -30,16 +31,36 @@ import {
   selectAllJobs,
   selectAllQuotes,
 } from "@/lib/marketplace";
-import { useAppSelector } from "@/redux/hooks";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { deleteJob } from "@/redux/slices/marketplaceSlice";
+import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
 import { cn } from "@/lib/cn";
 import type { Job } from "@/types";
 
 export default function AccountPage() {
+  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const allJobs = useAppSelector(selectAllJobs);
   const quotes = useAppSelector(selectAllQuotes);
   const bookings = useAppSelector((state) => state.marketplace.bookings);
   const [searchQuery, setSearchQuery] = useState("");
+  const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
+
+  function confirmDeleteJob() {
+    if (!jobToDelete) return;
+    dispatch(deleteJob(jobToDelete.id));
+    dispatch(setJobStatus({ jobId: jobToDelete.id, status: "cancelled" }));
+    dispatch(
+      addNotification({
+        title: "Request Deleted",
+        body: `Your request "${jobToDelete.title}" has been deleted.`,
+        href: "/account",
+        createdAt: new Date().toISOString(),
+        role: "homeowner",
+      }),
+    );
+    setJobToDelete(null);
+  }
 
   const activeRequests = useMemo(() => {
     const name = user?.name ?? "Homeowner";
@@ -144,10 +165,9 @@ export default function AccountPage() {
                         {getCategory(job.categorySlug)?.name}
                       </span>
 
-                      {isDirect && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                          <Sparkles className="h-3 w-3" />
-                          Direct {requestedPro ? `to ${requestedPro.name}` : "Request"}
+                      {isDirect && requestedPro && (
+                        <span className="rounded-md bg-smoke px-2 py-0.5 text-[11px] font-medium text-title/80">
+                          To: {requestedPro.name}
                         </span>
                       )}
 
@@ -200,19 +220,7 @@ export default function AccountPage() {
                             ${booking.agreedPrice} agreed
                           </span>
                         </>
-                      ) : jobQuotes.length > 0 ? (
-                        <>
-                          <span>•</span>
-                          <span className="font-semibold text-primary">
-                            {jobQuotes.length} quote{jobQuotes.length === 1 ? "" : "s"} received
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span>•</span>
-                          <span className="text-muted">Awaiting quotes</span>
-                        </>
-                      )}
+                      ) : null}
 
                       {booking?.scheduledDate ? (
                         <>
@@ -281,11 +289,59 @@ export default function AccountPage() {
                         View Request ↗
                       </Button>
                     )}
+
+                    {!isHired && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setJobToDelete(job);
+                        }}
+                        title="Delete Request"
+                        className="p-2 ml-1 text-muted/60 hover:text-error hover:bg-error/10 rounded-full transition-colors cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Cancel Request Confirmation Modal */}
+      {jobToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-error/10 text-error">
+              <Trash2 className="h-5 w-5" />
+            </div>
+            <h3 className="font-display text-lg font-bold text-title mt-3">
+              Delete Request?
+            </h3>
+            <p className="mt-1.5 text-xs sm:text-sm text-muted leading-relaxed">
+              Are you sure you want to delete this request? This cannot be undone.
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setJobToDelete(null)}
+                className="rounded-xl text-xs font-semibold"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={confirmDeleteJob}
+                className="rounded-xl text-xs font-semibold bg-error hover:bg-error/90 text-white shadow-xs"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

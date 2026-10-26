@@ -90,9 +90,9 @@ export default function MyBookingsPage() {
         </p>
       </div>
 
-      {/* 2. Lifecycle Tab Bar */}
-      <div className="border-b border-line/70">
-        <nav className="flex space-x-1 sm:space-x-3" aria-label="Bookings lifecycle">
+      {/* 2. Lifecycle Tab Navigation */}
+      <div className="flex items-center overflow-x-auto no-scrollbar py-1">
+        <div className="inline-flex items-center gap-1 rounded-2xl bg-stone-100/90 p-1 border border-line/60">
           {(
             [
               { id: "all", label: "All Bookings", count: tabCounts.all },
@@ -100,30 +100,35 @@ export default function MyBookingsPage() {
               { id: "inProgress", label: "Active & On-Site", count: tabCounts.inProgress },
               { id: "history", label: "History", count: tabCounts.history },
             ] as const
-          ).map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "flex items-center gap-2 border-b-2 py-3 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-colors cursor-pointer",
-                activeTab === tab.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted hover:text-title",
-              )}
-            >
-              <span>{tab.label}</span>
-              <span
+          ).map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "rounded-full px-2 py-0.2 text-[11px] font-bold",
-                  activeTab === tab.id ? "bg-primary text-white" : "bg-smoke text-muted",
+                  "flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap",
+                  active
+                    ? "bg-white text-title shadow-xs font-bold"
+                    : "text-muted hover:text-title font-medium",
                 )}
               >
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </nav>
+                <span>{tab.label}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[11px] font-bold transition-colors",
+                    active
+                      ? "bg-stone-100 text-title"
+                      : "bg-white/80 text-muted",
+                  )}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 3. Search Filter */}
@@ -184,14 +189,33 @@ export default function MyBookingsPage() {
                 {/* Header: Pro Info + Status Badge */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-title text-sm font-semibold text-white">
-                      {(pro?.name ?? "P").charAt(0)}
-                    </div>
+                    {pro ? (
+                      <Link
+                        href={`/browse-pros/${pro.id}`}
+                        title={`View ${pro.name}'s profile`}
+                        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-title text-sm font-semibold text-white transition hover:ring-2 hover:ring-primary/40 cursor-pointer"
+                      >
+                        {pro.name.charAt(0)}
+                      </Link>
+                    ) : (
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-title text-sm font-semibold text-white">
+                        P
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h2 className="font-display text-sm font-bold text-title truncate">
-                          {pro?.name ?? "Contractor Assigned"}
-                        </h2>
+                        {pro ? (
+                          <Link
+                            href={`/browse-pros/${pro.id}`}
+                            className="font-display text-sm font-bold text-title hover:text-primary transition-colors hover:underline truncate"
+                          >
+                            {pro.name}
+                          </Link>
+                        ) : (
+                          <h2 className="font-display text-sm font-bold text-title truncate">
+                            Contractor Assigned
+                          </h2>
+                        )}
                         {pro?.clearance === "cleared" ? (
                           <span className="text-[11px] font-medium text-muted">Verified</span>
                         ) : null}
@@ -223,8 +247,6 @@ export default function MyBookingsPage() {
                       <span className="font-semibold text-title">
                         ${booking?.agreedPrice || hiredQuote?.amount || 0}
                       </span>
-                      <span>·</span>
-                      <span>Direct to pro ($0 fee)</span>
                     </div>
                   </div>
 

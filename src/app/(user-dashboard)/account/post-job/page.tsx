@@ -17,16 +17,15 @@ import {
   ImagePlus,
   MapPin,
   Package,
-  Truck,
   Pencil,
   Send,
-  ShieldCheck,
-  Sparkles,
   Star,
   Store,
   Sun,
   Sunrise,
   Sunset,
+  Truck,
+  Wallet,
   Wrench,
   X,
   Zap,
@@ -150,9 +149,11 @@ function BookingFlow() {
   const [budget, setBudget] = useState("");
   // Only select saved address if user explicitly picks it; default to empty so homepage zip is used without fabricating 418 West 5th St
   const [selectedAddressId, setSelectedAddressId] = useState("");
-  const [zipInput, setZipInput] = useState(
-    draft.zip || user?.zip || "78701",
-  );
+  const [zipInput, setZipInput] = useState(() => {
+    const raw = draft.zip || user?.zip || "78701";
+    const clean = raw.replace(/\D/g, "").slice(0, 5);
+    return clean || "78701";
+  });
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [editingLocation, setEditingLocation] = useState(true);
   const [appliedDraft, setAppliedDraft] = useState(false);
@@ -170,7 +171,10 @@ function BookingFlow() {
       headlineFromDraft(draft.problem || draft.summary || "", draft.title || "", nextCategoryName),
     );
     setDescriptionInput(draft.problem || draft.summary || "");
-    if (draft.zip) setZipInput(draft.zip);
+    if (draft.zip) {
+      const cleanZip = draft.zip.replace(/\D/g, "").slice(0, 5);
+      if (cleanZip) setZipInput(cleanZip);
+    }
     setAppliedDraft(true);
   }, [appliedDraft, draft, intakeReady, invitedPro, startingCategory]);
 
@@ -332,6 +336,23 @@ function BookingFlow() {
     if (invitedPro) {
       dispatch(invitePro({ jobId, proId: invitedPro.id }));
       dispatch(
+        addQuote({
+          jobId,
+          proId: invitedPro.id,
+          priceType: "fixed",
+          amount: invitedPro.startingPrice || 140,
+          scope: `Full service for ${titleInput.trim()} based on your project description.`,
+          availability: urgency === "asap" ? "Same day / tomorrow" : "Next 1–3 business days",
+          estimatedDuration: "2–3 hours",
+          proposedSchedule: timeLabel,
+          paymentTerms: "Pay the pro directly after work is inspected.",
+          warranty: "30-day workmanship guarantee",
+          materialsIncluded: materialsStatus === "contractor",
+          notes: "I have reviewed your request and look forward to working with you.",
+        }),
+      );
+      dispatch(setJobStatus({ jobId, status: "quotes_in" }));
+      dispatch(
         addNotification({
           title: "Quote request",
           body: `${user?.name ?? "A homeowner"} asked you to quote "${titleInput.trim()}" in ${zipInput.trim()}.`,
@@ -463,10 +484,6 @@ function BookingFlow() {
                     <CheckCircle2 className="h-3 w-3" />
                     Direct Request
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 border border-emerald-200">
-                    <ShieldCheck className="h-3 w-3" />
-                    Verified Pro
-                  </span>
                 </div>
                 <h2 className="font-display text-lg font-bold text-title mt-0.5">
                   {invitedPro.name}
@@ -589,12 +606,19 @@ function BookingFlow() {
               </Field>
 
                 {/* Inline Photo Upload (Convenient & frictionless) */}
-                <div className="space-y-2 pt-1 border-t border-line/40">
+                <div className="space-y-2.5 pt-2 border-t border-line/40">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-title">
-                      Project Photos (Optional)
-                    </label>
-                    <span className="text-[11px] text-muted">{photoUrls.length} / 4 attached</span>
+                    <div>
+                      <label className="block text-sm sm:text-[15px] font-semibold text-title">
+                        Project Photos <span className="text-xs font-normal text-muted">(Optional)</span>
+                      </label>
+                      <p className="text-xs text-muted mt-0.5">
+                        Add clear pictures of the repair area to get more accurate bids.
+                      </p>
+                    </div>
+                    <span className="text-xs font-medium text-muted bg-smoke px-2.5 py-1 rounded-md shrink-0">
+                      {photoUrls.length} / 4 attached
+                    </span>
                   </div>
 
                   <input
@@ -642,7 +666,7 @@ function BookingFlow() {
 
             {/* STEP 2: WHEN & WHERE */}
             {step === 2 && (
-              <div className="space-y-6 animate-in fade-in duration-150">
+              <div className="space-y-5 animate-in fade-in duration-150">
                 <div className="border-b border-line/60 pb-3">
                   <h2 className="font-display text-xl font-bold text-title">
                     When and where do you need service?
@@ -652,12 +676,12 @@ function BookingFlow() {
                   </p>
                 </div>
 
-                {/* Streamlined Urgency Selection (3 Clean Cards) */}
+                {/* 1. Urgency / Timeframe */}
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-title">
+                  <label className="block text-sm font-semibold text-title">
                     When would you like this done?
                   </label>
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid gap-2.5 sm:grid-cols-3">
                     {[
                       {
                         id: "asap",
@@ -686,36 +710,43 @@ function BookingFlow() {
                           type="button"
                           onClick={() => setUrgency(item.id as Urgency)}
                           className={cn(
-                            "flex flex-col text-left rounded-xl border p-3.5 transition-all",
+                            "flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer",
                             active
-                              ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 shadow-xs"
-                              : "border-line bg-white hover:border-primary/40 hover:bg-smoke/40",
+                              ? "border-primary bg-primary/[0.05] ring-1.5 ring-primary/20 shadow-xs"
+                              : "border-line bg-white hover:border-line/90 hover:bg-slate-50/60",
                           )}
                         >
-                          <div className="flex items-center gap-2 mb-1.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <span
                               className={cn(
-                                "grid h-7 w-7 place-items-center rounded-lg transition-colors",
+                                "grid h-8 w-8 place-items-center rounded-lg shrink-0 transition-colors",
                                 active ? "bg-primary text-white" : "bg-smoke text-primary",
                               )}
                             >
-                              <Icon className="h-3.5 w-3.5" />
+                              <Icon className="h-4 w-4" />
                             </span>
-                            <span className="font-display text-xs font-bold text-title">
-                              {item.title}
-                            </span>
+                            <div className="min-w-0">
+                              <span className="font-display text-sm font-semibold text-title block leading-snug">
+                                {item.title}
+                              </span>
+                              <span className="text-[11px] text-muted block mt-0.5 leading-snug">
+                                {item.desc}
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-[11px] text-muted">{item.desc}</span>
+                          {active && (
+                            <Check className="h-4 w-4 text-primary shrink-0 ml-1.5 stroke-[2.5]" />
+                          )}
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Preferred Time of Day (Clean Compact Tabs) */}
+                {/* 2. Arrival Window */}
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-title">
-                    Preferred Arrival Window (Optional)
+                  <label className="block text-sm font-semibold text-title">
+                    Preferred Arrival Window <span className="text-xs font-normal text-muted">(Optional)</span>
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
@@ -732,63 +763,57 @@ function BookingFlow() {
                           type="button"
                           onClick={() => setTimeWindow(w.id)}
                           className={cn(
-                            "flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all",
+                            "flex h-11 items-center justify-center gap-2 px-3 rounded-xl border text-center transition-all cursor-pointer",
                             active
-                              ? "border-primary bg-primary text-white shadow-xs font-semibold"
-                              : "border-line bg-white text-copy hover:border-primary/40 hover:bg-smoke",
+                              ? "border-primary bg-primary/[0.06] text-primary font-semibold ring-1.5 ring-primary/25 shadow-xs"
+                              : "border-line bg-white text-copy hover:border-line/90 hover:bg-slate-50/80",
                           )}
                         >
-                          <Icon className={cn("h-4 w-4 mb-0.5", active ? "text-white" : "text-primary")} />
-                          <span className="text-xs font-bold">{w.label}</span>
-                          <span className={cn("text-[10px]", active ? "text-white/80" : "text-muted")}>
-                            {w.sub}
-                          </span>
+                          <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted")} />
+                          <div className="text-left leading-tight">
+                            <span className={cn("text-xs font-semibold block", active ? "text-primary" : "text-title")}>
+                              {w.label}
+                            </span>
+                            <span className={cn("text-[10px] block", active ? "text-primary/75" : "text-muted")}>
+                              {w.sub}
+                            </span>
+                          </div>
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Location: Address / ZIP */}
-                <div className="space-y-3 pt-2 border-t border-line/40">
-                  <div>
-                    <label className="block text-xs font-bold text-title">
+                {/* 3. Service Location (Clean & Uncluttered) */}
+                <div className="space-y-2 pt-2 border-t border-line/40">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-semibold text-title">
                       Service Location
                     </label>
-                    <p className="text-[11px] text-muted mt-0.5">
-                      Pros match based on your ZIP code radius. Street address is private and only shared directly with the pro you hire.
-                    </p>
+                    <span className="text-[11px] text-muted">
+                      Austin radius • Address shared only after hire
+                    </span>
                   </div>
-
-                  {addresses.length > 0 && (
-                    <div className="space-y-1.5">
-                      <span className="text-[11px] font-semibold text-muted block uppercase tracking-wider">
-                        Location Options:
-                      </span>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {/* Option 1: Custom ZIP only */}
-                        <button
-                          type="button"
-                          onClick={() => setSelectedAddressId("")}
-                          className={cn(
-                            "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer",
-                            !selectedAddressId
-                              ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 shadow-xs"
-                              : "border-line bg-white hover:border-primary/40 hover:bg-smoke/60",
-                          )}
-                        >
-                          <MapPin className={cn("h-4 w-4 shrink-0", !selectedAddressId ? "text-primary" : "text-muted")} />
-                          <div className="min-w-0">
-                            <span className="font-display text-xs font-bold text-title block truncate">
-                              Service ZIP Area
-                            </span>
-                            <span className="text-[11px] text-muted block truncate">
-                              Austin, TX {zipInput || "78701"}
-                            </span>
-                          </div>
-                        </button>
-
-                        {/* Option 2+: Saved address presets */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="relative w-40 shrink-0">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                      <input
+                        type="text"
+                        value={zipInput}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 5);
+                          setZipInput(val);
+                          setSelectedAddressId("");
+                        }}
+                        placeholder="ZIP Code"
+                        maxLength={5}
+                        required
+                        className="w-full h-10 rounded-xl border border-line bg-white pl-9 pr-3 font-mono text-sm font-semibold tracking-wider text-title outline-none transition-colors placeholder:text-muted focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
+                      />
+                    </div>
+                    {addresses.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs text-muted mr-1">Saved:</span>
                         {addresses.map((addr) => {
                           const active = selectedAddressId === addr.id;
                           return (
@@ -800,45 +825,28 @@ function BookingFlow() {
                                 if (addr.zip) setZipInput(addr.zip);
                               }}
                               className={cn(
-                                "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer",
+                                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer",
                                 active
-                                  ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 shadow-xs"
-                                  : "border-line bg-white hover:border-primary/40 hover:bg-smoke/60",
+                                  ? "border-primary bg-primary text-white shadow-2xs font-semibold"
+                                  : "border-line bg-white text-muted hover:text-title hover:border-line/90",
                               )}
                             >
-                              <MapPin className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted")} />
-                              <div className="min-w-0">
-                                <span className="font-display text-xs font-bold text-title block truncate">
-                                  Use Saved: {addr.label}
-                                </span>
-                                <span className="text-[11px] text-muted block truncate">
-                                  {addr.street}, {addr.zip}
-                                </span>
-                              </div>
+                              <MapPin className="h-3 w-3" />
+                              <span>{addr.label}</span>
+                              <span className={cn("text-[11px]", active ? "text-white/80" : "text-muted/70")}>
+                                ({addr.zip})
+                              </span>
                             </button>
                           );
                         })}
                       </div>
-                    </div>
-                  )}
-
-                  <div className="max-w-xs">
-                    <Field label="Service ZIP Code *">
-                      <TextField
-                        value={zipInput}
-                        onChange={(e) => setZipInput(e.target.value)}
-                        placeholder="78701"
-                        maxLength={5}
-                        required
-                        className="rounded-xl font-mono text-sm"
-                      />
-                    </Field>
+                    )}
                   </div>
                 </div>
 
-                {/* Property Type (Clean compact pills) */}
+                {/* 4. Property Type */}
                 <div className="space-y-2 pt-2 border-t border-line/40">
-                  <label className="block text-xs font-bold text-title">
+                  <label className="block text-sm font-semibold text-title">
                     Property Type
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -856,23 +864,25 @@ function BookingFlow() {
                           type="button"
                           onClick={() => setPropertyType(p.id as PropertyType)}
                           className={cn(
-                            "flex items-center justify-center gap-2 p-2.5 rounded-xl border text-center transition-all",
+                            "flex h-10 items-center justify-center gap-2 px-3 rounded-xl border text-center transition-all cursor-pointer",
                             active
-                              ? "border-primary bg-primary/[0.05] ring-2 ring-primary/20 text-primary font-bold shadow-xs"
-                              : "border-line bg-white text-title hover:border-primary/40 hover:bg-smoke text-xs",
+                              ? "border-primary bg-primary/[0.06] text-primary font-semibold ring-1.5 ring-primary/25 shadow-xs"
+                              : "border-line bg-white text-title hover:border-line/90 hover:bg-slate-50/80 text-xs sm:text-sm font-medium",
                           )}
                         >
-                          <Icon className="h-4 w-4 shrink-0" />
-                          <span className="text-xs font-semibold">{p.label}</span>
+                          <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted")} />
+                          <span>{p.label}</span>
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
+                {/* 5. Parts & Materials */}
                 <div className="space-y-2 pt-2 border-t border-line/40">
-                  <label className="block text-xs font-bold text-title">Parts &amp; materials</label>
-                  <p className="text-[11px] text-muted">So the pro knows what to bring.</p>
+                  <label className="block text-sm font-semibold text-title">
+                    Parts &amp; Materials
+                  </label>
                   <div className="grid gap-2 sm:grid-cols-3">
                     {MATERIAL_OPTIONS.map((item) => {
                       const active = materialsStatus === item.id;
@@ -883,31 +893,45 @@ function BookingFlow() {
                           type="button"
                           onClick={() => setMaterialsStatus(item.id)}
                           className={cn(
-                            "flex flex-col text-left rounded-xl border p-3 transition-all",
+                            "flex items-center justify-between p-2.5 sm:px-3 rounded-xl border text-left transition-all cursor-pointer",
                             active
-                              ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 shadow-xs"
-                              : "border-line bg-white hover:border-primary/40 hover:bg-smoke/40",
+                              ? "border-primary bg-primary/[0.05] ring-1.5 ring-primary/20 shadow-xs"
+                              : "border-line bg-white hover:border-line/90 hover:bg-slate-50/60",
                           )}
                         >
-                          <span
-                            className={cn(
-                              "grid h-7 w-7 place-items-center rounded-lg",
-                              active ? "bg-primary text-white" : "bg-smoke text-primary",
-                            )}
-                          >
-                            <Icon className="h-3.5 w-3.5" />
-                          </span>
-                          <span className="mt-2 font-display text-xs font-bold text-title">{item.title}</span>
-                          <span className="mt-0.5 text-[11px] text-muted">{item.desc}</span>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span
+                              className={cn(
+                                "grid h-7 w-7 place-items-center rounded-lg shrink-0 transition-colors",
+                                active ? "bg-primary text-white" : "bg-smoke text-primary",
+                              )}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                            </span>
+                            <div className="min-w-0">
+                              <span className="font-display text-xs sm:text-sm font-semibold text-title block leading-tight truncate">
+                                {item.title}
+                              </span>
+                              <span className="text-[11px] text-muted block truncate mt-0.5">
+                                {item.desc}
+                              </span>
+                            </div>
+                          </div>
+                          {active && (
+                            <Check className="h-4 w-4 text-primary shrink-0 ml-1.5 stroke-[2.5]" />
+                          )}
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
+                {/* 6. Budget (Optional) */}
                 <div className="space-y-2 pt-2 border-t border-line/40">
-                  <label className="block text-xs font-bold text-title">Budget (optional)</label>
-                  <div className="flex flex-wrap gap-2">
+                  <label className="block text-sm font-semibold text-title">
+                    Estimated Budget <span className="text-xs font-normal text-muted">(Optional)</span>
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
                     {BUDGET_OPTIONS.map((item) => {
                       const active = budget === item;
                       return (
@@ -916,10 +940,10 @@ function BookingFlow() {
                           type="button"
                           onClick={() => setBudget(item)}
                           className={cn(
-                            "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                            "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer",
                             active
-                              ? "border-primary bg-primary text-white"
-                              : "border-line bg-white text-copy hover:border-primary/40",
+                              ? "border-primary bg-primary text-white shadow-2xs font-semibold"
+                              : "border-line bg-white text-copy hover:border-line/90 hover:bg-slate-50",
                           )}
                         >
                           {item || "Not specified"}
@@ -945,24 +969,19 @@ function BookingFlow() {
 
                 {/* Direct Pro Invitation Banner (if directed to specific pro) */}
                 {invitedPro && (
-                  <div className="flex items-center justify-between gap-3.5 rounded-2xl border border-primary/25 bg-gradient-to-r from-blue-50/80 via-primary/[0.04] to-surface p-4 shadow-xs">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary text-white font-display text-base font-bold shadow-xs">
+                  <div className="flex items-center justify-between gap-3.5 rounded-2xl border border-line/80 bg-white p-4 shadow-xs">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-title text-white font-display text-sm font-bold shadow-xs">
                         {initials(invitedPro.name)}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
-                            Direct Request To Pro
-                          </span>
-                          <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                            <ShieldCheck className="h-3 w-3 text-emerald-600" /> Verified Pro
-                          </span>
-                        </div>
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
+                          Direct Request to Pro
+                        </span>
                         <h3 className="font-display text-base font-bold text-title truncate mt-0.5">
                           {invitedPro.name}
                         </h3>
-                        <p className="text-xs text-muted flex items-center gap-2">
+                        <p className="text-xs text-muted flex items-center gap-2 mt-0.5">
                           <span>{invitedPro.trade}</span>
                           <span className="text-stone-300">•</span>
                           <span className="inline-flex items-center gap-1 font-semibold text-title">
@@ -973,141 +992,137 @@ function BookingFlow() {
                         </p>
                       </div>
                     </div>
-                    <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-white/90 border border-line/70 px-3 py-1.5 text-xs text-stone-700 font-medium shrink-0 shadow-2xs">
+                    <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-smoke/80 border border-line/70 px-3 py-1.5 text-xs text-stone-700 font-medium shrink-0">
                       <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-400" />
                       Replies {invitedPro.responseTime}
                     </div>
                   </div>
                 )}
 
-                {/* Rich & Colorful Structured Review Card */}
-                <div className="rounded-2xl border border-line/80 bg-white shadow-xs overflow-hidden">
-                  {/* Card Header with category badge & edit */}
-                  <div className="bg-gradient-to-r from-slate-50 via-blue-50/30 to-slate-50/60 p-4 sm:p-5 border-b border-line/60">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-semibold text-primary">
-                          <Sparkles className="h-3 w-3 text-primary" />
-                          {selectedCategory.name}
-                        </div>
-                        <h3 className="font-display text-lg sm:text-xl font-bold text-title mt-2 tracking-tight">
-                          {titleInput}
-                        </h3>
-                        {descriptionInput ? (
-                          <p className="mt-2 text-xs sm:text-sm text-stone-600 leading-relaxed bg-white/90 rounded-xl p-3 border border-line/50">
-                            {descriptionInput}
-                          </p>
-                        ) : null}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setStep(1)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-white border border-line/80 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/5 hover:border-primary/40 transition-colors shrink-0 shadow-2xs"
-                      >
-                        <Pencil className="h-3 w-3" />
-                        Edit
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Clean Metadata Feature Grid with Uniform Monochrome Icons */}
-                  <div className="p-4 sm:p-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      {/* Tile 1: Timeframe */}
-                      <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
-                          <Calendar className="h-4.5 w-4.5" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="block text-[11px] font-medium text-muted">Timeframe</span>
-                          <span className="font-semibold text-title capitalize text-xs sm:text-sm">
-                            {urgency === "asap" ? "Emergency / ASAP" : urgency.replace("_", " ")}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Tile 2: Preferred Arrival Window */}
-                      <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
-                          <Clock className="h-4.5 w-4.5" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="block text-[11px] font-medium text-muted">Arrival Window</span>
-                          <span className="font-semibold text-title capitalize text-xs sm:text-sm">
-                            {timeWindow}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Tile 3: Service Location */}
-                      <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
-                          <MapPin className="h-4.5 w-4.5" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="block text-[11px] font-medium text-muted">Service Location</span>
-                          <span className="font-semibold text-title text-xs sm:text-sm">
-                            {displayLocation}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Tile 4: Property Type */}
-                      <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
-                          <Home className="h-4.5 w-4.5" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="block text-[11px] font-medium text-muted">Property Type</span>
-                          <span className="font-semibold text-title capitalize text-xs sm:text-sm">
-                            {propertyType.replace("_", " ")}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Tile 5: Parts & materials */}
-                      <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
-                          <Package className="h-4.5 w-4.5" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="block text-[11px] font-medium text-muted">Parts &amp; materials</span>
-                          <span className="font-semibold text-title text-xs sm:text-sm">
-                            {MATERIAL_OPTIONS.find((item) => item.id === materialsStatus)?.title}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Tile 6: Budget */}
-                      {budget ? (
-                        <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
-                            <Sparkles className="h-4.5 w-4.5" />
-                          </div>
-                          <div className="min-w-0">
-                            <span className="block text-[11px] font-medium text-muted">Budget</span>
-                            <span className="font-semibold text-title text-xs sm:text-sm">{budget}</span>
-                          </div>
-                        </div>
+                {/* Structured Review Card with Strong Visual Hierarchy */}
+                <div className="rounded-2xl border border-line/80 bg-white p-5 sm:p-6 shadow-xs">
+                  {/* Category, Title & Edit Action */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <span className="inline-flex items-center rounded-md bg-smoke px-2.5 py-0.5 text-xs font-semibold text-title/80">
+                        {selectedCategory.name}
+                      </span>
+                      <h3 className="font-display text-xl sm:text-2xl font-bold text-title mt-2 tracking-tight">
+                        {titleInput}
+                      </h3>
+                      {descriptionInput ? (
+                        <p className="mt-2 text-xs sm:text-sm text-stone-600 leading-relaxed whitespace-pre-line">
+                          {descriptionInput}
+                        </p>
                       ) : null}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline shrink-0 pt-1 cursor-pointer"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit Details
+                    </button>
+                  </div>
 
-                    {/* Bottom strip inside review card */}
-                    <div className="mt-3.5 pt-3 border-t border-line/60 flex items-center justify-between text-xs text-muted">
-                      <span>
-                        {photoUrls.length > 0
-                          ? `📷 ${photoUrls.length} job photo${photoUrls.length > 1 ? "s" : ""} attached`
-                          : "No photos attached (optional)"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setStep(2)}
-                        className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-                      >
-                        <Pencil className="h-3 w-3" />
-                        Edit schedule &amp; address
-                      </button>
+                  {/* Clean Specification Grid without nested boxed tiles */}
+                  <div className="mt-5 pt-5 border-t border-line/70 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6">
+                    {/* Timeframe */}
+                    <div className="flex items-start gap-2.5">
+                      <Calendar className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                          Timeframe
+                        </span>
+                        <span className="text-xs sm:text-sm font-semibold text-title capitalize block mt-0.5">
+                          {urgency === "asap" ? "Emergency / ASAP" : urgency.replace("_", " ")}
+                        </span>
+                      </div>
                     </div>
+
+                    {/* Arrival Window */}
+                    <div className="flex items-start gap-2.5">
+                      <Clock className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                          Arrival Window
+                        </span>
+                        <span className="text-xs sm:text-sm font-semibold text-title block mt-0.5">
+                          {timeWindow}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Service Location */}
+                    <div className="flex items-start gap-2.5">
+                      <MapPin className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                          Service Location
+                        </span>
+                        <span className="text-xs sm:text-sm font-semibold text-title block mt-0.5">
+                          {displayLocation}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Property Type */}
+                    <div className="flex items-start gap-2.5">
+                      <Home className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                          Property Type
+                        </span>
+                        <span className="text-xs sm:text-sm font-semibold text-title capitalize block mt-0.5">
+                          {propertyType.replace("_", " ")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Parts & Materials */}
+                    <div className="flex items-start gap-2.5">
+                      <Package className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                          Parts &amp; Materials
+                        </span>
+                        <span className="text-xs sm:text-sm font-semibold text-title block mt-0.5">
+                          {MATERIAL_OPTIONS.find((item) => item.id === materialsStatus)?.title}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Budget */}
+                    {budget ? (
+                      <div className="flex items-start gap-2.5">
+                        <Wallet className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                            Estimated Budget
+                          </span>
+                          <span className="text-xs sm:text-sm font-semibold text-title block mt-0.5">
+                            {budget}
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Bottom Strip */}
+                  <div className="mt-5 pt-4 border-t border-line/60 flex items-center justify-between text-xs text-muted">
+                    <span>
+                      {photoUrls.length > 0
+                        ? `📷 ${photoUrls.length} job photo${photoUrls.length > 1 ? "s" : ""} attached`
+                        : "No photos attached (optional)"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="font-semibold text-primary hover:underline cursor-pointer"
+                    >
+                      Edit schedule &amp; address
+                    </button>
                   </div>
                 </div>
 

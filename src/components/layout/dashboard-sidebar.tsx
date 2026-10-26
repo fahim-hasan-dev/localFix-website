@@ -18,15 +18,17 @@ import {
   ShieldCheck,
   Star,
   UserRound,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 function getSidebarIcon(label: string) {
   const norm = label.toLowerCase();
   if (norm.includes("booking")) return CalendarCheck;
+  if (norm.includes("service")) return Wrench;
   if (norm.includes("dashboard") || norm.includes("overview")) return LayoutDashboard;
   if (norm.includes("post")) return PlusCircle;
-  if (norm.includes("request") || norm.includes("job")) return ClipboardList;
+  if (norm.includes("request") || norm.includes("job") || norm.includes("lead")) return ClipboardList;
   if (norm.includes("message")) return MessageSquare;
   if (norm.includes("saved")) return Bookmark;
   if (norm.includes("notification")) return Bell;
@@ -37,7 +39,7 @@ function getSidebarIcon(label: string) {
   if (norm.includes("profile")) return UserRound;
   if (norm.includes("security")) return ShieldCheck;
   if (norm.includes("password")) return KeyRound;
-  if (norm.includes("subscription") || norm.includes("membership") || norm.includes("pricing")) return CreditCard;
+  if (norm.includes("subscription") || norm.includes("membership") || norm.includes("pricing") || norm.includes("transaction")) return CreditCard;
   return Briefcase;
 }
 
@@ -59,8 +61,10 @@ export function DashboardSidebar({
             pathname === item.href ||
             (item.href === "/account/bookings" && pathname.startsWith("/account/bookings")) ||
             (item.href === "/account" && pathname === "/account") ||
+            (item.href === "/pro/bookings" && pathname.startsWith("/pro/bookings")) ||
+            (item.href === "/pro/services" && pathname.startsWith("/pro/services")) ||
             (item.href === "/pro/jobs" && pathname.startsWith("/pro/jobs/")) ||
-            (item.href === "/pro/pricing" && pathname.startsWith("/pro/transactions")) ||
+            (item.href === "/pro/pricing" && (pathname.startsWith("/pro/transactions") || pathname.startsWith("/pro/pricing"))) ||
             (item.href === "/account/messages" && pathname.startsWith("/account/messages")) ||
             (item.href === "/pro/messages" && pathname.startsWith("/pro/messages"));
           const Icon = getSidebarIcon(item.label);

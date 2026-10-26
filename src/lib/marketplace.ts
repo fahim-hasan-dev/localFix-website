@@ -289,3 +289,52 @@ export function selectHomeownerRequests(state: RootState, homeownerName: string)
   );
 }
 
+export function selectProBookingsGrouped(state: RootState, proId: string = "pro-1") {
+  const allJobs = selectAllJobs(state);
+  const hiredByJob = state.marketplace.hiredByJob;
+  const bookings = state.marketplace.bookings;
+  const quotes = selectAllQuotes(state);
+
+  const isProAssigned = (jobId: string) => {
+    const hiredId = hiredByJob[jobId];
+    const booking = bookings[jobId];
+    return (
+      (hiredId && quotes.find((q) => q.id === hiredId)?.proId === proId) ||
+      booking?.proId === proId
+    );
+  };
+
+  const booked = allJobs.filter((job: Job) => {
+    if (!isProAssigned(job.id)) return false;
+    return [
+      "hired",
+      "scheduled",
+      "en_route",
+      "in_progress",
+      "awaiting_confirm",
+      "completed",
+      "cancelled",
+      "disputed",
+    ].includes(job.status);
+  });
+
+  const upcoming = booked.filter((j: Job) => ["hired", "scheduled"].includes(j.status));
+  const inProgress = booked.filter((j: Job) =>
+    ["en_route", "in_progress", "awaiting_confirm"].includes(j.status)
+  );
+  const history = booked.filter((j: Job) =>
+    ["completed", "cancelled", "disputed"].includes(j.status)
+  );
+
+  return {
+    all: booked,
+    upcoming,
+    inProgress,
+    history,
+    totalUpcoming: upcoming.length,
+    totalInProgress: inProgress.length,
+    totalHistory: history.length,
+  };
+}
+
+

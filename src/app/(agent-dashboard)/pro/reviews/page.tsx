@@ -146,36 +146,14 @@ export default function ProReviewsPage() {
         </div>
       )}
 
-      {/* 1. Header with Title & Direct Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line/70 pb-4 pt-1">
-        <div>
-          <h1 className="font-display text-[24px] font-semibold tracking-tight text-title">
-            Reviews
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleCopyReviewLink}
-            className="shadow-2xs text-xs font-semibold rounded-xl bg-white hover:bg-smoke"
-          >
-            <Copy className="h-3.5 w-3.5 mr-1.5" />
-            {linkCopied ? "Link Copied!" : "Copy Review Link"}
-          </Button>
-
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => setShowRequestModal(true)}
-            className="shadow-xs text-xs font-semibold rounded-xl"
-          >
-            <Share2 className="h-3.5 w-3.5 mr-1.5" />
-            Request a Review
-          </Button>
-        </div>
+      {/* 1. Header with Title */}
+      <div className="border-b border-line/70 pb-4 pt-1">
+        <h1 className="font-display text-[22px] sm:text-[26px] font-bold tracking-tight text-title">
+          Client Reviews
+        </h1>
+        <p className="mt-0.5 text-xs sm:text-sm text-muted">
+          Feedback and verified ratings from completed repair jobs in Austin.
+        </p>
       </div>
 
       {/* 2. Rating Breakdown Scorecard Widget */}

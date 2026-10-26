@@ -21,12 +21,12 @@ export function Field({
 }
 
 const controlClass =
-  "w-full min-h-[50px] rounded-[10px] border border-line bg-white px-4 text-[16px] text-title outline-none transition-colors placeholder:text-[14px] placeholder:text-muted focus:border-primary";
+  "w-full min-h-[44px] rounded-[10px] border border-line bg-white px-3.5 text-sm sm:text-[15px] text-title outline-none transition-colors placeholder:text-sm placeholder:text-muted focus:border-primary";
 
 export function TextField(
   props: React.InputHTMLAttributes<HTMLInputElement>,
 ) {
-  return <input {...props} className={cn(controlClass, props.className)} />;
+  return <input {...props} className={cn(controlClass, "h-11", props.className)} />;
 }
 
 export function TextArea(
@@ -35,7 +35,7 @@ export function TextArea(
   return (
     <textarea
       {...props}
-      className={cn(controlClass, "min-h-32 resize-y py-3", props.className)}
+      className={cn(controlClass, "min-h-28 resize-y py-2.5", props.className)}
     />
   );
 }
@@ -43,5 +43,5 @@ export function TextArea(
 export function NativeSelect(
   props: React.SelectHTMLAttributes<HTMLSelectElement>,
 ) {
-  return <select {...props} className={cn(controlClass, props.className)} />;
+  return <select {...props} className={cn(controlClass, "h-11", props.className)} />;
 }
