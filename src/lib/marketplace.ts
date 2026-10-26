@@ -1,55 +1,65 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { jobs as seedJobs, quotes as seedQuotes } from "@/Mockdata";
 import type { RootState } from "@/redux/store";
 import type { Job, JobStatus, Quote } from "@/types";
 
-export function selectAllJobs(state: RootState): Job[] {
-  const hired = state.marketplace.hiredByJob;
-  const overrides = state.features.jobStatusOverride;
-  const completions = state.marketplace.completions;
-  const bookings = state.marketplace.bookings;
+export const selectAllJobs = createSelector(
+  [
+    (state: RootState) => state.marketplace.extraJobs,
+    (state: RootState) => state.marketplace.hiredByJob,
+    (state: RootState) => state.features.jobStatusOverride,
+    (state: RootState) => state.marketplace.completions,
+    (state: RootState) => state.marketplace.bookings,
+  ],
+  (extraJobs, hired, overrides, completions, bookings): Job[] => {
+    return [...extraJobs, ...seedJobs].map((job) => {
+      let status: JobStatus = overrides[job.id] ?? job.status;
 
-  return [...state.marketplace.extraJobs, ...seedJobs].map((job) => {
-    let status: JobStatus = overrides[job.id] ?? job.status;
+      if (status === "cancelled" || status === "disputed" || status === "completed") {
+        return { ...job, status };
+      }
 
-    if (status === "cancelled" || status === "disputed" || status === "completed") {
+      const completion = completions[job.id];
+      if (completion?.homeownerConfirmedAt) {
+        status = "completed";
+      } else if (completion?.proMarkedAt) {
+        status = "awaiting_confirm";
+      } else if (bookings[job.id]?.status === "confirmed" && hired[job.id]) {
+        if (status === "hired" || status === "getting_quotes" || status === "quotes_in" || status === "active") {
+          status = "scheduled";
+        }
+      } else if (hired[job.id]) {
+        if (status !== "scheduled" && status !== "in_progress" && status !== "awaiting_confirm") {
+          status = "hired";
+        }
+      }
+
       return { ...job, status };
-    }
-
-    const completion = completions[job.id];
-    if (completion?.homeownerConfirmedAt) {
-      status = "completed";
-    } else if (completion?.proMarkedAt) {
-      status = "awaiting_confirm";
-    } else if (bookings[job.id]?.status === "confirmed" && hired[job.id]) {
-      if (status === "hired" || status === "getting_quotes" || status === "quotes_in" || status === "active") {
-        status = "scheduled";
-      }
-    } else if (hired[job.id]) {
-      if (status !== "scheduled" && status !== "in_progress" && status !== "awaiting_confirm") {
-        status = "hired";
-      }
-    }
-
-    return { ...job, status };
-  });
-}
+    });
+  },
+);
 
 export function selectJob(state: RootState, id: string) {
   return selectAllJobs(state).find((job) => job.id === id);
 }
 
-export function selectAllQuotes(state: RootState): Quote[] {
-  const overrides = state.marketplace.quoteOverrides;
-  const merge = (quote: Quote): Quote => {
-    const patch = overrides[quote.id] ?? {};
-    return {
-      ...quote,
-      ...patch,
-      status: patch.status ?? quote.status ?? "pending",
+export const selectAllQuotes = createSelector(
+  [
+    (state: RootState) => state.marketplace.extraQuotes,
+    (state: RootState) => state.marketplace.quoteOverrides,
+  ],
+  (extraQuotes, overrides): Quote[] => {
+    const merge = (quote: Quote): Quote => {
+      const patch = overrides[quote.id] ?? {};
+      return {
+        ...quote,
+        ...patch,
+        status: patch.status ?? quote.status ?? "pending",
+      };
     };
-  };
-  return [...state.marketplace.extraQuotes.map(merge), ...seedQuotes.map(merge)];
-}
+    return [...extraQuotes.map(merge), ...seedQuotes.map(merge)];
+  },
+);
 
 export function selectQuotesForJob(state: RootState, jobId: string) {
   return selectAllQuotes(state).filter((quote) => quote.jobId === jobId);
