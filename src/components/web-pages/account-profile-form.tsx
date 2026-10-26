@@ -242,7 +242,7 @@ export function AccountProfileForm() {
           <h2 className="font-display text-base font-semibold text-title">Personal information</h2>
         </div>
 
-        <form className="space-y-5" onSubmit={submitProfile}>
+        <form id="profile-form" className="space-y-5" onSubmit={submitProfile}>
           {/* Avatar and Photo Upload */}
           <div className="flex flex-wrap items-center gap-4 sm:gap-6 border-b border-line/60 pb-6">
             <div className="relative group">
@@ -328,18 +328,6 @@ export function AccountProfileForm() {
                 autoComplete="tel"
               />
             </Field>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Button type="submit" size="sm" className="rounded-full">
-              Save personal details
-            </Button>
-            {saved ? (
-              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-success animate-in fade-in">
-                <Check className="h-4 w-4" />
-                Profile changes saved.
-              </span>
-            ) : null}
           </div>
         </form>
 
@@ -446,6 +434,19 @@ export function AccountProfileForm() {
             <p className="text-sm text-muted">No address yet.</p>
           ) : null}
         </div>
+        </div>
+
+        {/* Bottom Save Action Bar */}
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-line/60 pt-4">
+          <Button type="submit" form="profile-form" size="sm" className="rounded-full">
+            Save personal details
+          </Button>
+          {saved ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success animate-in fade-in">
+              <Check className="h-4 w-4" />
+              Profile changes saved.
+            </span>
+          ) : null}
         </div>
       </Card>
     </div>

@@ -7,7 +7,10 @@ import {
   CheckCircle2,
   Clock,
   FileCheck2,
+  Layers,
+  MessageSquare,
   ShieldCheck,
+  Sparkles,
   Star,
   Truck,
   Wrench,
@@ -47,6 +50,8 @@ import {
 import {
   addNotification,
   addReview,
+  updateReview,
+  replyToReview,
   setJobStatus,
 } from "@/redux/slices/featuresSlice";
 import type { DirectPaymentMethod } from "@/types";
@@ -87,7 +92,8 @@ export function RequestDetail({
   const marketplaceReady = useAppSelector((state) => state.marketplace.hydrated);
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[id]);
   const hiredQuote = quotes.find((quote) => quote.id === hiredQuoteId);
-  const [reviewRating, setReviewRating] = useState("5");
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [hoverRating, setHoverRating] = useState<number>(0);
   const [reviewBody, setReviewBody] = useState("");
   const [savedMsg, setSavedMsg] = useState("");
   const [rescheduleDate, setRescheduleDate] = useState("");
@@ -96,6 +102,7 @@ export function RequestDetail({
   const [changeReason, setChangeReason] = useState("");
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [showProCompleteModal, setShowProCompleteModal] = useState(false);
   const [proCompletionNote, setProCompletionNote] = useState("");
   const [settlePaymentMethod, setSettlePaymentMethod] = useState<DirectPaymentMethod>("cash");
@@ -103,6 +110,90 @@ export function RequestDetail({
   const [settleInspected, setSettleInspected] = useState(true);
   const [arrangePay, setArrangePay] = useState<DirectPaymentMethod>("cash");
   const [selectedReviewTags, setSelectedReviewTags] = useState<string[]>([]);
+  const [wouldRecommend, setWouldRecommend] = useState<"yes" | "neutral" | "no">("yes");
+  const existingReview = useAppSelector((state) =>
+    state.features.reviews.find((item) => item.jobId === id)
+  );
+  const [proReplyDraft, setProReplyDraft] = useState("");
+
+  const currentDisplayRating = hoverRating || reviewRating;
+  const activeSentiment = useMemo(() => {
+    switch (currentDisplayRating) {
+      case 5:
+        return {
+          title: "★★★★★ 5.0 — Outstanding!",
+          desc: "Exceeded all expectations, highly recommend!",
+          badgeClass: "bg-amber-50 text-amber-900 border-amber-300",
+        };
+      case 4:
+        return {
+          title: "★★★★☆ 4.0 — Very Good!",
+          desc: "Quality craftsmanship & satisfied.",
+          badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-300",
+        };
+      case 3:
+        return {
+          title: "★★★☆☆ 3.0 — Satisfactory",
+          desc: "Met basic job expectations.",
+          badgeClass: "bg-blue-50 text-blue-800 border-blue-300",
+        };
+      case 2:
+        return {
+          title: "★★☆☆☆ 2.0 — Below Expectations",
+          desc: "Issues with communication or work quality.",
+          badgeClass: "bg-orange-50 text-orange-800 border-orange-300",
+        };
+      case 1:
+      default:
+        return {
+          title: "★☆☆☆☆ 1.0 — Poor Experience",
+          desc: "Unsatisfactory experience or unresolved issue.",
+          badgeClass: "bg-rose-50 text-rose-800 border-rose-300",
+        };
+    }
+  }, [currentDisplayRating]);
+
+  function handleSaveReview() {
+    const cleanBody =
+      reviewBody.trim() ||
+      (selectedReviewTags.length
+        ? selectedReviewTags.join(" · ")
+        : "Great service, arrived on time and completed the work cleanly.");
+
+    if (existingReview) {
+      dispatch(
+        updateReview({
+          id: existingReview.id,
+          rating: reviewRating,
+          body: cleanBody,
+        }),
+      );
+      setSavedMsg("Verified review updated successfully!");
+    } else {
+      dispatch(
+        addReview({
+          jobId: id,
+          proId: hiredQuote?.proId ?? "pro-1",
+          author: job?.homeownerName ?? "Homeowner",
+          rating: reviewRating,
+          body: cleanBody || "Excellent professional service.",
+          createdAt: "Just now",
+        }),
+      );
+      dispatch(
+        addNotification({
+          title: `New ${reviewRating}-star verified review`,
+          body: `${job?.homeownerName ?? "Homeowner"} submitted a review for ${job?.title ?? "your service"}. It is now visible on your public profile.`,
+          href: `/pro/reviews`,
+          createdAt: "Just now",
+          role: "pro",
+        }),
+      );
+      setSavedMsg("Review published on contractor's profile!");
+    }
+
+    setShowReviewModal(false);
+  }
 
   const sortedQuotes = useMemo(
     () =>
@@ -175,7 +266,19 @@ export function RequestDetail({
 
       <div className="rounded-[16px] border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2 mb-1.5 text-xs text-muted">
+              {job.visibility === "direct" || job.requestedProId ? (
+                <span className="font-medium text-title">
+                  Direct request {requestedPro ? `to ${requestedPro.name}` : ""}
+                </span>
+              ) : (
+                <span className="font-medium text-muted">Marketplace Request</span>
+              )}
+              {job.urgency === "asap" ? (
+                <span className="text-error font-medium">· Urgent</span>
+              ) : null}
+            </div>
             <h1 className="font-display text-xl font-semibold text-title sm:text-2xl">{job.title}</h1>
             <p className="mt-1 text-xs text-muted">{meta.join(" · ")}</p>
           </div>
@@ -185,14 +288,14 @@ export function RequestDetail({
           <p className="mt-3 line-clamp-3 text-sm leading-6 text-copy">{requestSummary}</p>
         ) : null}
         {requestFacts.length ? (
-          <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted border-t border-line/60 pt-3">
             {requestFacts.map((fact) => (
-              <div key={fact.label} className="rounded-xl bg-smoke/80 px-2.5 py-2">
-                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted">{fact.label}</dt>
-                <dd className="mt-0.5 truncate text-xs font-medium text-title">{fact.value}</dd>
-              </div>
+              <span key={fact.label} className="inline-flex items-center gap-1.5">
+                <span className="text-muted font-medium">{fact.label}:</span>
+                <strong className="text-title font-semibold">{fact.value}</strong>
+              </span>
             ))}
-          </dl>
+          </div>
         ) : null}
         {photosForJob.length ? (
           <div className="mt-3 flex gap-2">
@@ -315,49 +418,19 @@ export function RequestDetail({
         </div>
       ) : null}
 
-      {job.status === "completed" ? (
-        <div className="rounded-[20px] border border-emerald-200 bg-white p-5 shadow-xs flex flex-wrap items-center justify-between gap-4 animate-in fade-in">
-          <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
-              <FileCheck2 className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-display text-base font-bold text-title">
-                  Job Completed &amp; Settled
-                </p>
-                <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">
-                  $0 Platform Fee
-                </span>
-              </div>
-              <p className="text-xs text-muted">
-                Receipt #{booking?.paymentReceiptNumber || completion?.receiptNumber || "LHF-REC-842911"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowReceiptModal(true)}
-              className="rounded-full gap-1.5 font-semibold border border-line hover:border-primary/40 hover:text-primary"
-            >
-              <FileCheck2 className="h-4 w-4 text-primary" />
-              View Itemized Receipt &amp; PDF
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
       {/* Booking panel */}
       {booking && (workActive || job.status === "completed") ? (
         <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
           <div className="flex items-center justify-between gap-2 border-b border-line/60 pb-3">
-            <h2 className="font-display text-lg font-bold text-title">Appointment &amp; Booking</h2>
-            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200 flex items-center gap-1">
-              <ShieldCheck className="h-3 w-3" /> Direct pay to pro
-            </span>
+            <h2 className="font-display text-base sm:text-lg font-bold text-title">Appointment &amp; Booking</h2>
+            {job.status === "completed" ? (
+              <span className="text-xs text-muted font-medium flex items-center gap-1.5">
+                <Check className="h-3.5 w-3.5 text-primary" />
+                Completed &amp; Settled
+              </span>
+            ) : (
+              <span className="text-xs text-muted font-medium">Direct pay</span>
+            )}
           </div>
 
           <dl className="mt-4 grid gap-3 text-sm text-copy sm:grid-cols-2">
@@ -384,59 +457,60 @@ export function RequestDetail({
               <dt className="text-xs text-muted font-medium">Agreed payment method</dt>
               <dd className="text-xs text-muted mt-0.5">
                 {booking.paidAt ? (
-                  <span className="font-semibold text-emerald-700">
-                    Both parties recorded payment via {paymentMethodLabels[booking.paymentMethod ?? booking.paymentArrangement ?? ""] ?? booking.paymentMethod}
+                  <span className="font-semibold text-title">
+                    Paid directly via {paymentMethodLabels[booking.paymentMethod ?? booking.paymentArrangement ?? ""] ?? booking.paymentMethod}
                   </span>
                 ) : booking.paymentArrangement || booking.paymentMethod ? (
                   <span className="font-semibold text-title">
                     {paymentMethodLabels[booking.paymentArrangement ?? booking.paymentMethod ?? ""] ?? booking.paymentArrangement} · pay the professional directly
                   </span>
                 ) : (
-                  "Agree how you will pay the professional. HomeFix does not collect this."
+                  "Agree how you will pay the professional directly."
                 )}
               </dd>
             </div>
           </dl>
 
-          <div className="mt-4 rounded-[12px] bg-smoke p-3.5 border border-line/60">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted">Agreed Scope Snapshot</p>
-            <p className="mt-1 text-xs sm:text-sm leading-relaxed text-copy">{booking.scopeSnapshot}</p>
+          <div className="mt-4 pt-3.5 border-t border-line/60">
+            <p className="text-xs font-semibold text-title">Agreed Scope:</p>
+            <p className="mt-1 text-xs sm:text-sm leading-relaxed text-muted">{booking.scopeSnapshot}</p>
             {booking.acceptedAt ? (
-              <p className="mt-2 text-xs text-muted">Accepted {booking.acceptedAt.slice(0, 10)}</p>
+              <p className="mt-1 text-[11px] text-muted">Accepted {booking.acceptedAt.slice(0, 10)}</p>
             ) : null}
           </div>
 
-          {(canHire || isProView) && !booking.paidAt ? (
-            <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-              <Field label="Record agreed payment method">
-                <NativeSelect
-                  value={booking.paymentArrangement ?? arrangePay}
-                  onChange={(e) => setArrangePay(e.target.value as DirectPaymentMethod)}
-                >
-                  {Object.entries(paymentMethodLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </Field>
-              <div className="flex items-end">
+          {hiredQuote?.notes ? (
+            <div className="mt-2 text-xs text-muted leading-relaxed">
+              <span className="font-semibold text-title">Site Notes:</span> {hiredQuote.notes}
+            </div>
+          ) : null}
+
+          {job.status === "completed" ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line/60 pt-3.5">
+              <p className="text-xs text-muted">
+                Receipt #{booking?.paymentReceiptNumber || completion?.receiptNumber || "LHF-REC-842911"}
+              </p>
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
-                  onClick={() => {
-                    dispatch(
-                      setPaymentArrangement({
-                        jobId: id,
-                        paymentArrangement: arrangePay,
-                      }),
-                    );
-                    setSavedMsg("Payment method recorded. This is not a payment.");
-                  }}
+                  onClick={() => setShowReceiptModal(true)}
+                  className="rounded-full text-xs font-semibold border border-line hover:border-primary/40 hover:text-primary"
                 >
-                  Save method
+                  <FileCheck2 className="h-3.5 w-3.5 text-primary mr-1.5" />
+                  View Itemized Receipt &amp; PDF
                 </Button>
+                {!existingReview && canHire ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setShowReviewModal(true)}
+                    className="rounded-full text-xs font-semibold"
+                  >
+                    Rate &amp; Review Pro
+                  </Button>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -460,7 +534,7 @@ export function RequestDetail({
               <p className="text-xs font-bold uppercase tracking-wider text-muted">
                 {booking.scheduledDate ? "Change appointment time" : "Confirm appointment to lock the booking"}
               </p>
-              <div className="mt-2.5 grid gap-3 sm:grid-cols-[1fr_1.5fr_auto]">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field label={booking.scheduledDate ? "New Date" : "Appointment date"}>
                   <TextField
                     type="date"
@@ -480,64 +554,87 @@ export function RequestDetail({
                     ))}
                   </NativeSelect>
                 </Field>
-                <div className="flex items-end">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={booking.scheduledDate ? "ghost" : undefined}
-                    disabled={!rescheduleDate}
-                    onClick={() => {
-                      if (!booking.scheduledDate && hiredQuote) {
-                        dispatch(
-                          confirmBooking({
-                            jobId: id,
-                            quoteId: hiredQuote.id,
-                            proId: hiredQuote.proId,
-                            agreedPrice: hiredQuote.amount,
-                            scheduledDate: rescheduleDate,
-                            scheduledTime: rescheduleWindow,
-                            arrivalWindow: rescheduleWindow,
-                            scopeSnapshot: hiredQuote.scope,
-                            paymentArrangement: booking.paymentArrangement ?? arrangePay,
-                          }),
-                        );
-                        dispatch(setJobStatus({ jobId: id, status: "scheduled" }));
-                        dispatch(
-                          addNotification({
-                            title: "Booking confirmed",
-                            body: `${rescheduleDate} · pay the professional directly. HomeFix does not collect this.`,
-                            href: `/account/jobs/${id}`,
-                            createdAt: "Just now",
-                            role: "homeowner",
-                          }),
-                        );
-                        dispatch(
-                          addNotification({
-                            title: "Booking confirmed",
-                            body: `Schedule locked for ${rescheduleDate}.`,
-                            href: `/pro/jobs/${id}`,
-                            createdAt: "Just now",
-                            role: "pro",
-                          }),
-                        );
-                        setSavedMsg("Booking confirmed. Pay the professional directly.");
-                        return;
-                      }
+                {!booking.paidAt ? (
+                  <Field label="Agreed payment method">
+                    <NativeSelect
+                      value={booking.paymentArrangement ?? arrangePay}
+                      onChange={(e) => setArrangePay(e.target.value as DirectPaymentMethod)}
+                    >
+                      {Object.entries(paymentMethodLabels).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                ) : null}
+              </div>
+              <div className="mt-3 flex items-center justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={booking.scheduledDate ? "ghost" : undefined}
+                  disabled={!rescheduleDate}
+                  onClick={() => {
+                    const chosenPay = booking.paymentArrangement ?? arrangePay;
+                    if (!booking.scheduledDate && hiredQuote) {
                       dispatch(
-                        requestReschedule({
+                        confirmBooking({
                           jobId: id,
+                          quoteId: hiredQuote.id,
+                          proId: hiredQuote.proId,
+                          agreedPrice: hiredQuote.amount,
                           scheduledDate: rescheduleDate,
                           scheduledTime: rescheduleWindow,
                           arrivalWindow: rescheduleWindow,
+                          scopeSnapshot: hiredQuote.scope,
+                          paymentArrangement: chosenPay,
                         }),
                       );
-                      setSavedMsg("Appointment rescheduled successfully.");
-                    }}
-                    className="rounded-full border border-line"
-                  >
-                    {booking.scheduledDate ? "Reschedule" : "Confirm booking"}
-                  </Button>
-                </div>
+                      dispatch(setJobStatus({ jobId: id, status: "scheduled" }));
+                      dispatch(
+                        addNotification({
+                          title: "Booking confirmed",
+                          body: `${rescheduleDate} · pay the professional directly. HomeFix does not collect this.`,
+                          href: `/account/jobs/${id}`,
+                          createdAt: "Just now",
+                          role: "homeowner",
+                        }),
+                      );
+                      dispatch(
+                        addNotification({
+                          title: "Booking confirmed",
+                          body: `Schedule locked for ${rescheduleDate}.`,
+                          href: `/pro/jobs/${id}`,
+                          createdAt: "Just now",
+                          role: "pro",
+                        }),
+                      );
+                      setSavedMsg("Booking confirmed. Pay the professional directly.");
+                      return;
+                    }
+                    dispatch(
+                      requestReschedule({
+                        jobId: id,
+                        scheduledDate: rescheduleDate,
+                        scheduledTime: rescheduleWindow,
+                        arrivalWindow: rescheduleWindow,
+                      }),
+                    );
+                    if (chosenPay !== booking.paymentArrangement) {
+                      dispatch(
+                        setPaymentArrangement({
+                          jobId: id,
+                          paymentArrangement: chosenPay,
+                        }),
+                      );
+                    }
+                    setSavedMsg("Appointment rescheduled successfully.");
+                  }}
+                  className="rounded-full border border-line"
+                >
+                  {booking.scheduledDate ? "Update Schedule" : "Confirm Appointment & Schedule"}
+                </Button>
               </div>
             </div>
           ) : null}
@@ -639,20 +736,6 @@ export function RequestDetail({
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Inspect &amp; Confirm Completion
-              </Button>
-            ) : null}
-
-            {/* View Receipt Button */}
-            {job.status === "completed" ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowReceiptModal(true)}
-                className="rounded-full gap-1.5 border border-line font-medium"
-              >
-                <FileCheck2 className="h-4 w-4 text-primary" />
-                View Itemized Receipt
               </Button>
             ) : null}
           </div>
@@ -841,113 +924,228 @@ export function RequestDetail({
         </>
       ) : null}
 
-      {canHire && job.status === "completed" ? (
-        <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
-          <div className="flex items-center justify-between gap-2 border-b border-line/60 pb-3">
-            <div>
-              <h2 className="font-display text-lg font-bold text-title">
-                Review {hiredPro?.name ?? "Your Contractor"}
-              </h2>
-              <p className="text-xs text-muted">
-                Your verified review helps other homeowners find trustworthy pros.
-              </p>
-            </div>
-            <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 border border-amber-200">
-              <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
-              Verified Hire
-            </span>
-          </div>
+      {/* COMPLETED STATUS: HOMEOWNER & PRO VERIFIED REVIEW REFLECTION */}
+      {job.status === "completed" ? (
+        canHire ? (
+          existingReview ? (
+            <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3.5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-base sm:text-lg font-bold text-title">
+                      Your Verified Review
+                    </h2>
+                    <span className="flex items-center gap-1 text-xs text-muted">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                      Published
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted mt-0.5">
+                    Submitted for {hiredPro?.name ?? "your contractor"} · {existingReview.createdAt}
+                  </p>
+                </div>
 
-          <div className="mt-4 space-y-4">
-            <Field label="Overall Rating">
-              <NativeSelect value={reviewRating} onChange={(event) => setReviewRating(event.target.value)}>
-                <option value="5">★★★★★ 5 — Excellent service, highly recommend</option>
-                <option value="4">★★★★☆ 4 — Good work, satisfied</option>
-                <option value="3">★★★☆☆ 3 — Average / okay</option>
-                <option value="2">★★☆☆☆ 2 — Below expectations</option>
-                <option value="1">★☆☆☆☆ 1 — Poor experience</option>
-              </NativeSelect>
-            </Field>
-
-            <div>
-              <p className="font-display text-xs font-semibold uppercase tracking-wider text-muted mb-2">
-                What went well? (Select all that apply)
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  "Punctual & on time",
-                  "Fair & transparent pricing",
-                  "Clean work area",
-                  "High craftsmanship",
-                  "Honest diagnosis",
-                  "Wore boot covers indoors",
-                ].map((tag) => {
-                  const active = selectedReviewTags.includes(tag);
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() =>
-                        setSelectedReviewTags((prev) =>
-                          active ? prev.filter((t) => t !== tag) : [...prev, tag],
-                        )
-                      }
-                      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition ${
-                        active
-                          ? "bg-primary text-white shadow-xs"
-                          : "bg-smoke border border-line text-copy hover:border-primary/40"
-                      }`}
-                    >
-                      {active ? <Check className="h-3 w-3 stroke-[3]" /> : "+"} {tag}
-                    </button>
-                  );
-                })}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1 text-amber-500">
+                    {[...Array(existingReview.rating)].map((_, i) => (
+                      <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-500" />
+                    ))}
+                    <span className="ml-1 text-xs font-bold text-title">
+                      {existingReview.rating}.0 / 5.0
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setReviewRating(existingReview.rating);
+                      setReviewBody(existingReview.body);
+                      setShowReviewModal(true);
+                    }}
+                    className="rounded-full text-xs font-semibold border border-line hover:border-primary/40 hover:text-primary"
+                  >
+                    Edit Review
+                  </Button>
+                </div>
               </div>
-            </div>
 
-            <Field label="Your Written Review">
-              <TextArea
-                value={reviewBody}
-                onChange={(event) => setReviewBody(event.target.value)}
-                placeholder="Share specifics about communication, punctuality, and workmanship quality…"
-                rows={3}
-              />
-            </Field>
+              <div className="mt-4 space-y-3">
+                <p className="font-sans text-sm leading-relaxed text-copy">
+                  {existingReview.body}
+                </p>
 
-            <Button
-              type="button"
-              size="sm"
-              disabled={reviewBody.trim().length < 4 && selectedReviewTags.length === 0}
-              onClick={() => {
-                const combinedBody = [
-                  selectedReviewTags.length
-                    ? `[Highlights: ${selectedReviewTags.join(", ")}]`
-                    : null,
-                  reviewBody.trim(),
-                ]
-                  .filter(Boolean)
-                  .join(" ");
+                {existingReview.reply ? (
+                  <div className="mt-3.5 pt-3 border-t border-line/60 pl-3 border-l-2 border-primary/50 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-display text-xs font-bold text-title">
+                        Response from {hiredPro?.name ?? "Contractor"}
+                      </span>
+                      <span className="text-[11px] text-muted font-medium">Verified Pro</span>
+                    </div>
+                    <p className="text-xs text-muted leading-relaxed">
+                      {existingReview.reply}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </Card>
+          ) : (
+            <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3.5">
+                <div>
+                  <h2 className="font-display text-base sm:text-lg font-bold text-title">
+                    Rate &amp; Review {hiredPro?.name ?? "Your Contractor"}
+                  </h2>
+                  <p className="text-xs text-muted mt-0.5">
+                    Share your experience to help local homeowners and update public scores.
+                  </p>
+                </div>
+                <span className="text-xs text-muted font-medium flex items-center gap-1">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+                  Verified Hire
+                </span>
+              </div>
 
-                dispatch(
-                  addReview({
-                    jobId: id,
-                    proId: hiredQuote?.proId ?? "pro-1",
-                    author: job.homeownerName,
-                    rating: Number(reviewRating),
-                    body: combinedBody || "Excellent professional service.",
-                    createdAt: "Just now",
-                  }),
-                );
-                setReviewBody("");
-                setSelectedReviewTags([]);
-                setSavedMsg("Review published on contractor's profile!");
-              }}
-              className="rounded-full font-semibold"
-            >
-              Submit Verified Review
-            </Button>
-          </div>
-        </Card>
+              <div className="mt-5 py-4 text-center space-y-3">
+                <div className="flex items-center justify-center gap-2 sm:gap-3">
+                  {[1, 2, 3, 4, 5].map((starVal) => {
+                    const isLit = currentDisplayRating >= starVal;
+                    return (
+                      <button
+                        key={starVal}
+                        type="button"
+                        onClick={() => {
+                          setReviewRating(starVal);
+                          setShowReviewModal(true);
+                        }}
+                        onMouseEnter={() => setHoverRating(starVal)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        className="p-1 transition-transform duration-150 hover:scale-125 active:scale-95 cursor-pointer focus:outline-none"
+                        title={`Rate ${starVal} Star${starVal > 1 ? "s" : ""}`}
+                      >
+                        <Star
+                          className={`h-8 w-8 sm:h-9 sm:w-9 transition-colors ${
+                            isLit ? "fill-amber-400 text-amber-500" : "fill-gray-100 text-gray-300"
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <p className="text-xs text-muted font-medium">
+                  {activeSentiment.title} · Click a star to leave feedback
+                </p>
+              </div>
+            </Card>
+          )
+        ) : isProView ? (
+          existingReview ? (
+            <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3.5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-lg font-bold text-title">
+                      Client Review Received
+                    </h2>
+                    <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      Verified Client
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted mt-0.5">
+                    From {existingReview.author} · {existingReview.createdAt}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1 text-amber-500">
+                  {[...Array(existingReview.rating)].map((_, i) => (
+                    <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-500" />
+                  ))}
+                  <span className="ml-1 text-xs font-bold text-title">
+                    {existingReview.rating}.0 / 5.0
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                <p className="font-sans text-sm leading-relaxed text-copy">
+                  {existingReview.body}
+                </p>
+
+                {existingReview.reply ? (
+                  <div className="rounded-xl border border-line border-l-4 border-l-primary bg-smoke/60 p-4 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-display text-xs font-bold text-title">
+                        Your Public Response
+                      </span>
+                      <span className="text-[11px] text-muted">· Visible on your profile</span>
+                    </div>
+                    <p className="text-xs text-copy/90 leading-relaxed">
+                      {existingReview.reply}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-line/80 bg-smoke/40 p-4 space-y-3">
+                    <p className="font-display text-xs font-semibold uppercase tracking-wider text-muted">
+                      Respond to {existingReview.author} (Public Response)
+                    </p>
+                    <TextArea
+                      value={proReplyDraft}
+                      onChange={(e) => setProReplyDraft(e.target.value)}
+                      placeholder="Thank the client for their business and review…"
+                      rows={2}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={proReplyDraft.trim().length < 3}
+                      onClick={() => {
+                        dispatch(
+                          replyToReview({
+                            id: existingReview.id,
+                            reply: proReplyDraft.trim(),
+                          }),
+                        );
+                        dispatch(
+                          addNotification({
+                            title: "Contractor replied to your review",
+                            body: `${hiredPro?.name ?? "Your contractor"} replied to your review for ${job.title}.`,
+                            href: `/account/jobs/${id}`,
+                            createdAt: "Just now",
+                            role: "homeowner",
+                          }),
+                        );
+                        setProReplyDraft("");
+                        setSavedMsg("Public response published to your profile!");
+                      }}
+                      className="rounded-full"
+                    >
+                      Post Response
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </Card>
+          ) : (
+            <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-6 shadow-xs">
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-50 text-amber-700 border border-amber-200">
+                  <Star className="h-5 w-5 fill-amber-400 text-amber-500" />
+                </span>
+                <div>
+                  <h3 className="font-display text-base font-bold text-title">
+                    Awaiting Homeowner Review
+                  </h3>
+                  <p className="text-xs text-muted mt-0.5">
+                    You have marked work complete and settled payment off-platform ($0 fee). Once {job.homeownerName} submits their review, it will be posted here and on your public profile.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )
+        ) : null
       ) : null}
 
       {/* MODAL 1: WORK ORDER & RECEIPT MODAL */}
@@ -1156,6 +1354,128 @@ export function RequestDetail({
                 className="rounded-full font-semibold"
               >
                 Send Completion Notice
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL 4: COMPACT STANDARD REVIEW MODAL */}
+      {showReviewModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-md rounded-2xl border border-line bg-white shadow-2xl p-5 space-y-4 animate-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-line/60 pb-3">
+              <div>
+                <h2 className="font-display text-base font-bold text-title">
+                  {existingReview ? "Edit Review" : `Review ${hiredPro?.name ?? "Contractor"}`}
+                </h2>
+                <p className="text-xs text-muted mt-0.5">
+                  Verified hire · {job.title}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReviewModal(false)}
+                className="rounded-full p-1 text-muted hover:bg-smoke hover:text-title transition"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Stars Section (Clean, centered, no outer box) */}
+            <div className="text-center py-1 space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                {[1, 2, 3, 4, 5].map((starVal) => {
+                  const isLit = currentDisplayRating >= starVal;
+                  return (
+                    <button
+                      key={starVal}
+                      type="button"
+                      onClick={() => setReviewRating(starVal)}
+                      onMouseEnter={() => setHoverRating(starVal)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      className="p-1 transition-transform duration-150 hover:scale-125 active:scale-95 cursor-pointer focus:outline-none"
+                      aria-label={`Rate ${starVal} Star${starVal > 1 ? "s" : ""}`}
+                    >
+                      <Star
+                        className={`h-8 w-8 transition-colors ${
+                          isLit ? "fill-amber-400 text-amber-500" : "fill-gray-100 text-gray-300"
+                        }`}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs font-medium text-title">
+                {activeSentiment.title}
+              </p>
+            </div>
+
+            {/* Highlight tags */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted">What stood out?</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "Punctual",
+                  "Clean work",
+                  "Fair price",
+                  "Great quality",
+                  "Friendly",
+                ].map((tag) => {
+                  const active = selectedReviewTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() =>
+                        setSelectedReviewTags((prev) =>
+                          active ? prev.filter((t) => t !== tag) : [...prev, tag],
+                        )
+                      }
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                        active
+                          ? "bg-title text-white"
+                          : "bg-smoke text-muted hover:text-title"
+                      }`}
+                    >
+                      {active ? "✓ " : ""}{tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Written review field */}
+            <div className="space-y-1">
+              <TextArea
+                value={reviewBody}
+                onChange={(e) => setReviewBody(e.target.value)}
+                placeholder="Write a brief review (optional)..."
+                rows={3}
+                className="text-xs sm:text-sm"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-line/60">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowReviewModal(false)}
+                className="rounded-full text-xs font-semibold"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveReview}
+                className="rounded-full text-xs font-semibold"
+              >
+                {existingReview ? "Save Changes" : "Submit Review"}
               </Button>
             </div>
           </div>

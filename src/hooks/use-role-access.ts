@@ -9,11 +9,14 @@ export function useRoleAccess() {
   const membershipActive = useAppSelector((state) => state.marketplace.membershipActive);
   const membershipPaused = useAppSelector((state) => state.features.membershipPaused);
   const membershipCancelled = useAppSelector((state) => state.features.membershipCancelled);
+  const subscriptionPlan = useAppSelector((state) => state.features.subscriptionPlan);
   const contactUnlocked = useAppSelector((state) => state.features.contactUnlocked);
+
+  const isEffectivelyActive = membershipActive || (subscriptionPlan === "trial" && !membershipCancelled);
 
   const access = resolveRoleAccess(user, {
     applicationStatus,
-    membershipActive,
+    membershipActive: isEffectivelyActive,
     membershipPaused,
     membershipCancelled,
     contactUnlocked,

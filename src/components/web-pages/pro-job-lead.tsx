@@ -60,38 +60,20 @@ export function ProJobLead({ jobId }: { jobId: string }) {
           </Button>
         </div>
       ) : passed ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line/80 bg-white px-6 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line/80 bg-white p-5 shadow-xs">
           <p className="text-sm text-muted">You passed on this request.</p>
-          <Button type="button" size="sm" variant="ghost" onClick={accept}>
+          <Button type="button" size="sm" variant="ghost" onClick={accept} className="rounded-full">
             Undo
           </Button>
         </div>
-      ) : accepted ? (
-        alreadyQuoted ? (
-          <div className="rounded-xl border border-line/80 bg-white px-6 py-4">
-            <p className="text-sm text-muted">
-              Your quotation is linked to this job. The homeowner compares quotations here and must accept one before a booking is confirmed.
-            </p>
-          </div>
-        ) : (
-          <ProQuoteForm jobId={jobId} />
-        )
-      ) : (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line/80 bg-white px-6 py-4">
+      ) : alreadyQuoted ? (
+        <div className="rounded-2xl border border-line/80 bg-white p-5 shadow-xs">
           <p className="text-sm text-muted">
-            {job?.intakeAnswers?.length
-              ? "Review their answers, then send a quotation or pass. This is not a booking."
-              : "Send a quotation or pass. This is not a booking."}
+            Your quotation is linked to this job. The homeowner compares quotations here and must accept one before a booking is confirmed.
           </p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="ghost" onClick={pass}>
-              Pass
-            </Button>
-            <Button type="button" size="sm" onClick={accept}>
-              Send quotation
-            </Button>
-          </div>
         </div>
+      ) : (
+        <ProQuoteForm jobId={jobId} onPass={pass} />
       )}
     </div>
   );

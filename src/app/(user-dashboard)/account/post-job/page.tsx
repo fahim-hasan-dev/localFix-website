@@ -148,20 +148,13 @@ function BookingFlow() {
   const [propertyType, setPropertyType] = useState<PropertyType>("single_family");
   const [materialsStatus, setMaterialsStatus] = useState<MaterialsStatus>("contractor");
   const [budget, setBudget] = useState("");
-  const [selectedAddressId, setSelectedAddressId] = useState(
-    addresses.find(
-      (a) =>
-        user?.street && a.street.trim().toLowerCase() === user.street.trim().toLowerCase(),
-    )?.id ||
-      addresses[0]?.id ||
-      "",
-  );
+  // Only select saved address if user explicitly picks it; default to empty so homepage zip is used without fabricating 418 West 5th St
+  const [selectedAddressId, setSelectedAddressId] = useState("");
   const [zipInput, setZipInput] = useState(
-    draft.zip || user?.zip || addresses[0]?.zip || "78701",
+    draft.zip || user?.zip || "78701",
   );
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [editingDetails, setEditingDetails] = useState(!(draft.problem || draft.summary));
-  const [editingLocation, setEditingLocation] = useState(false);
+  const [editingLocation, setEditingLocation] = useState(true);
   const [appliedDraft, setAppliedDraft] = useState(false);
 
   useEffect(() => {
@@ -178,7 +171,6 @@ function BookingFlow() {
     );
     setDescriptionInput(draft.problem || draft.summary || "");
     if (draft.zip) setZipInput(draft.zip);
-    setEditingDetails(false);
     setAppliedDraft(true);
   }, [appliedDraft, draft, intakeReady, invitedPro, startingCategory]);
 
@@ -456,7 +448,7 @@ function BookingFlow() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-4xl space-y-6">
       {/* 1. Invited Pro Banner (If directly booking) */}
       {invitedPro ? (
         <Card className="rounded-[20px] border border-primary/30 bg-gradient-to-r from-primary/5 via-blue-50/20 to-white p-4 sm:p-5 shadow-xs">
@@ -544,84 +536,57 @@ function BookingFlow() {
         </div>
       </div>
 
-      {/* 3. Main Layout: Form (Left) & Minimal Summary (Right) */}
-      <div className="grid gap-6 lg:grid-cols-12 items-start">
-        {/* Left Column: Active Step */}
-        <div className="lg:col-span-8">
-          <Card className="rounded-[22px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
-            {/* STEP 1: JOB DETAILS */}
-            {step === 1 && (
-              <div className="space-y-5 animate-in fade-in duration-150">
-                <div className="border-b border-line/60 pb-3 flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-display text-xl font-bold text-title">
-                      What do you need help with?
-                    </h2>
-                    <p className="mt-0.5 text-xs text-muted">
-                      {cameFromHome || invitedPro
-                        ? "Taken from your home request. Edit only if something changed."
-                        : "Tell us about your project so we can match you with the right specialist."}
-                    </p>
-                  </div>
-                  {!editingDetails ? (
-                    <button
-                      type="button"
-                      onClick={() => setEditingDetails(true)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-line/80 bg-white px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/5 shrink-0"
-                    >
-                      <Pencil className="h-3 w-3" />
-                      Edit
-                    </button>
-                  ) : null}
-                </div>
+      {/* 3. Main Layout: Focused Wizard Form */}
+      <div className="w-full">
+        <Card className="rounded-[22px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
+          {/* STEP 1: JOB DETAILS */}
+          {step === 1 && (
+            <div className="space-y-5 animate-in fade-in duration-150">
+              <div className="border-b border-line/60 pb-3">
+                <h2 className="font-display text-xl font-bold text-title">
+                  What do you need help with?
+                </h2>
+                <p className="mt-0.5 text-xs text-muted">
+                  {cameFromHome || invitedPro
+                    ? "Review and edit your project details before posting."
+                    : "Tell us about your project so we can match you with the right specialist."}
+                </p>
+              </div>
 
-                {!editingDetails ? (
-                  <div className="rounded-2xl border border-line/80 bg-smoke/40 p-4">
-                    <p className="text-xs font-semibold text-primary">{selectedCategory.name}</p>
-                    <p className="mt-1 font-display text-base font-bold text-title">{titleInput}</p>
-                    {descriptionInput ? (
-                      <p className="mt-2 text-sm leading-6 text-copy">{descriptionInput}</p>
-                    ) : null}
-                    <p className="mt-3 text-xs text-muted">{areaDescription}</p>
-                  </div>
-                ) : (
-                  <>
-                    <Field label="Trade Category *">
-                      <NativeSelect
-                        value={categorySlug}
-                        onChange={(e) => setCategorySlug(e.target.value)}
-                        className="rounded-xl"
-                      >
-                        {categories.map((item) => (
-                          <option key={item.id} value={item.slug}>
-                            {item.name}
-                          </option>
-                        ))}
-                      </NativeSelect>
-                    </Field>
+              <Field label="Trade Category *">
+                <NativeSelect
+                  value={categorySlug}
+                  onChange={(e) => setCategorySlug(e.target.value)}
+                  className="rounded-xl"
+                >
+                  {categories.map((item) => (
+                    <option key={item.id} value={item.slug}>
+                      {item.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
 
-                    <Field label="Project Headline *">
-                      <TextField
-                        value={titleInput}
-                        onChange={(e) => setTitleInput(e.target.value)}
-                        placeholder="e.g. Leaking kitchen faucet"
-                        required
-                        className="rounded-xl"
-                      />
-                    </Field>
+              <Field label="Project Headline *">
+                <TextField
+                  value={titleInput}
+                  onChange={(e) => setTitleInput(e.target.value)}
+                  placeholder="e.g. Leaking kitchen faucet"
+                  required
+                  className="rounded-xl"
+                />
+              </Field>
 
-                    <Field label="Detailed Work Description *">
-                      <TextArea
-                        value={descriptionInput}
-                        onChange={(e) => setDescriptionInput(e.target.value)}
-                        placeholder="Describe what needs to be fixed or installed, any symptoms, and any specific requests..."
-                        className="min-h-[110px] rounded-xl text-sm"
-                        rows={4}
-                        required
-                      />
-                    </Field>
-                  </>
-                )}
+              <Field label="Detailed Work Description *">
+                <TextArea
+                  value={descriptionInput}
+                  onChange={(e) => setDescriptionInput(e.target.value)}
+                  placeholder="Describe what needs to be fixed or installed, any symptoms, and any specific requests..."
+                  className="min-h-[110px] rounded-xl text-sm"
+                  rows={4}
+                  required
+                />
+              </Field>
 
                 {/* Inline Photo Upload (Convenient & frictionless) */}
                 <div className="space-y-2 pt-1 border-t border-line/40">
@@ -786,84 +751,89 @@ function BookingFlow() {
 
                 {/* Location: Address / ZIP */}
                 <div className="space-y-3 pt-2 border-t border-line/40">
-                  <div className="flex items-center justify-between gap-3">
+                  <div>
                     <label className="block text-xs font-bold text-title">
                       Service Location
                     </label>
-                    {!editingLocation ? (
-                      <button
-                        type="button"
-                        onClick={() => setEditingLocation(true)}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                      >
-                        <Pencil className="h-3 w-3" />
-                        Edit
-                      </button>
-                    ) : null}
+                    <p className="text-[11px] text-muted mt-0.5">
+                      Pros match based on your ZIP code radius. Street address is private and only shared directly with the pro you hire.
+                    </p>
                   </div>
 
-                  {!editingLocation ? (
-                    <div className="flex items-center gap-2.5 rounded-xl border border-primary bg-primary/[0.04] p-3 ring-2 ring-primary/20">
-                      <MapPin className="h-4 w-4 shrink-0 text-primary" />
-                      <div className="min-w-0">
-                        <span className="font-display text-xs font-bold text-title block truncate">
-                          {activeAddress?.label || "Home"}
-                        </span>
-                        <span className="text-[11px] text-muted block truncate">
-                          {displayLocation}
-                        </span>
+                  {addresses.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] font-semibold text-muted block uppercase tracking-wider">
+                        Location Options:
+                      </span>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {/* Option 1: Custom ZIP only */}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAddressId("")}
+                          className={cn(
+                            "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer",
+                            !selectedAddressId
+                              ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 shadow-xs"
+                              : "border-line bg-white hover:border-primary/40 hover:bg-smoke/60",
+                          )}
+                        >
+                          <MapPin className={cn("h-4 w-4 shrink-0", !selectedAddressId ? "text-primary" : "text-muted")} />
+                          <div className="min-w-0">
+                            <span className="font-display text-xs font-bold text-title block truncate">
+                              Service ZIP Area
+                            </span>
+                            <span className="text-[11px] text-muted block truncate">
+                              Austin, TX {zipInput || "78701"}
+                            </span>
+                          </div>
+                        </button>
+
+                        {/* Option 2+: Saved address presets */}
+                        {addresses.map((addr) => {
+                          const active = selectedAddressId === addr.id;
+                          return (
+                            <button
+                              key={addr.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedAddressId(addr.id);
+                                if (addr.zip) setZipInput(addr.zip);
+                              }}
+                              className={cn(
+                                "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer",
+                                active
+                                  ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 shadow-xs"
+                                  : "border-line bg-white hover:border-primary/40 hover:bg-smoke/60",
+                              )}
+                            >
+                              <MapPin className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted")} />
+                              <div className="min-w-0">
+                                <span className="font-display text-xs font-bold text-title block truncate">
+                                  Use Saved: {addr.label}
+                                </span>
+                                <span className="text-[11px] text-muted block truncate">
+                                  {addr.street}, {addr.zip}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
-                  ) : (
-                    <>
-                      {addresses.length > 0 && (
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {addresses.map((addr) => {
-                            const active = selectedAddressId === addr.id;
-                            return (
-                              <button
-                                key={addr.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedAddressId(addr.id);
-                                  if (addr.zip) setZipInput(addr.zip);
-                                }}
-                                className={cn(
-                                  "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all",
-                                  active
-                                    ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 shadow-xs"
-                                    : "border-line bg-white hover:border-primary/40 hover:bg-smoke",
-                                )}
-                              >
-                                <MapPin className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted")} />
-                                <div className="min-w-0">
-                                  <span className="font-display text-xs font-bold text-title block truncate">
-                                    {addr.label}
-                                  </span>
-                                  <span className="text-[11px] text-muted block truncate">
-                                    {addr.street}, {addr.zip}
-                                  </span>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      <div className="max-w-xs">
-                        <Field label="Service ZIP Code *">
-                          <TextField
-                            value={zipInput}
-                            onChange={(e) => setZipInput(e.target.value)}
-                            placeholder="78701"
-                            maxLength={5}
-                            required
-                            className="rounded-xl font-mono text-sm"
-                          />
-                        </Field>
-                      </div>
-                    </>
                   )}
+
+                  <div className="max-w-xs">
+                    <Field label="Service ZIP Code *">
+                      <TextField
+                        value={zipInput}
+                        onChange={(e) => setZipInput(e.target.value)}
+                        placeholder="78701"
+                        maxLength={5}
+                        required
+                        className="rounded-xl font-mono text-sm"
+                      />
+                    </Field>
+                  </div>
                 </div>
 
                 {/* Property Type (Clean compact pills) */}
@@ -1040,36 +1010,29 @@ function BookingFlow() {
                     </div>
                   </div>
 
-                  {/* 4 Colorful Metadata Feature Tiles */}
+                  {/* Clean Metadata Feature Grid with Uniform Monochrome Icons */}
                   <div className="p-4 sm:p-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       {/* Tile 1: Timeframe */}
-                      <div className="flex items-center gap-3 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/60 to-transparent p-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 shadow-2xs">
+                      <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
                           <Calendar className="h-4.5 w-4.5" />
                         </div>
                         <div className="min-w-0">
-                          <span className="block text-[11px] font-medium text-stone-500">Timeframe</span>
+                          <span className="block text-[11px] font-medium text-muted">Timeframe</span>
                           <span className="font-semibold text-title capitalize text-xs sm:text-sm">
-                            {urgency === "asap" ? (
-                              <span className="text-red-700 font-bold inline-flex items-center gap-1">
-                                <Zap className="h-3.5 w-3.5 fill-red-500 text-red-600" />
-                                Emergency / ASAP
-                              </span>
-                            ) : (
-                              urgency.replace("_", " ")
-                            )}
+                            {urgency === "asap" ? "Emergency / ASAP" : urgency.replace("_", " ")}
                           </span>
                         </div>
                       </div>
 
                       {/* Tile 2: Preferred Arrival Window */}
-                      <div className="flex items-center gap-3 rounded-xl border border-amber-100 bg-gradient-to-br from-amber-50/60 to-transparent p-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 shadow-2xs">
+                      <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
                           <Clock className="h-4.5 w-4.5" />
                         </div>
                         <div className="min-w-0">
-                          <span className="block text-[11px] font-medium text-stone-500">Arrival Window</span>
+                          <span className="block text-[11px] font-medium text-muted">Arrival Window</span>
                           <span className="font-semibold text-title capitalize text-xs sm:text-sm">
                             {timeWindow}
                           </span>
@@ -1077,12 +1040,12 @@ function BookingFlow() {
                       </div>
 
                       {/* Tile 3: Service Location */}
-                      <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50/60 to-transparent p-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 shadow-2xs">
+                      <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
                           <MapPin className="h-4.5 w-4.5" />
                         </div>
                         <div className="min-w-0">
-                          <span className="block text-[11px] font-medium text-stone-500">Service Location</span>
+                          <span className="block text-[11px] font-medium text-muted">Service Location</span>
                           <span className="font-semibold text-title text-xs sm:text-sm">
                             {displayLocation}
                           </span>
@@ -1090,37 +1053,39 @@ function BookingFlow() {
                       </div>
 
                       {/* Tile 4: Property Type */}
-                      <div className="flex items-center gap-3 rounded-xl border border-purple-100 bg-gradient-to-br from-purple-50/60 to-transparent p-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-700 shadow-2xs">
+                      <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
                           <Home className="h-4.5 w-4.5" />
                         </div>
                         <div className="min-w-0">
-                          <span className="block text-[11px] font-medium text-stone-500">Property Type</span>
+                          <span className="block text-[11px] font-medium text-muted">Property Type</span>
                           <span className="font-semibold text-title capitalize text-xs sm:text-sm">
                             {propertyType.replace("_", " ")}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 rounded-xl border border-sky-100 bg-gradient-to-br from-sky-50/60 to-transparent p-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-700 shadow-2xs">
+                      {/* Tile 5: Parts & materials */}
+                      <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
                           <Package className="h-4.5 w-4.5" />
                         </div>
                         <div className="min-w-0">
-                          <span className="block text-[11px] font-medium text-stone-500">Parts &amp; materials</span>
+                          <span className="block text-[11px] font-medium text-muted">Parts &amp; materials</span>
                           <span className="font-semibold text-title text-xs sm:text-sm">
                             {MATERIAL_OPTIONS.find((item) => item.id === materialsStatus)?.title}
                           </span>
                         </div>
                       </div>
 
+                      {/* Tile 6: Budget */}
                       {budget ? (
-                        <div className="flex items-center gap-3 rounded-xl border border-stone-100 bg-gradient-to-br from-stone-50 to-transparent p-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-700 shadow-2xs">
+                        <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-white p-3 hover:border-slate-300 transition-colors">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-smoke text-title">
                             <Sparkles className="h-4.5 w-4.5" />
                           </div>
                           <div className="min-w-0">
-                            <span className="block text-[11px] font-medium text-stone-500">Budget</span>
+                            <span className="block text-[11px] font-medium text-muted">Budget</span>
                             <span className="font-semibold text-title text-xs sm:text-sm">{budget}</span>
                           </div>
                         </div>
@@ -1163,21 +1128,6 @@ function BookingFlow() {
                     </div>
                   </div>
                 )}
-
-                {/* Enhanced Protection Guarantee Banner with Rich Color & Trust */}
-                <div className="rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/90 via-teal-50/40 to-emerald-50/30 p-4 flex items-start sm:items-center gap-3.5 shadow-2xs">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
-                    <ShieldCheck className="h-5 w-5" />
-                  </div>
-                  <div className="text-xs min-w-0">
-                    <p className="font-bold text-emerald-950">
-                      100% Free · No Payment Required Now
-                    </p>
-                    <p className="text-emerald-900/80 mt-0.5 leading-relaxed">
-                      Pros review your request and send free upfront quotes. You choose who to hire and pay the pro directly after the job is completed.
-                    </p>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -1237,65 +1187,6 @@ function BookingFlow() {
             </div>
           </Card>
         </div>
-
-        {/* Right Column: Live Booking Summary */}
-        <div className="lg:col-span-4 lg:sticky lg:top-24">
-          <Card className="rounded-[22px] border border-line/80 bg-white p-5 shadow-xs space-y-3.5">
-            <h3 className="font-display text-xs font-bold text-muted uppercase tracking-wider">
-              Summary
-            </h3>
-
-            {invitedPro ? (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs space-y-1">
-                <p className="font-bold text-title">{invitedPro.name}</p>
-                <p className="text-muted">{invitedPro.trade} • Starting at ${invitedPro.startingPrice}</p>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-line bg-smoke/60 p-3 text-xs space-y-0.5">
-                <p className="font-bold text-title">Open Request</p>
-                <p className="text-muted">
-                  Sending to top verified pros in {areaDescription}.
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-2 pt-2 border-t border-line/60 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-muted">Service:</span>
-                <span className="font-semibold text-title">{selectedCategory.name}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted">Timeframe:</span>
-                <span className="font-semibold text-title capitalize">
-                  {urgency === "asap" ? "ASAP" : urgency.replace("_", " ")}
-                </span>
-              </div>
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-muted shrink-0">Location:</span>
-                <span className="font-semibold text-title text-right">{displayLocation}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted">Parts:</span>
-                <span className="font-semibold text-title">
-                  {MATERIAL_OPTIONS.find((item) => item.id === materialsStatus)?.title}
-                </span>
-              </div>
-              {budget ? (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted">Budget:</span>
-                  <span className="font-semibold text-title">{budget}</span>
-                </div>
-              ) : null}
-              {photoUrls.length > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted">Photos:</span>
-                  <span className="font-semibold text-title">{photoUrls.length} attached</span>
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
       </div>
-    </div>
   );
 }

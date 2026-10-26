@@ -7,6 +7,7 @@ export function SectionHeading({
   align = "left",
   light = false,
   className,
+  descriptionClassName,
 }: {
   eyebrow?: string;
   title: string;
@@ -14,6 +15,7 @@ export function SectionHeading({
   align?: "left" | "center";
   light?: boolean;
   className?: string;
+  descriptionClassName?: string;
 }) {
   return (
     <div className={cn(align === "center" && "mx-auto max-w-4xl text-center", className)}>
@@ -47,9 +49,10 @@ export function SectionHeading({
       {description ? (
         <p
           className={cn(
-            "mt-3.5 sm:mt-4 max-w-[560px] font-['Inter_Display',Inter,sans-serif] text-[18px] font-normal leading-[25px] tracking-[-0.18px]",
+            "mt-3.5 sm:mt-4 max-w-[640px] font-['Inter_Display',Inter,sans-serif] text-[16px] sm:text-[18px] font-normal leading-[26px] tracking-[-0.18px]",
             light ? "!text-white/80" : "text-[#757575]",
             align === "center" && "mx-auto",
+            descriptionClassName,
           )}
         >
           {description}

@@ -108,7 +108,7 @@ export default function ProRegisterPage() {
         {step === 0 && "Create your professional account to connect directly with Austin homeowners."}
         {step === 1 && "Tell homeowners about your trade specialty and craftsmanship experience."}
         {step === 2 && "Set your local service territory and service coverage radius."}
-        {step === 3 && "Last step: run a background check. Checkr API will plug in later — this is the frontend only."}
+        {step === 3 && "Last step: verify credentials and authorize a quick identity screening."}
       </p>
 
       <ol className="relative mt-6 grid grid-cols-4">
@@ -228,7 +228,7 @@ export default function ProRegisterPage() {
               <div className="min-w-0">
                 <h2 className="font-display text-base font-semibold text-title">Background check</h2>
                 <p className="mt-1 text-sm text-copy">
-                  Identity and criminal screening before your listing can go public. No Checkr API yet — this run is a demo on the frontend.
+                  Identity and safety screening required before your professional listing goes live to local homeowners.
                 </p>
               </div>
             </div>

@@ -17,6 +17,7 @@ import {
   UserRound,
   Wallet,
   X,
+  FileText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ const priceLabels: Record<string, string> = {
   time_and_materials: "Time & Materials",
 };
 
-function FactTile({
+function SpecBlockItem({
   icon: Icon,
   label,
   value,
@@ -50,13 +51,11 @@ function FactTile({
   value: string;
 }) {
   return (
-    <div className="flex items-start gap-2.5 rounded-2xl border border-line/70 bg-smoke/70 px-3 py-2.5">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-xs">
-        <Icon className="h-4 w-4" />
-      </span>
+    <div className="flex items-start gap-2.5">
+      <Icon className="h-4 w-4 shrink-0 text-title mt-0.5" />
       <div className="min-w-0">
-        <p className="text-[11px] font-medium text-muted">{label}</p>
-        <p className="mt-0.5 text-sm font-semibold leading-5 text-title">{value}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</p>
+        <p className="mt-0.5 text-sm font-semibold leading-snug text-title">{value}</p>
       </div>
     </div>
   );
@@ -104,6 +103,7 @@ export function QuoteDetail({
       : `$${quote.amount}${quote.priceType === "hourly" ? "/hr" : ""}`;
 
   function accept() {
+    if (!quote) return;
     dispatch(
       hireQuote({
         jobId,
@@ -139,11 +139,13 @@ export function QuoteDetail({
   }
 
   function decline() {
+    if (!quote) return;
     dispatch(setOfferStatus({ quoteId: quote.id, status: "rejected" }));
     setMsg("Quote declined.");
   }
 
   function lockBooking() {
+    if (!quote) return;
     if (!bookDate) {
       setMsg("Please choose an appointment date.");
       return;
@@ -253,24 +255,39 @@ export function QuoteDetail({
             ) : null}
           </div>
           {quote.scope ? (
-            <p className="mt-3 rounded-2xl bg-smoke/80 px-3.5 py-3 text-sm leading-6 text-copy">{quote.scope}</p>
+            <div className="mt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Scope of Work</p>
+              <p className="mt-1 text-sm leading-relaxed text-copy">{quote.scope}</p>
+            </div>
           ) : null}
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <div className="mt-4 grid gap-x-6 gap-y-4 border-t border-line/70 pt-4 sm:grid-cols-2">
             {quote.estimatedDuration ? (
-              <FactTile icon={Clock} label="Estimated time" value={quote.estimatedDuration} />
+              <SpecBlockItem icon={Clock} label="Estimated Duration" value={quote.estimatedDuration} />
             ) : null}
             {quote.proposedSchedule || quote.availability ? (
-              <FactTile
+              <SpecBlockItem
                 icon={Calendar}
-                label="Availability"
+                label="Availability & Arrival"
                 value={quote.proposedSchedule || quote.availability}
               />
             ) : null}
-            {quote.warranty ? <FactTile icon={ShieldCheck} label="Warranty" value={quote.warranty} /> : null}
-            {quote.paymentTerms ? <FactTile icon={Wallet} label="Payment" value={quote.paymentTerms} /> : null}
-            {quote.exclusions ? <FactTile icon={Ban} label="Not included" value={quote.exclusions} /> : null}
+            {quote.warranty ? <SpecBlockItem icon={ShieldCheck} label="Warranty Guarantee" value={quote.warranty} /> : null}
+            {quote.paymentTerms ? <SpecBlockItem icon={Wallet} label="Direct Payment" value={quote.paymentTerms} /> : null}
+            {quote.exclusions ? <SpecBlockItem icon={Ban} label="Not Included" value={quote.exclusions} /> : null}
           </div>
+
+          {quote.notes ? (
+            <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-line bg-smoke/40 p-3.5 text-xs text-copy">
+              <FileText className="h-4 w-4 shrink-0 text-title mt-0.5" />
+              <div className="min-w-0">
+                <p className="font-semibold uppercase tracking-wider text-[10px] text-muted">
+                  Contractor Notes &amp; Site Prep
+                </p>
+                <p className="mt-0.5 leading-relaxed text-title font-medium">{quote.notes}</p>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 border-t border-line/70 px-5 py-4 sm:px-6">

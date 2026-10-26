@@ -151,12 +151,12 @@ export function FaqSection({
                   <button
                     type="button"
                     onClick={() => setOpen(active ? -1 : index)}
-                    className="flex w-full items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-4.5 text-left cursor-pointer"
+                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left cursor-pointer sm:px-6 sm:py-4.5"
                     aria-expanded={active}
                   >
                     <span
                       className={cn(
-                        "font-display text-[15px] sm:text-[16.5px] font-semibold tracking-tight leading-snug transition-colors",
+                        "font-display text-[15px] font-semibold leading-snug tracking-tight transition-colors sm:text-[16.5px]",
                         active ? "text-primary" : "text-title",
                       )}
                     >
@@ -164,25 +164,20 @@ export function FaqSection({
                     </span>
                     <span
                       className={cn(
-                        "grid h-7 w-7 sm:h-8 sm:w-8 shrink-0 place-items-center rounded-full transition-colors",
+                        "grid h-7 w-7 shrink-0 place-items-center rounded-full transition-colors sm:h-8 sm:w-8",
                         active ? "bg-primary text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200",
                       )}
                     >
                       {active ? <Minus className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
                     </span>
                   </button>
-                  <div
-                    className={cn(
-                      "grid transition-[grid-template-rows] duration-200 ease-out",
-                      active ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-                    )}
-                  >
-                    <div className="overflow-hidden">
-                      <p className="px-5 pb-4.5 sm:px-6 sm:pb-5 pt-0 font-sans text-xs sm:text-sm leading-relaxed text-muted border-t border-line/40 pt-3 mt-1">
+                  {active && (
+                    <div className="border-t border-line/40 px-5 pb-4.5 pt-3 sm:px-6 sm:pb-5">
+                      <p className="font-sans text-xs sm:text-sm leading-relaxed text-muted">
                         {item.a}
                       </p>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}

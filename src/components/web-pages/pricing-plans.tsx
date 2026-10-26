@@ -55,8 +55,8 @@ function getPlanIcon(name: string) {
 
 export function PricingPlans({
   eyebrow = "Transparent Pricing",
-  title = "Clear pricing for every repair.",
-  description = "Know your costs upfront. Zero middleman markup, zero hidden commissions.",
+  title = "100% free for homeowners. Simple subscription for pros.",
+  description = "Homeowners never pay any commissions, booking fees, or hidden markups — it's completely free. Service professionals simply choose a flat subscription and keep 100% of their earnings.",
 }: {
   eyebrow?: string;
   title?: string;
@@ -107,6 +107,8 @@ export function PricingPlans({
                   "relative flex flex-col justify-between rounded-[24px] bg-white p-7 sm:p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
                   plan.featured
                     ? "border-2 border-primary/50 shadow-md ring-1 ring-primary/20"
+                    : isHome
+                    ? "border-2 border-emerald-500/30 shadow-xs"
                     : "border border-line shadow-xs",
                 )}
               >
@@ -132,7 +134,9 @@ export function PricingPlans({
                       <span
                         className={cn(
                           "rounded-full px-3 py-0.5 font-display text-xs font-semibold",
-                          plan.featured
+                          isHome
+                            ? "border border-emerald-500/30 bg-emerald-50 text-emerald-700"
+                            : plan.featured
                             ? "border border-primary/25 bg-primary/10 text-primary"
                             : "border border-line bg-smoke text-title/70",
                         )}

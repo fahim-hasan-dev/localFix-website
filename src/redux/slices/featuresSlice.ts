@@ -181,6 +181,16 @@ const initialState: FeaturesState = {
   ],
   reviews: [
     {
+      id: "rev-job-10",
+      jobId: "job-10",
+      proId: "pro-1",
+      author: "Maya Chen",
+      rating: 5,
+      body: "Marcus replaced our failed pressure regulator within 2 hours. Main pressure dropped back to a safe 55 PSI immediately. Zero water left on floor.",
+      createdAt: "Oct 18, 2026",
+      reply: "Thank you Maya! Glad we caught that before your water heater expansion tank took damage.",
+    },
+    {
       id: "rev-1",
       jobId: "job-past-1",
       proId: "pro-1",
@@ -375,7 +385,7 @@ const featuresSlice = createSlice({
       const note = state.notifications.find((item) => item.id === action.payload);
       if (note) note.read = true;
     },
-    markAllNotificationsRead(state, action: PayloadAction<"homeowner" | "pro">) {
+    markAllNotificationsRead(state, action: PayloadAction<"homeowner" | "pro" | "admin">) {
       state.notifications.forEach((item) => {
         if (item.role === action.payload || item.role === "all") item.read = true;
       });
@@ -414,6 +424,16 @@ const featuresSlice = createSlice({
     },
     addReview(state, action: PayloadAction<Omit<ReviewItem, "id">>) {
       state.reviews.unshift({ ...action.payload, id: `rev-${Date.now()}` });
+    },
+    updateReview(
+      state,
+      action: PayloadAction<{ id: string; rating: number; body: string }>,
+    ) {
+      const review = state.reviews.find((item) => item.id === action.payload.id);
+      if (review) {
+        review.rating = action.payload.rating;
+        review.body = action.payload.body;
+      }
     },
     replyToReview(state, action: PayloadAction<{ id: string; reply: string }>) {
       const review = state.reviews.find((item) => item.id === action.payload.id);
@@ -534,6 +554,7 @@ export const {
   setJobStatus,
   invitePro,
   addReview,
+  updateReview,
   replyToReview,
   setTwoFactor,
   setEmailVerified,

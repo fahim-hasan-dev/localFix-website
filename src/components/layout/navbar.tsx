@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X, Bell } from "lucide-react";
 import { useState } from "react";
 import { AccountMenu } from "@/components/layout/account-menu";
+import { NotificationMenu } from "@/components/layout/notification-menu";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/cn";
@@ -17,8 +18,6 @@ const homeownerLinks = [
   { href: "/about", label: "About Us" },
   { href: "/contact", label: "Contact" },
 ];
-
-
 
 export function Navbar() {
   const pathname = usePathname();
@@ -68,23 +67,8 @@ export function Navbar() {
                   <span>Pro Contractor</span>
                 </Link>
               )}
-              {/* Notification Icon Button */}
-              <Link
-                href={notifHref}
-                className={cn(
-                  "relative grid h-10 w-10 place-items-center rounded-xl border border-line/70 bg-white text-title transition-all duration-200 hover:border-primary/40 hover:bg-smoke hover:text-primary shadow-xs",
-                  pathname === notifHref && "border-primary text-primary bg-smoke",
-                )}
-                aria-label={`Notifications (${unreadCount} unread)`}
-                title="Notifications"
-              >
-                <Bell className="h-4.5 w-4.5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 font-display text-[10px] font-bold text-white shadow-xs">
-                    {unreadCount}
-                  </span>
-                )}
-              </Link>
+              {/* Notification Popover Dropdown */}
+              <NotificationMenu user={user} />
               <AccountMenu user={user} />
             </>
           ) : (
@@ -97,18 +81,7 @@ export function Navbar() {
         <div className="flex items-center gap-3 lg:hidden">
           {user ? (
             <>
-              <Link
-                href={notifHref}
-                className="relative grid h-9 w-9 place-items-center rounded-xl border border-line text-title"
-                aria-label={`Notifications (${unreadCount} unread)`}
-              >
-                <Bell className="h-4 w-4" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-error px-1 text-[9px] font-bold text-white">
-                    {unreadCount}
-                  </span>
-                )}
-              </Link>
+              <NotificationMenu user={user} />
               <AccountMenu user={user} />
             </>
           ) : null}

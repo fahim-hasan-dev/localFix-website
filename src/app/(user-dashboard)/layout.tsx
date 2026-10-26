@@ -8,7 +8,8 @@ import { loginHref } from "@/lib/role-access";
 import { useAppSelector } from "@/redux/hooks";
 
 const items = [
-  { href: "/account", label: "Requests" },
+  { href: "/account/bookings", label: "My Bookings" },
+  { href: "/account", label: "Service Requests" },
   { href: "/account/post-job", label: "Post a request" },
   { href: "/account/messages", label: "Messages" },
   { href: "/account/saved", label: "Saved pros" },

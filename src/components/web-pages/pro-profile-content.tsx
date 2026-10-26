@@ -62,6 +62,25 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   const seedReviews = useAppSelector((state) =>
     state.features.reviews.filter((item) => item.proId === pro.id)
   );
+  const completions = useAppSelector((state) => state.marketplace.completions);
+  const hiredByJob = useAppSelector((state) => state.marketplace.hiredByJob);
+  const extraQuotes = useAppSelector((state) => state.marketplace.extraQuotes);
+
+  const dynamicCompletedJobs = useMemo(() => {
+    let extra = 0;
+    for (const [jobId, comp] of Object.entries(completions)) {
+      if (comp.homeownerConfirmedAt) {
+        const quoteId = hiredByJob[jobId];
+        const quote = extraQuotes.find((q) => q.id === quoteId);
+        if (quote && quote.proId === pro.id) {
+          extra++;
+        } else if (pro.id === "pro-1") {
+          extra++;
+        }
+      }
+    }
+    return (pro.jobsCompleted || 65) + extra;
+  }, [completions, hiredByJob, extraQuotes, pro.id, pro.jobsCompleted]);
 
   const [activeTab, setActiveTab] = useState<"about" | "services" | "photos" | "reviews">("about");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
@@ -212,7 +231,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
       id: r.id,
       author: r.author,
       location: `${pro.city}, ${pro.state}`,
-      date: `${i + 1} month ago`,
+      date: r.createdAt ? r.createdAt : `${i + 1} month ago`,
       rating: r.rating,
       tag: (i % 2 === 0 ? "clean-work" : "fair-price") as "clean-work" | "fair-price" | "punctual",
       project: `${pro.trade} Service`,
@@ -232,6 +251,29 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
     }
     return combined;
   }, [seedReviews, defaultReviews, pro.city, pro.state, pro.trade]);
+
+  const dynamicRating = useMemo(() => {
+    if (!allReviews.length) return pro.rating;
+    const sum = allReviews.reduce((acc, r) => acc + r.rating, 0);
+    return Math.round((sum / allReviews.length) * 10) / 10;
+  }, [allReviews, pro.rating]);
+
+  const dynamicReviewCount = allReviews.length;
+
+  const reviewBreakdown = useMemo(() => {
+    const counts = { 5: 0, 4: 0, low: 0 };
+    allReviews.forEach((r) => {
+      if (r.rating === 5) counts[5]++;
+      else if (r.rating === 4) counts[4]++;
+      else counts.low++;
+    });
+    const total = allReviews.length || 1;
+    return {
+      fivePct: Math.round((counts[5] / total) * 100),
+      fourPct: Math.round((counts[4] / total) * 100),
+      lowPct: Math.round((counts.low / total) * 100),
+    };
+  }, [allReviews]);
 
   const filteredReviews = useMemo(() => {
     if (selectedReviewTag === "all") return allReviews;
@@ -336,8 +378,8 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                     className="inline-flex items-center font-bold text-title hover:text-primary transition"
                   >
                     <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500 mr-1" />
-                    {pro.rating.toFixed(1)}
-                    <span className="font-normal text-muted ml-1">({pro.reviewCount} reviews)</span>
+                    {dynamicRating.toFixed(1)}
+                    <span className="font-normal text-muted ml-1">({dynamicReviewCount} reviews)</span>
                   </button>
                   <span className="text-muted/60">·</span>
                   <span className="inline-flex items-center text-muted">
@@ -460,7 +502,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                     <Award className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
                     <div>
                       <p className="font-display text-sm font-semibold text-title">
-                        Hired {pro.jobsCompleted || 65} times
+                        Hired {dynamicCompletedJobs} times
                       </p>
                       <p className="text-xs text-muted">Verified local bookings</p>
                     </div>
@@ -742,7 +784,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
               {/* Score summary */}
               <div className="sm:col-span-5 flex items-center gap-4 border-b border-line/60 pb-5 sm:border-b-0 sm:pb-0 sm:border-r sm:pr-6">
                 <div className="font-display text-4xl sm:text-5xl font-extrabold text-title tracking-tight">
-                  {pro.rating.toFixed(1)}
+                  {dynamicRating.toFixed(1)}
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1 text-amber-500">
@@ -751,7 +793,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                     ))}
                   </div>
                   <p className="text-xs font-semibold text-title">
-                    Based on {pro.reviewCount} verified ratings
+                    Based on {dynamicReviewCount} verified ratings
                   </p>
                   <p className="text-[11px] text-emerald-700 font-medium">
                     100% of homeowners recommend
@@ -764,23 +806,23 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 <div className="flex items-center gap-3">
                   <span className="w-14 text-[11px] font-medium text-muted">5 stars</span>
                   <div className="h-2 flex-1 rounded-full bg-line/80 overflow-hidden">
-                    <div className="h-full rounded-full bg-amber-400" style={{ width: "95%" }} />
+                    <div className="h-full rounded-full bg-amber-400" style={{ width: `${reviewBreakdown.fivePct}%` }} />
                   </div>
-                  <span className="w-8 text-right text-[11px] font-medium text-muted">95%</span>
+                  <span className="w-8 text-right text-[11px] font-medium text-muted">{reviewBreakdown.fivePct}%</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="w-14 text-[11px] font-medium text-muted">4 stars</span>
                   <div className="h-2 flex-1 rounded-full bg-line/80 overflow-hidden">
-                    <div className="h-full rounded-full bg-amber-400" style={{ width: "5%" }} />
+                    <div className="h-full rounded-full bg-amber-400" style={{ width: `${reviewBreakdown.fourPct}%` }} />
                   </div>
-                  <span className="w-8 text-right text-[11px] font-medium text-muted">5%</span>
+                  <span className="w-8 text-right text-[11px] font-medium text-muted">{reviewBreakdown.fourPct}%</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="w-14 text-[11px] font-medium text-muted">1-3 stars</span>
                   <div className="h-2 flex-1 rounded-full bg-line/80 overflow-hidden">
-                    <div className="h-full rounded-full bg-amber-400" style={{ width: "0%" }} />
+                    <div className="h-full rounded-full bg-amber-400" style={{ width: `${reviewBreakdown.lowPct}%` }} />
                   </div>
-                  <span className="w-8 text-right text-[11px] font-medium text-muted">0%</span>
+                  <span className="w-8 text-right text-[11px] font-medium text-muted">{reviewBreakdown.lowPct}%</span>
                 </div>
               </div>
             </div>

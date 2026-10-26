@@ -24,11 +24,24 @@ export function ServicesCatalog() {
             />
           ))}
         </div>
-        <div className="mt-10 flex flex-wrap justify-center gap-3">
-          <Button href="/browse-pros">Browse all pros ↗</Button>
-          <Button href={postJobHref(user)} variant="ghost">
-            Post a request ↗
-          </Button>
+        {/* Bottom Action Strip */}
+        <div className="mt-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-line/80 bg-white p-6 sm:p-7 shadow-xs">
+          <div>
+            <h3 className="font-display text-base sm:text-lg font-semibold text-title">
+              Looking for a custom repair or different trade?
+            </h3>
+            <p className="mt-1 text-xs sm:text-sm text-muted">
+              Post your job details to receive direct quotes from cleared local Austin pros.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Button href="/browse-pros" variant="ghost" size="sm">
+              Browse all pros ↗
+            </Button>
+            <Button href={postJobHref(user)} size="sm">
+              Post a request ↗
+            </Button>
+          </div>
         </div>
       </div>
     </section>

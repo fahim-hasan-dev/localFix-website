@@ -18,11 +18,8 @@ const socialLinks = [
     href: "https://www.facebook.com/localhomefix",
     label: "Facebook",
     icon: (
-      <svg viewBox="0 0 24 24" className="h-12 w-12" aria-hidden="true">
-        <path
-          fill="#1877F2"
-          d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.49 0-1.953.93-1.953 1.886v2.265h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"
-        />
+      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+        <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.49 0-1.953.93-1.953 1.886v2.265h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
       </svg>
     ),
   },
@@ -30,19 +27,10 @@ const socialLinks = [
     href: "https://www.instagram.com/localhomefix",
     label: "Instagram",
     icon: (
-      <svg viewBox="0 0 24 24" className="h-12 w-12" aria-hidden="true">
-        <defs>
-          <radialGradient id="ig-contact" cx="0.3" cy="1.1" r="1.2">
-            <stop offset="0" stopColor="#fdf497" />
-            <stop offset="0.45" stopColor="#fd5949" />
-            <stop offset="0.7" stopColor="#d6249f" />
-            <stop offset="1" stopColor="#285AEB" />
-          </radialGradient>
-        </defs>
-        <rect width="24" height="24" rx="6.5" fill="url(#ig-contact)" />
-        <rect x="5.2" y="5.2" width="13.6" height="13.6" rx="4" fill="none" stroke="#fff" strokeWidth="1.7" />
-        <circle cx="12" cy="12" r="3.35" fill="none" stroke="#fff" strokeWidth="1.7" />
-        <circle cx="16.35" cy="7.7" r="1.05" fill="#fff" />
+      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current stroke-2" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
       </svg>
     ),
   },
@@ -50,11 +38,8 @@ const socialLinks = [
     href: "https://www.linkedin.com/company/localhomefix",
     label: "LinkedIn",
     icon: (
-      <svg viewBox="0 0 24 24" className="h-12 w-12" aria-hidden="true">
-        <path
-          fill="#0A66C8"
-          d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"
-        />
+      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
       </svg>
     ),
   },
@@ -62,11 +47,8 @@ const socialLinks = [
     href: "https://x.com/localhomefix",
     label: "X",
     icon: (
-      <svg viewBox="0 0 24 24" className="h-12 w-12" aria-hidden="true">
-        <path
-          fill="#0F1419"
-          d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
-        />
+      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
       </svg>
     ),
   },
@@ -166,9 +148,9 @@ export default function ContactPage() {
               </div>
             </div>
 
-            <div className="mt-8">
+            <div className="mt-8 border-t border-line/60 pt-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">Follow us</p>
-              <div className="mt-3 flex flex-wrap items-center gap-4">
+              <div className="mt-3 flex items-center gap-2.5">
                 {socialLinks.map((item) => (
                   <a
                     key={item.label}
@@ -176,7 +158,7 @@ export default function ContactPage() {
                     target="_blank"
                     rel="noreferrer"
                     aria-label={item.label}
-                    className="transition hover:opacity-80"
+                    className="grid h-9 w-9 place-items-center rounded-full border border-line/80 bg-white text-muted shadow-2xs transition-all hover:border-primary/50 hover:bg-smoke hover:text-primary hover:scale-105"
                   >
                     {item.icon}
                   </a>

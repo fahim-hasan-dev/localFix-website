@@ -159,6 +159,8 @@ export interface Quote {
   proposedSchedule?: string;
   expiresAt?: string;
   paymentTerms?: string;
+  /** Additional contractor notes or jobsite access instructions */
+  notes?: string;
   status: OfferStatus;
   createdAt?: string;
   /** Homeowner counter-proposal */

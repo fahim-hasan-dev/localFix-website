@@ -56,7 +56,14 @@ export function selectQuotesForJob(state: RootState, jobId: string) {
 }
 
 export function selectJobsForHomeowner(state: RootState, name: string) {
-  return selectAllJobs(state).filter((job) => job.homeownerName === name);
+  if (!name || name === "Homeowner" || name === "Maya Chen") {
+    return selectAllJobs(state).filter(
+      (job) => job.homeownerName === "Maya Chen" || job.homeownerName === "Homeowner"
+    );
+  }
+  return selectAllJobs(state).filter(
+    (job) => job.homeownerName === name || job.homeownerName === "Maya Chen"
+  );
 }
 
 export function selectBooking(state: RootState, jobId: string) {
@@ -85,9 +92,25 @@ export function splitJobDescription(description: string) {
 
 export function jobCardSummary(job: Job) {
   const { text } = splitJobDescription(job.description);
+  if (job.intakeAnswers && job.intakeAnswers.length > 0) {
+    const answers = job.intakeAnswers
+      .map((a) => a.value)
+      .filter((v) => v && v.toLowerCase() !== "flexible" && v.toLowerCase() !== "asap" && v.toLowerCase() !== "pro_bring");
+    if (answers.length > 0) {
+      return answers.slice(0, 3).join(" · ");
+    }
+  }
+  if (text.includes("?")) {
+    const qaRegex = /(?:^|\.\s*)[^?]+\?\s*([^?.]+)/g;
+    const matches = [...text.matchAll(qaRegex)].map((m) => m[1]?.trim()).filter(Boolean);
+    if (matches.length > 0) {
+      return matches.slice(0, 3).join(" · ");
+    }
+  }
   const firstLabel = job.intakeAnswers?.[0]?.label;
   if (firstLabel && text.includes(firstLabel)) {
-    return text.split(firstLabel)[0].replace(/[. ]+$/, "").trim();
+    const before = text.split(firstLabel)[0].replace(/[. ]+$/, "").trim();
+    if (before) return before;
   }
   return text;
 }
@@ -127,3 +150,132 @@ export const paymentMethodLabels: Record<string, string> = {
   check: "Check",
   other: "Other agreed method",
 };
+
+export function selectProJobsGrouped(state: RootState, proId: string = "pro-1") {
+  const allJobs = selectAllJobs(state);
+  const hiredByJob = state.marketplace.hiredByJob;
+  const bookings = state.marketplace.bookings;
+  const quotes = selectAllQuotes(state);
+  const invitedPros = state.features.invitedPros;
+  const leadActions = state.features.leadActions;
+
+  // 1. Direct 1-on-1 inquiries specifically directed to this pro
+  const directInquiries = allJobs.filter((job) => {
+    const isDirect =
+      job.requestedProId === proId ||
+      (job.visibility === "direct" && (job.requestedProId === proId || invitedPros[job.id]?.includes(proId)));
+    if (!isDirect) return false;
+    const closed = ["completed", "cancelled", "disputed"].includes(job.status);
+    if (closed) return false;
+    const hiredId = hiredByJob[job.id];
+    if (hiredId) {
+      const q = quotes.find((item) => item.id === hiredId);
+      if (q?.proId === proId) return false;
+    }
+    return leadActions[job.id] !== "declined";
+  });
+
+  // 2. Active & upcoming jobs where this pro is the contracted provider
+  const activeJobs = allJobs.filter((job) => {
+    const hiredId = hiredByJob[job.id];
+    const booking = bookings[job.id];
+    const isThisProHired =
+      (hiredId && quotes.find((q) => q.id === hiredId)?.proId === proId) ||
+      booking?.proId === proId;
+    if (!isThisProHired) return false;
+    return ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm"].includes(job.status);
+  });
+
+  // 3. Completed jobs where this pro was the provider
+  const completedJobs = allJobs.filter((job) => {
+    const hiredId = hiredByJob[job.id];
+    const booking = bookings[job.id];
+    const isThisProHired =
+      (hiredId && quotes.find((q) => q.id === hiredId)?.proId === proId) ||
+      booking?.proId === proId;
+    return isThisProHired && job.status === "completed";
+  });
+
+  // 4. Open marketplace leads (not direct) open for proposal
+  const marketplaceLeads = allJobs.filter((job) => {
+    if (job.visibility === "direct" || job.requestedProId) return false;
+    const closed = [
+      "completed",
+      "cancelled",
+      "hired",
+      "scheduled",
+      "en_route",
+      "in_progress",
+      "awaiting_confirm",
+      "disputed",
+      "draft",
+    ].includes(job.status);
+    if (closed) return false;
+    return leadActions[job.id] !== "declined";
+  });
+
+  // 5. Jobs where this pro has submitted a quote
+  const quotedJobs = allJobs.filter((job) => {
+    return quotes.some((q) => q.jobId === job.id && q.proId === proId);
+  });
+
+  return {
+    directInquiries,
+    activeJobs,
+    completedJobs,
+    marketplaceLeads,
+    quotedJobs,
+    totalActive: activeJobs.length,
+    totalDirect: directInquiries.length,
+    totalLeads: marketplaceLeads.length,
+    totalCompleted: completedJobs.length,
+  };
+}
+
+export function selectHomeownerJobsGrouped(state: RootState, homeownerName: string) {
+  const mine = selectJobsForHomeowner(state, homeownerName);
+  const active = mine.filter((j) =>
+    ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm"].includes(j.status)
+  );
+  const awaitingQuotes = mine.filter((j) =>
+    ["draft", "active", "getting_quotes", "quotes_in"].includes(j.status)
+  );
+  const completed = mine.filter((j) => j.status === "completed");
+  const cancelled = mine.filter((j) => j.status === "cancelled" || j.status === "disputed");
+
+  return {
+    all: mine,
+    active,
+    awaitingQuotes,
+    completed,
+    cancelled,
+  };
+}
+
+export function selectHomeownerBookingsGrouped(state: RootState, homeownerName: string) {
+  const mine = selectJobsForHomeowner(state, homeownerName);
+  const booked = mine.filter((j) =>
+    ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm", "completed", "cancelled", "disputed"].includes(j.status)
+  );
+  const upcoming = booked.filter((j) => ["hired", "scheduled"].includes(j.status));
+  const inProgress = booked.filter((j) => ["en_route", "in_progress", "awaiting_confirm"].includes(j.status));
+  const history = booked.filter((j) => ["completed", "cancelled", "disputed"].includes(j.status));
+
+  return {
+    all: booked,
+    upcoming,
+    inProgress,
+    history,
+    totalUpcoming: upcoming.length,
+    totalInProgress: inProgress.length,
+    totalHistory: history.length,
+  };
+}
+
+export function selectHomeownerRequests(state: RootState, homeownerName: string) {
+  const mine = selectJobsForHomeowner(state, homeownerName);
+  return mine.filter((j) =>
+    ["draft", "active", "getting_quotes", "quotes_in"].includes(j.status)
+  );
+}
+

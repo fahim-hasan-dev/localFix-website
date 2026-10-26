@@ -113,23 +113,22 @@ export function LoginForm() {
         })}
       </div>
 
-      <form className="mt-6 space-y-4" onSubmit={submit}>
+
+      <form className="mt-5 space-y-4" onSubmit={submit}>
         <Field label="Email">
           <TextField
-            required
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder={role === "pro" ? "pro@business.com" : "you@email.com"}
+            placeholder={role === "pro" ? "marcus@ortegaplumbing.com" : "maya.chen@gmail.com"}
             autoComplete="email"
           />
         </Field>
         <Field label="Password">
           <PasswordField
-            required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="Your password"
+            placeholder="••••••••••••"
             autoComplete="current-password"
           />
         </Field>

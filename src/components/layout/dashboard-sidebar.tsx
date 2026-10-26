@@ -6,6 +6,7 @@ import {
   Bell,
   Bookmark,
   Briefcase,
+  CalendarCheck,
   ChevronRight,
   ClipboardList,
   CreditCard,
@@ -22,6 +23,7 @@ import { cn } from "@/lib/cn";
 
 function getSidebarIcon(label: string) {
   const norm = label.toLowerCase();
+  if (norm.includes("booking")) return CalendarCheck;
   if (norm.includes("dashboard") || norm.includes("overview")) return LayoutDashboard;
   if (norm.includes("post")) return PlusCircle;
   if (norm.includes("request") || norm.includes("job")) return ClipboardList;
@@ -52,12 +54,11 @@ export function DashboardSidebar({
         className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 md:flex-col md:overflow-visible md:rounded-[20px] md:border md:border-line/70 md:bg-white md:p-2.5 md:shadow-xs"
         aria-label="Account"
       >
-
-
         {items.map((item) => {
           const active =
             pathname === item.href ||
-            (item.href === "/account" && pathname.startsWith("/account/jobs")) ||
+            (item.href === "/account/bookings" && pathname.startsWith("/account/bookings")) ||
+            (item.href === "/account" && pathname === "/account") ||
             (item.href === "/pro/jobs" && pathname.startsWith("/pro/jobs/")) ||
             (item.href === "/pro/pricing" && pathname.startsWith("/pro/transactions")) ||
             (item.href === "/account/messages" && pathname.startsWith("/account/messages")) ||

@@ -31,14 +31,144 @@ interface MarketplaceState {
   hydrated: boolean;
 }
 
+export const defaultSeedHiredByJob: Record<string, string> = {
+  "job-6": "quote-6",
+  "job-7": "quote-7",
+  "job-8": "quote-8",
+  "job-9": "quote-9",
+  "job-10": "quote-10",
+  "job-11": "quote-11",
+};
+
+export const defaultSeedBookings: Record<string, Booking> = {
+  "job-6": {
+    jobId: "job-6",
+    quoteId: "quote-6",
+    proId: "pro-1",
+    agreedPrice: 340,
+    scheduledDate: "Tomorrow",
+    scheduledTime: "10:00 AM – 12:00 PM (Late Morning)",
+    arrivalWindow: "10:00 AM – 12:00 PM (Late Morning)",
+    scopeSnapshot: "Disconnect old vanity, install new 36-inch vanity, mount dual-handle chrome faucet, test pop-up drain.",
+    acceptedAt: "2026-10-24T14:30:00Z",
+    status: "confirmed",
+    paymentArrangement: "zelle",
+  },
+  "job-7": {
+    jobId: "job-7",
+    quoteId: "quote-7",
+    proId: "pro-1",
+    agreedPrice: 195,
+    scheduledDate: "Today",
+    scheduledTime: "8:00 AM – 10:00 AM (Early Morning)",
+    arrivalWindow: "8:00 AM – 10:00 AM (Early Morning)",
+    scopeSnapshot: "Inspect cracked washer discharge P-trap, replace with schedule 40 PVC, water test under cycle.",
+    acceptedAt: "2026-10-25T08:15:00Z",
+    status: "confirmed",
+    paymentArrangement: "cash",
+  },
+  "job-8": {
+    jobId: "job-8",
+    quoteId: "quote-8",
+    proId: "pro-1",
+    agreedPrice: 260,
+    scheduledDate: "Today",
+    scheduledTime: "1:00 PM – 3:00 PM (Early Afternoon)",
+    arrivalWindow: "1:00 PM – 3:00 PM (Early Afternoon)",
+    scopeSnapshot: "Unjam InSinkErator flywheel, replace inner gasket seal, snake drain line 25 ft.",
+    acceptedAt: "2026-10-25T11:00:00Z",
+    status: "confirmed",
+    paymentArrangement: "card",
+  },
+  "job-9": {
+    jobId: "job-9",
+    quoteId: "quote-9",
+    proId: "pro-1",
+    agreedPrice: 220,
+    scheduledDate: "Oct 24, 2026",
+    scheduledTime: "2:00 PM – 4:00 PM",
+    arrivalWindow: "2:00 PM – 4:00 PM",
+    scopeSnapshot: "Replace leaking outdoor sillcock with frost-free quarter-turn valve and vacuum breaker.",
+    acceptedAt: "2026-10-23T16:00:00Z",
+    status: "confirmed",
+    paymentArrangement: "check",
+  },
+  "job-10": {
+    jobId: "job-10",
+    quoteId: "quote-10",
+    proId: "pro-1",
+    agreedPrice: 480,
+    scheduledDate: "Oct 18, 2026",
+    scheduledTime: "9:00 AM – 11:00 AM",
+    arrivalWindow: "9:00 AM – 11:00 AM",
+    scopeSnapshot: "Excavate access to main line inlet, solder new 1-inch brass PRV, calibrate water pressure to 55 PSI.",
+    acceptedAt: "2026-10-17T12:00:00Z",
+    status: "confirmed",
+    paymentArrangement: "zelle",
+    paidAt: "2026-10-18T11:45:00Z",
+  },
+  "job-11": {
+    jobId: "job-11",
+    quoteId: "quote-11",
+    proId: "pro-1",
+    agreedPrice: 215,
+    scheduledDate: "Oct 22, 2026",
+    scheduledTime: "11:00 AM – 1:00 PM",
+    arrivalWindow: "11:00 AM – 1:00 PM",
+    scopeSnapshot: "Extract corroded Moen Positemp shower cartridge, clean brass housing, install OEM replacement.",
+    acceptedAt: "2026-10-21T10:00:00Z",
+    status: "confirmed",
+    paymentArrangement: "cash",
+    paidAt: "2026-10-22T12:30:00Z",
+  },
+};
+
+export const defaultSeedCompletions: Record<string, JobCompletion> = {
+  "job-9": {
+    jobId: "job-9",
+    proMarkedAt: "35 minutes ago",
+    completionNotes: "Replaced freeze-proof sillcock valve with quarter-turn ball valve and pressure tested at 65 PSI. Area cleaned.",
+  },
+  "job-10": {
+    jobId: "job-10",
+    proMarkedAt: "Oct 18, 2026 · 11:30 AM",
+    completionNotes: "New brass PRV installed and dialed to 55 PSI static pressure. Soldered connections leak tested.",
+    homeownerConfirmedAt: "Oct 18, 2026 · 11:45 AM",
+    paymentMethod: "zelle",
+    receiptNumber: "REC-2026-JOB10",
+  },
+  "job-11": {
+    jobId: "job-11",
+    proMarkedAt: "Oct 22, 2026 · 12:15 PM",
+    completionNotes: "Cartridge replaced with OEM Moen 1222. Hot/cold balancing spool verified, zero drip under pressure.",
+    homeownerConfirmedAt: "Oct 22, 2026 · 12:30 PM",
+    paymentMethod: "cash",
+    receiptNumber: "REC-2026-JOB11",
+  },
+};
+
+export const defaultSeedChangeRequests: ChangeRequest[] = [
+  {
+    id: "cr-seed-1",
+    jobId: "job-8",
+    amount: 65,
+    reason: "Corroded brass tailpiece fitting cracked during disassembly; needs new heavy-gauge brass slip joint.",
+    proposedBy: "pro",
+    proAcknowledged: true,
+    homeownerAcknowledged: false,
+    status: "pending",
+    createdAt: "2026-10-25T11:45:00Z",
+  },
+];
+
 const initialState: MarketplaceState = {
   extraJobs: [],
   extraQuotes: [],
   quoteOverrides: {},
-  hiredByJob: {},
-  bookings: {},
-  changeRequests: [],
-  completions: {},
+  hiredByJob: defaultSeedHiredByJob,
+  bookings: defaultSeedBookings,
+  changeRequests: defaultSeedChangeRequests,
+  completions: defaultSeedCompletions,
   membershipActive: true,
   verification: {
     identity: "idle",
@@ -93,10 +223,13 @@ const marketplaceSlice = createSlice({
           state.extraJobs = saved.extraJobs ?? [];
           state.extraQuotes = saved.extraQuotes ?? [];
           state.quoteOverrides = saved.quoteOverrides ?? {};
-          state.hiredByJob = saved.hiredByJob ?? {};
-          state.bookings = saved.bookings ?? {};
-          state.changeRequests = saved.changeRequests ?? [];
-          state.completions = saved.completions ?? {};
+          state.hiredByJob = { ...defaultSeedHiredByJob, ...(saved.hiredByJob ?? {}) };
+          state.bookings = { ...defaultSeedBookings, ...(saved.bookings ?? {}) };
+          state.changeRequests =
+            saved.changeRequests && saved.changeRequests.length
+              ? saved.changeRequests
+              : defaultSeedChangeRequests;
+          state.completions = { ...defaultSeedCompletions, ...(saved.completions ?? {}) };
           state.membershipActive = saved.membershipActive !== undefined ? Boolean(saved.membershipActive) : true;
           state.verification = saved.verification ?? state.verification;
         }
@@ -168,6 +301,7 @@ const marketplaceSlice = createSlice({
         proposedSchedule?: string;
         expiresAt?: string;
         paymentTerms?: string;
+        notes?: string;
       }>,
     ) {
       const payload = action.payload;
@@ -187,6 +321,7 @@ const marketplaceSlice = createSlice({
         proposedSchedule: payload.proposedSchedule,
         expiresAt: payload.expiresAt,
         paymentTerms: payload.paymentTerms,
+        notes: payload.notes,
         status: "pending",
         createdAt: new Date().toISOString(),
       });
