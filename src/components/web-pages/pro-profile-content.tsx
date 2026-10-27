@@ -645,39 +645,22 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
               ))}
             </div>
 
-            {/* Clean 2-column checklist with upfront pricing matching pro catalog */}
+            {/* Clean 2-column checklist clearly showing services offered */}
             {servicesList.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3.5 gap-x-8 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 pt-1">
                 {servicesList.map((srv) => (
-                  <div
-                    key={srv.id}
-                    className="flex items-start justify-between gap-3 border-b border-line/40 pb-3 last:border-0 sm:last:border-b-0"
-                  >
-                    <div className="flex items-start gap-2.5 min-w-0">
-                      <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0 stroke-[2.5]" />
-                      <div className="min-w-0">
-                        <span className="font-display text-sm font-semibold text-title leading-tight">
-                          {srv.name}
-                        </span>
-                        {srv.description && (
-                          <p className="mt-0.5 text-xs text-muted leading-relaxed">
-                            {srv.description}
-                          </p>
-                        )}
-                      </div>
+                  <div key={srv.id} className="flex items-start gap-2.5">
+                    <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0 stroke-[2.5]" />
+                    <div className="min-w-0">
+                      <span className="font-display text-sm font-semibold text-title leading-tight">
+                        {srv.name}
+                      </span>
+                      {srv.description && (
+                        <p className="mt-0.5 text-xs text-muted leading-relaxed">
+                          {srv.description}
+                        </p>
+                      )}
                     </div>
-                    {"price" in srv && typeof srv.price === "number" && srv.price > 0 ? (
-                      <div className="shrink-0 text-right">
-                        <span className="font-display text-sm font-bold text-title">
-                          ${srv.price}
-                        </span>
-                        {"unit" in srv && srv.unit ? (
-                          <span className="block text-[10px] text-muted capitalize">
-                            {srv.unit}
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : null}
                   </div>
                 ))}
               </div>

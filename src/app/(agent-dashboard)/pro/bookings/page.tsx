@@ -70,20 +70,14 @@ export default function ProBookingsPage() {
   return (
     <div className="space-y-6 max-w-5xl">
       {/* 1. Header */}
-      <div className="border-b border-line/70 pb-4 pt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight flex items-center gap-2.5">
-            <CalendarCheck className="h-6 w-6 text-primary" />
-            My Bookings
-          </h1>
-          <p className="mt-0.5 text-xs sm:text-sm text-muted">
-            Confirmed client contracts, scheduled arrival windows, on-site execution, and completion receipts.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1 text-xs font-semibold text-primary shadow-2xs self-start sm:self-auto">
-          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-          <span>Austin Metro Operational Area</span>
-        </div>
+      <div className="border-b border-line/70 pb-4 pt-1">
+        <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight flex items-center gap-2.5">
+          <CalendarCheck className="h-6 w-6 text-primary" />
+          My Bookings
+        </h1>
+        <p className="mt-0.5 text-xs sm:text-sm text-muted">
+          Confirmed client contracts, scheduled arrival windows, on-site execution, and completion receipts.
+        </p>
       </div>
 
       {/* 2. Lifecycle Tab Navigation */}
@@ -147,7 +141,7 @@ export default function ProBookingsPage() {
           <EmptyState
             title="No Confirmed Bookings"
             description="When a homeowner accepts your quote proposal or books a direct appointment, their booking will appear here."
-            actionLabel="Browse Quote Requests & Leads"
+            actionLabel="Browse Quote Requests"
             href="/pro/jobs"
           />
         </div>

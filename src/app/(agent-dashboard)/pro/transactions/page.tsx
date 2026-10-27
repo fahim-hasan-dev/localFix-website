@@ -13,7 +13,6 @@ import {
   Percent,
   Receipt,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,7 +73,7 @@ export default function TransactionsPage() {
         <Card className="rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Sparkles className="h-5 w-5" />
+              <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Active Membership</p>

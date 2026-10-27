@@ -15,7 +15,6 @@ import {
   Receipt,
   Search,
   ShieldCheck,
-  Sparkles,
   Star,
   Trash2,
   Truck,

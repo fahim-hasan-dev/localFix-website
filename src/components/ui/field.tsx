@@ -43,5 +43,5 @@ export function TextArea(
 export function NativeSelect(
   props: React.SelectHTMLAttributes<HTMLSelectElement>,
 ) {
-  return <select {...props} className={cn(controlClass, "h-11", props.className)} />;
+  return <select {...props} className={cn(controlClass, "h-11 pr-10 cursor-pointer", props.className)} />;
 }

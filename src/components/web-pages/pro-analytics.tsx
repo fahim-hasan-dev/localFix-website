@@ -181,7 +181,7 @@ export function ProAnalytics() {
             aria-label="Filter analytics by period"
             value={period}
             onChange={(e) => setPeriod(e.target.value as PeriodOption)}
-            className="cursor-pointer bg-transparent text-xs font-bold text-title outline-none focus:text-primary"
+            className="cursor-pointer bg-transparent text-xs font-bold text-title outline-none focus:text-primary pr-6"
           >
             <option value="this_month">This Month</option>
             <option value="this_year">This Year</option>

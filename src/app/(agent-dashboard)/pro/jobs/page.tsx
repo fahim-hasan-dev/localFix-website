@@ -9,13 +9,14 @@ import {
   ClipboardList,
   Clock,
   DollarSign,
+  FileText,
   Filter,
-  Layers,
+  Globe,
+  Inbox,
   MapPin,
   MessageCircle,
   MessageSquare,
   Search,
-  Sparkles,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,7 @@ export default function ProJobsPage() {
         <div>
           <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight flex items-center gap-2.5">
             <ClipboardList className="h-6 w-6 text-primary" />
-            Quote Requests &amp; Leads
+            Quote Requests
           </h1>
           <p className="mt-0.5 text-xs sm:text-sm text-muted">
             Exclusive client requests from your storefront, local marketplace leads, and submitted quotations.
@@ -130,9 +131,9 @@ export default function ProJobsPage() {
         <div className="inline-flex items-center gap-1 rounded-2xl bg-stone-100/90 p-1 border border-line/60">
           {(
             [
-              { id: "direct", label: "Direct Requests", count: tabCounts.direct, icon: Sparkles },
-              { id: "leads", label: "Marketplace Leads", count: tabCounts.leads, icon: Layers },
-              { id: "quoted", label: "My Proposals", count: tabCounts.quoted, icon: MessageSquare },
+              { id: "direct", label: "Direct Requests", count: tabCounts.direct, icon: Inbox },
+              { id: "leads", label: "Marketplace Leads", count: tabCounts.leads, icon: Globe },
+              { id: "quoted", label: "My Proposals", count: tabCounts.quoted, icon: FileText },
             ] as const
           ).map((tab) => {
             const active = activeTab === tab.id;
@@ -183,7 +184,7 @@ export default function ProJobsPage() {
         <select
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
-          className="rounded-xl border border-line/80 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-title outline-none focus:border-primary shadow-2xs"
+          className="rounded-xl border border-line/80 bg-white py-2.5 pl-3.5 pr-10 text-xs sm:text-sm font-medium text-title outline-none focus:border-primary shadow-2xs cursor-pointer"
         >
           <option value="all">All Trade Categories</option>
           {categories.map((cat) => (
@@ -196,7 +197,7 @@ export default function ProJobsPage() {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as SortKey)}
-          className="rounded-xl border border-line/80 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-title outline-none focus:border-primary shadow-2xs"
+          className="rounded-xl border border-line/80 bg-white py-2.5 pl-3.5 pr-10 text-xs sm:text-sm font-medium text-title outline-none focus:border-primary shadow-2xs cursor-pointer"
         >
           <option value="newest">Newest First</option>
           <option value="urgent">Most Urgent</option>
@@ -280,7 +281,7 @@ export default function ProJobsPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     {isDirect && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                        <Sparkles className="h-3 w-3" /> Direct
+                        <Inbox className="h-3 w-3" /> Direct
                       </span>
                     )}
                     {job.urgency === "asap" ? (
