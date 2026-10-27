@@ -1,21 +1,12 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Navbar } from "@/components/layout/navbar";
-import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
+import { DashboardSidebar, type SidebarSection } from "@/components/layout/dashboard-sidebar";
 import { loginHref } from "@/lib/role-access";
+import { selectHomeownerBookingsGrouped, selectHomeownerRequests } from "@/lib/marketplace";
 import { useAppSelector } from "@/redux/hooks";
-
-const items = [
-  { href: "/account/bookings", label: "My Bookings" },
-  { href: "/account", label: "Service Requests" },
-  { href: "/account/post-job", label: "Post a request" },
-  { href: "/account/messages", label: "Messages" },
-  { href: "/account/saved", label: "Saved pros" },
-  { href: "/account/profile", label: "Profile" },
-  { href: "/account/password", label: "Password" },
-];
 
 export default function UserDashboardLayout({
   children,
@@ -24,6 +15,7 @@ export default function UserDashboardLayout({
 }) {
   const user = useAppSelector((state) => state.auth.user);
   const hydrated = useAppSelector((state) => state.auth.hydrated);
+  const state = useAppSelector((s) => s);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -37,13 +29,54 @@ export default function UserDashboardLayout({
     if (user.role === "pro") router.replace("/pro");
   }, [hydrated, pathname, router, user]);
 
+  const sections: SidebarSection[] = useMemo(() => {
+    const homeownerName = user?.name || "Sarah Jenkins";
+    const requests = selectHomeownerRequests(state, homeownerName);
+    const bookings = selectHomeownerBookingsGrouped(state, homeownerName);
+    const activeRequests = requests.length;
+    const activeBookings = bookings.upcoming.length + bookings.inProgress.length;
+    const favoritesCount = state.features.favorites.length;
+
+    return [
+      {
+        title: "Projects & Activity",
+        items: [
+          {
+            href: "/account",
+            label: "Service Requests",
+            badge: activeRequests > 0 ? activeRequests : undefined,
+          },
+          {
+            href: "/account/bookings",
+            label: "My Bookings",
+            badge: activeBookings > 0 ? activeBookings : undefined,
+          },
+          { href: "/account/messages", label: "Messages" },
+          { href: "/account/post-job", label: "Post a Request" },
+          {
+            href: "/account/saved",
+            label: "Saved Pros",
+            badge: favoritesCount > 0 ? favoritesCount : undefined,
+          },
+        ],
+      },
+      {
+        title: "Account",
+        items: [
+          { href: "/account/profile", label: "Profile" },
+          { href: "/account/password", label: "Password" },
+        ],
+      },
+    ];
+  }, [state, user?.name]);
+
   if (!hydrated || !user || user.role !== "homeowner") return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-surface">
       <Navbar />
       <div className="container-site flex flex-1 flex-col items-stretch gap-6 pt-6 pb-12 md:flex-row md:items-start md:gap-8 md:pt-8 md:pb-16">
-        <DashboardSidebar items={items} />
+        <DashboardSidebar sections={sections} />
         <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">{children}</div>
       </div>
     </div>
