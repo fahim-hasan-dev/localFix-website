@@ -9,6 +9,16 @@ import { useRoleAccess } from "@/hooks/use-role-access";
 import { setLeadAction } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 
+import {
+  Calendar,
+  Clock,
+  Package,
+  ShieldCheck,
+  CalendarDays,
+  AlertCircle,
+  CreditCard,
+  FileText,
+} from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export function ProJobLead({
@@ -127,58 +137,97 @@ export function ProJobLead({
               <p className="mt-1 text-xs sm:text-sm text-copy leading-relaxed">{myQuote.scope}</p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 pt-2 border-t border-line/60 text-xs">
+            <div className="grid gap-2.5 sm:grid-cols-2 pt-3 border-t border-line/60 text-xs">
               {myQuote.proposedSchedule || myQuote.availability ? (
-                <div>
-                  <span className="text-muted font-medium">Proposed Schedule: </span>
-                  <strong className="text-title font-semibold">{myQuote.proposedSchedule || myQuote.availability}</strong>
+                <div className="flex items-center gap-2.5 rounded-xl bg-smoke/40 border border-line/60 px-3 py-2">
+                  <Calendar className="h-4 w-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-[10.5px] font-medium text-muted block leading-none">Schedule</span>
+                    <strong className="text-title font-semibold text-xs truncate block mt-0.5">
+                      {myQuote.proposedSchedule || myQuote.availability}
+                    </strong>
+                  </div>
                 </div>
               ) : null}
+
               {myQuote.estimatedDuration ? (
-                <div>
-                  <span className="text-muted font-medium">Duration: </span>
-                  <strong className="text-title font-semibold">{myQuote.estimatedDuration}</strong>
+                <div className="flex items-center gap-2.5 rounded-xl bg-smoke/40 border border-line/60 px-3 py-2">
+                  <Clock className="h-4 w-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-[10.5px] font-medium text-muted block leading-none">Duration</span>
+                    <strong className="text-title font-semibold text-xs truncate block mt-0.5">
+                      {myQuote.estimatedDuration}
+                    </strong>
+                  </div>
                 </div>
               ) : null}
+
               {myQuote.materialsIncluded != null ? (
-                <div>
-                  <span className="text-muted font-medium">Parts &amp; Materials: </span>
-                  <strong className="text-title font-semibold">
-                    {myQuote.materialsIncluded ? "All parts & fittings included" : "Labor only (parts extra)"}
-                  </strong>
+                <div className="flex items-center gap-2.5 rounded-xl bg-smoke/40 border border-line/60 px-3 py-2">
+                  <Package className="h-4 w-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-[10.5px] font-medium text-muted block leading-none">Parts &amp; Materials</span>
+                    <strong className="text-title font-semibold text-xs truncate block mt-0.5">
+                      {myQuote.materialsIncluded ? "All parts & fittings included" : "Labor only (parts extra)"}
+                    </strong>
+                  </div>
                 </div>
               ) : null}
+
               {myQuote.warranty ? (
-                <div>
-                  <span className="text-muted font-medium">Warranty: </span>
-                  <strong className="text-title font-semibold">{myQuote.warranty}</strong>
+                <div className="flex items-center gap-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200/60 px-3 py-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-[10.5px] font-medium text-emerald-700/80 block leading-none">Warranty</span>
+                    <strong className="text-emerald-950 font-semibold text-xs truncate block mt-0.5">
+                      {myQuote.warranty}
+                    </strong>
+                  </div>
                 </div>
               ) : null}
+
               {myQuote.expiresAt ? (
-                <div>
-                  <span className="text-muted font-medium">Valid Until: </span>
-                  <strong className="text-title font-semibold">{myQuote.expiresAt}</strong>
+                <div className="flex items-center gap-2.5 rounded-xl bg-smoke/40 border border-line/60 px-3 py-2">
+                  <CalendarDays className="h-4 w-4 text-muted shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-[10.5px] font-medium text-muted block leading-none">Valid Until</span>
+                    <strong className="text-title font-semibold text-xs truncate block mt-0.5">
+                      {myQuote.expiresAt}
+                    </strong>
+                  </div>
                 </div>
               ) : null}
+
               {myQuote.exclusions ? (
-                <div>
-                  <span className="text-muted font-medium">Exclusions: </span>
-                  <strong className="text-title font-semibold">{myQuote.exclusions}</strong>
+                <div className="flex items-center gap-2.5 rounded-xl bg-amber-50/60 border border-amber-200/60 px-3 py-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-[10.5px] font-medium text-amber-700/80 block leading-none">Exclusions</span>
+                    <strong className="text-amber-950 font-semibold text-xs truncate block mt-0.5">
+                      {myQuote.exclusions}
+                    </strong>
+                  </div>
                 </div>
               ) : null}
             </div>
 
             {myQuote.paymentTerms ? (
-              <div className="rounded-xl bg-smoke/40 p-3 border border-line/60 text-xs text-copy">
-                <span className="font-semibold text-title">Payment Terms: </span>
-                <span>{myQuote.paymentTerms}</span>
+              <div className="flex items-start gap-2.5 rounded-xl bg-smoke/40 p-3 border border-line/60 text-xs text-copy">
+                <CreditCard className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold text-title">Payment Terms: </span>
+                  <span>{myQuote.paymentTerms}</span>
+                </div>
               </div>
             ) : null}
 
             {myQuote.notes ? (
-              <div className="rounded-xl bg-smoke/40 p-3 border border-line/60 text-xs text-copy">
-                <span className="font-semibold text-title">Contractor Notes: </span>
-                <span>{myQuote.notes}</span>
+              <div className="flex items-start gap-2.5 rounded-xl bg-smoke/40 p-3 border border-line/60 text-xs text-copy">
+                <FileText className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold text-title">Contractor Notes: </span>
+                  <span>{myQuote.notes}</span>
+                </div>
               </div>
             ) : null}
           </div>

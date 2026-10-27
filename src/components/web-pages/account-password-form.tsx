@@ -204,16 +204,10 @@ export function AccountPasswordForm() {
             </div>
           )}
 
-          <div className="pt-3 border-t border-line/60 flex items-center justify-between gap-3">
+          <div className="pt-3 border-t border-line/60 flex items-center justify-start">
             <Button type="submit" size="sm">
               Save New Password
             </Button>
-            <Link
-              href="/forgot-password"
-              className="text-xs font-semibold text-primary hover:underline"
-            >
-              Forgot password?
-            </Link>
           </div>
         </form>
       </Card>

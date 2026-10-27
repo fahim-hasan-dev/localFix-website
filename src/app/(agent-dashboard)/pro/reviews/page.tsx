@@ -158,9 +158,9 @@ export default function ProReviewsPage() {
 
       {/* 2. Rating Breakdown Scorecard Widget */}
       <Card className="rounded-xl border border-line/80 bg-white p-5 sm:p-6 shadow-xs">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-center">
           {/* Left Column: Overall Rating Score */}
-          <div className="md:col-span-4 flex flex-col items-center md:items-start text-center md:text-left md:border-r border-line/70 md:pr-6 justify-between py-0.5">
+          <div className="md:col-span-5 lg:col-span-4 flex flex-col items-center md:items-start text-center md:text-left md:border-r border-line/70 md:pr-6 py-0.5">
             <div>
               <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted">
                 Average Rating
@@ -195,7 +195,7 @@ export default function ProReviewsPage() {
             </div>
           </div>
 
-          <div className="md:col-span-8 flex flex-col justify-between py-0.5">
+          <div className="md:col-span-7 lg:col-span-8 flex flex-col py-0.5">
             <div className="mb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-muted px-2.5">
               <span>Rating Breakdown</span>
               {selectedFilter !== "all" ? (

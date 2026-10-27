@@ -102,7 +102,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
 
   const effectiveBio = isDemoPro && proProfile?.bio ? proProfile.bio : defaultBio;
   const isBioLong = effectiveBio.length > 420;
-  const effectiveBusinessName = isDemoPro && proProfile?.businessName ? proProfile.businessName : pro.name;
+  const effectiveBusinessName = isDemoPro && proProfile?.contactName ? proProfile.contactName : pro.name;
   const effectiveYearsInBusiness = isDemoPro && proProfile?.yearsInBusiness ? proProfile.yearsInBusiness : pro.yearsInBusiness;
   const effectiveStartingPrice = isDemoPro && proProfile?.startingPrice ? proProfile.startingPrice : pro.startingPrice;
   const effectivePayments = isDemoPro && proProfile?.acceptedPayments?.length ? proProfile.acceptedPayments : ["Cash", "Check", "Credit or debit", "Zelle"];

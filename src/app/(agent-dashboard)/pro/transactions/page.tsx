@@ -49,8 +49,7 @@ export default function TransactionsPage() {
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight flex items-center gap-2.5">
-              <Receipt className="h-6 w-6 text-primary" />
+            <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight">
               Subscription Billing History
             </h1>
             <p className="mt-0.5 text-xs sm:text-sm text-muted">

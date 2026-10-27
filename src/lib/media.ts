@@ -28,13 +28,13 @@ export const photos = {
   /** Cover / card image per trade — diverse authentic craft photography */
   services: {
     plumbing: u("photo-1585704032915-c3400ca199e7", 1200),
-    electrical: u("photo-1621905252472-943afaa20e20", 1200),
+    electrical: u("photo-1621905251918-48416bd8575a", 1200),
     hvac: u("photo-1621905251189-08b45d6a269e", 1200),
     roofing: u("photo-1632759145351-1d592919f522", 1200),
     handyman: u("photo-1505798577917-a65157d3320a", 1200),
     "appliance-repair": u("photo-1584622650111-993a426fbf0a", 1200),
     painting: u("photo-1589939705384-5185137a7f0f", 1200),
-    landscaping: u("photo-1558904541-efa8c4a08931", 1200),
+    landscaping: u("photo-1557429287-b2e26467fc2b", 1200),
     "pest-control": u("photo-1581578731548-c64695cc6952", 1200),
     "house-cleaning": u("photo-1581578731548-c64695cc6952", 1600),
   } as Record<string, string>,

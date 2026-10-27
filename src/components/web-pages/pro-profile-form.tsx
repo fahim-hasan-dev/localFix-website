@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  Building2,
   CheckCircle2,
   Clock,
   Image as ImageIcon,
@@ -11,6 +10,7 @@ import {
   ShieldCheck,
   Trash2,
   Upload,
+  User,
   Wrench,
   X,
 } from "lucide-react";
@@ -118,16 +118,19 @@ export function ProProfileForm() {
     const startingFromServices = formData.services.length
       ? Math.min(...formData.services.map((service) => service.price))
       : formData.startingPrice;
+    const proName = formData.contactName || formData.businessName || "Luis Ortega";
     dispatch(
       updateProProfile({
         ...formData,
+        contactName: proName,
+        businessName: proName,
         startingPrice: startingFromServices,
         responseTime: proProfile.responseTime,
       }),
     );
     dispatch(
       updateUser({
-        name: formData.contactName,
+        name: proName,
         phone: formData.phone,
         street: formData.street,
         city: formData.city,
@@ -135,7 +138,7 @@ export function ProProfileForm() {
         zip: formData.zip,
       })
     );
-    showToast("Listing updated.");
+    showToast("Profile updated.");
   }
 
 
@@ -280,7 +283,7 @@ export function ProProfileForm() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line/70 pb-5">
         <div>
           <h1 className="font-display text-2xl font-bold text-title tracking-tight leading-tight">
-            Business Profile
+            Professional Profile
           </h1>
           <p className="mt-1 text-sm text-muted">What homeowners see on your listing.</p>
         </div>
@@ -298,7 +301,7 @@ export function ProProfileForm() {
         value={activeTab}
         onChange={setActiveTab}
         items={[
-          { key: "overview", label: "Business Info", icon: Building2 },
+          { key: "overview", label: "Profile Info", icon: User },
           { key: "hours", label: "Hours & Payments", icon: Clock },
           { key: "credentials", label: "Licenses & Verification", icon: ShieldCheck },
           { key: "portfolio", label: "Project Photos", icon: ImageIcon, count: formData.portfolio.length },
@@ -306,32 +309,25 @@ export function ProProfileForm() {
       />
 
       {/* ============================================================ */}
-      {/* TAB 2: BUSINESS INFO                                         */}
+      {/* TAB 1: PROFILE INFO                                          */}
       {/* ============================================================ */}
       {activeTab === "overview" && (
         <Card className="rounded-2xl border border-line/80 bg-white p-6 shadow-2xs space-y-5">
           <div>
-            <h3 className="font-display text-base sm:text-[17px] font-bold text-title">Business Information</h3>
-            <p className="text-xs text-muted">Name, contact, and where you work.</p>
+            <h3 className="font-display text-base sm:text-[17px] font-bold text-title">Profile Information</h3>
+            <p className="text-xs text-muted">Your name, contact, and where you work.</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Business Name">
+            <Field label="Full Name">
               <TextField
-                value={formData.businessName}
+                value={formData.contactName || formData.businessName}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, businessName: e.target.value })
-                }
-                placeholder="Ortega Plumbing & Gas"
-                required
-              />
-            </Field>
-
-            <Field label="Contact Person Name">
-              <TextField
-                value={formData.contactName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, contactName: e.target.value })
+                  setFormData({
+                    ...formData,
+                    contactName: e.target.value,
+                    businessName: e.target.value,
+                  })
                 }
                 placeholder="Luis Ortega"
                 required
@@ -344,7 +340,7 @@ export function ProProfileForm() {
               </p>
             </Field>
 
-            <Field label="Business Phone">
+            <Field label="Phone Number">
               <TextField
                 value={formData.phone}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -406,7 +402,7 @@ export function ProProfileForm() {
               />
             </Field>
 
-            <Field label="Years in Business">
+            <Field label="Years of Experience">
               <TextField
                 value={formData.yearsInBusiness}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>

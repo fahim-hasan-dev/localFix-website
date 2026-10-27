@@ -115,7 +115,7 @@ export function DashboardSidebar({
               <div
                 className={cn(
                   "hidden md:block px-3.5 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-muted/70 select-none",
-                  sIndex === 0 ? "pt-1" : "mt-3 pt-3 border-t border-line/60",
+                  sIndex === 0 ? "pt-1" : "mt-3.5 pt-1",
                 )}
               >
                 {section.title}

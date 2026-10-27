@@ -151,8 +151,7 @@ export default function ProServicesPage() {
       {/* 1. Page Header with Title & Add Service Action */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line/70 pb-4 pt-1">
         <div>
-          <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight flex items-center gap-2.5">
-            <Wrench className="h-6 w-6 text-primary" />
+          <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight">
             Services &amp; Pricing
           </h1>
           <p className="mt-0.5 text-xs sm:text-sm text-muted">

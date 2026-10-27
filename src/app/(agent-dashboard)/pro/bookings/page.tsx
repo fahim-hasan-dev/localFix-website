@@ -71,8 +71,7 @@ export default function ProBookingsPage() {
     <div className="w-full max-w-5xl space-y-6">
       {/* 1. Header */}
       <div className="border-b border-line/70 pb-4 pt-1">
-        <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight flex items-center gap-2.5">
-          <CalendarCheck className="h-6 w-6 text-primary" />
+        <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight">
           My Bookings
         </h1>
         <p className="mt-0.5 text-xs sm:text-sm text-muted">

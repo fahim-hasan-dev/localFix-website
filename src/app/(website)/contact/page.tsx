@@ -80,28 +80,28 @@ export default function ContactPage() {
           {/* ========================================================= */}
           {/* LEFT COLUMN: GET IN TOUCH CARD                            */}
           {/* ========================================================= */}
-          <div className="lg:col-span-6 flex flex-col justify-between rounded-[28px] border border-line/80 bg-white p-6 sm:p-8 md:p-9 shadow-xs">
-            <div className="space-y-6 sm:space-y-7">
+          <div className="lg:col-span-6 flex flex-col justify-between rounded-[28px] border border-line/80 bg-white p-6 sm:p-8 shadow-xs">
+            <div className="space-y-5">
               <div>
-                <h2 className="font-display text-2xl sm:text-3xl font-semibold text-title tracking-tight">
+                <h2 className="font-display text-2xl sm:text-[26px] font-semibold text-title tracking-tight">
                   Get in Touch
                 </h2>
-                <p className="mt-2 text-sm sm:text-[15px] leading-relaxed text-muted">
+                <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-muted">
                   Have questions or need help with a request? Reach out to us directly.
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <a
                   href="mailto:admin@localhomefix.com"
-                  className="group flex items-center justify-between gap-4 rounded-2xl border border-line/70 bg-white p-4 transition-all duration-200 hover:border-primary/60 hover:shadow-xs"
+                  className="group flex items-center justify-between gap-4 rounded-2xl border border-line/70 bg-white p-3.5 transition-all duration-200 hover:border-primary/60 hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3.5">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary border border-blue-100 transition-colors group-hover:bg-primary group-hover:text-white">
-                      <Mail className="h-5 w-5" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary border border-blue-100 transition-colors group-hover:bg-primary group-hover:text-white">
+                      <Mail className="h-4.5 w-4.5" />
                     </div>
                     <div className="space-y-0.5">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                         Email
                       </h3>
                       <p className="text-sm font-semibold text-title group-hover:text-primary transition-colors">
@@ -114,14 +114,14 @@ export default function ContactPage() {
 
                 <a
                   href="tel:5125550140"
-                  className="group flex items-center justify-between gap-4 rounded-2xl border border-line/70 bg-white p-4 transition-all duration-200 hover:border-primary/60 hover:shadow-xs"
+                  className="group flex items-center justify-between gap-4 rounded-2xl border border-line/70 bg-white p-3.5 transition-all duration-200 hover:border-primary/60 hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3.5">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary border border-blue-100 transition-colors group-hover:bg-primary group-hover:text-white">
-                      <Phone className="h-5 w-5" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary border border-blue-100 transition-colors group-hover:bg-primary group-hover:text-white">
+                      <Phone className="h-4.5 w-4.5" />
                     </div>
                     <div className="space-y-0.5">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                         Phone
                       </h3>
                       <p className="text-sm font-semibold text-title group-hover:text-primary transition-colors">
@@ -132,12 +132,12 @@ export default function ContactPage() {
                   <ArrowUpRight className="h-4 w-4 text-muted shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
                 </a>
 
-                <div className="group flex items-center gap-3.5 rounded-2xl border border-line/70 bg-white p-4 transition-all duration-200 hover:border-primary/60 hover:shadow-xs">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary border border-blue-100 transition-colors group-hover:bg-primary group-hover:text-white">
-                    <MapPin className="h-5 w-5" />
+                <div className="group flex items-center gap-3.5 rounded-2xl border border-line/70 bg-white p-3.5 transition-all duration-200 hover:border-primary/60 hover:shadow-xs">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary border border-blue-100 transition-colors group-hover:bg-primary group-hover:text-white">
+                    <MapPin className="h-4.5 w-4.5" />
                   </div>
                   <div className="space-y-0.5">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                       Service Area
                     </h3>
                     <p className="text-sm font-semibold text-title group-hover:text-primary transition-colors">
@@ -148,9 +148,9 @@ export default function ContactPage() {
               </div>
             </div>
 
-            <div className="mt-8 border-t border-line/60 pt-6">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted">Follow us</p>
-              <div className="mt-3 flex items-center gap-2.5">
+            <div className="mt-5 border-t border-line/60 pt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Follow us</p>
+              <div className="mt-2.5 flex items-center gap-2">
                 {socialLinks.map((item) => (
                   <a
                     key={item.label}
@@ -158,7 +158,7 @@ export default function ContactPage() {
                     target="_blank"
                     rel="noreferrer"
                     aria-label={item.label}
-                    className="grid h-9 w-9 place-items-center rounded-full border border-line/80 bg-white text-muted shadow-2xs transition-all hover:border-primary/50 hover:bg-smoke hover:text-primary hover:scale-105"
+                    className="grid h-8.5 w-8.5 place-items-center rounded-full border border-line/80 bg-white text-muted shadow-2xs transition-all hover:border-primary/50 hover:bg-smoke hover:text-primary hover:scale-105"
                   >
                     {item.icon}
                   </a>
@@ -170,18 +170,18 @@ export default function ContactPage() {
           {/* ========================================================= */}
           {/* RIGHT COLUMN: SEND MESSAGE FORM                           */}
           {/* ========================================================= */}
-          <div className="lg:col-span-6 flex flex-col rounded-[28px] border border-line/80 bg-white p-6 sm:p-8 md:p-9 shadow-xs space-y-5">
+          <div className="lg:col-span-6 flex flex-col justify-between rounded-[28px] border border-line/80 bg-white p-6 sm:p-8 shadow-xs">
             <div>
-              <h2 className="font-display text-2xl sm:text-3xl font-semibold text-title tracking-tight">
+              <h2 className="font-display text-2xl sm:text-[26px] font-semibold text-title tracking-tight">
                 Send a Message
               </h2>
-              <p className="mt-1.5 text-sm sm:text-[15px] leading-relaxed text-muted">
+              <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-muted">
                 Drop us a note below and a representative will reply to your email promptly.
               </p>
             </div>
 
             {sent ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-6 sm:p-7 text-center space-y-3">
+              <div className="my-auto rounded-2xl border border-emerald-200 bg-emerald-50/70 p-6 sm:p-7 text-center space-y-3">
                 <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-emerald-600 text-white shadow-xs">
                   <CheckCircle2 className="h-6 w-6" />
                 </div>
@@ -196,8 +196,8 @@ export default function ContactPage() {
                 </div>
               </div>
             ) : (
-              <form className="space-y-4 pt-1" onSubmit={submit}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <form className="space-y-3.5 pt-3" onSubmit={submit}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <Field label="Full Name">
                     <TextField required name="name" placeholder="Luis Ortega" />
                   </Field>
@@ -211,10 +211,10 @@ export default function ContactPage() {
                 </Field>
 
                 <Field label="Your Message">
-                  <TextArea required name="message" rows={5} placeholder="Provide as much detail as possible..." className="min-h-[170px] resize-y" />
+                  <TextArea required name="message" rows={3} placeholder="Provide as much detail as possible..." className="min-h-[100px] resize-y" />
                 </Field>
 
-                <Button type="submit" size="lg" className="w-full justify-center rounded-full shadow-xs">
+                <Button type="submit" size="md" className="w-full justify-center rounded-full shadow-xs">
                   Send Message ↗
                 </Button>
               </form>
