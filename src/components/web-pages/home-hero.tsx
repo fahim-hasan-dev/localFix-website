@@ -6,7 +6,6 @@ import {
   Briefcase,
   MapPin,
   Repeat,
-  Search,
   TriangleAlert,
   Wrench,
   RotateCcw,

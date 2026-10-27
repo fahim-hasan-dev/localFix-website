@@ -4,12 +4,9 @@ import { useMemo, useState } from "react";
 import {
   Check,
   CheckCircle2,
-  DollarSign,
   Edit2,
   Filter,
   Plus,
-  ShieldCheck,
-  Sparkles,
   Trash2,
   Wrench,
   X,
