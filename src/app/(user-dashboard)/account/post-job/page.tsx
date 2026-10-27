@@ -12,6 +12,7 @@ import {
   Calendar,
   Check,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Home,
   ImagePlus,
@@ -666,27 +667,27 @@ function BookingFlow() {
 
             {/* STEP 2: WHEN & WHERE */}
             {step === 2 && (
-              <div className="space-y-5 animate-in fade-in duration-150">
+              <div className="space-y-6 animate-in fade-in duration-150">
                 <div className="border-b border-line/60 pb-3">
                   <h2 className="font-display text-xl font-bold text-title">
                     When and where do you need service?
                   </h2>
                   <p className="mt-0.5 text-xs text-muted">
-                    Choose your timeframe and service location.
+                    Choose your timeframe, arrival preferences, and service location.
                   </p>
                 </div>
 
-                {/* 1. Urgency / Timeframe */}
+                {/* 1. Primary Decision: Urgency / Timeframe (Visual Hero) */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-title">
                     When would you like this done?
                   </label>
-                  <div className="grid gap-2.5 sm:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
                     {[
                       {
                         id: "asap",
                         title: "ASAP / Emergency",
-                        desc: "Immediate or same-day",
+                        desc: "Immediate or same-day service",
                         icon: Zap,
                       },
                       {
@@ -710,20 +711,20 @@ function BookingFlow() {
                           type="button"
                           onClick={() => setUrgency(item.id as Urgency)}
                           className={cn(
-                            "flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer",
+                            "group relative flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer",
                             active
-                              ? "border-primary bg-primary/[0.05] ring-1.5 ring-primary/20 shadow-xs"
+                              ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 shadow-xs"
                               : "border-line bg-white hover:border-line/90 hover:bg-slate-50/60",
                           )}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex items-center gap-3 min-w-0">
                             <span
                               className={cn(
-                                "grid h-8 w-8 place-items-center rounded-lg shrink-0 transition-colors",
-                                active ? "bg-primary text-white" : "bg-smoke text-primary",
+                                "grid h-9 w-9 place-items-center rounded-xl shrink-0 transition-colors",
+                                active ? "bg-primary text-white shadow-2xs" : "bg-smoke text-primary group-hover:bg-primary/10",
                               )}
                             >
-                              <Icon className="h-4 w-4" />
+                              <Icon className="h-4.5 w-4.5" />
                             </span>
                             <div className="min-w-0">
                               <span className="font-display text-sm font-semibold text-title block leading-snug">
@@ -743,175 +744,116 @@ function BookingFlow() {
                   </div>
                 </div>
 
-                {/* 2. Arrival Window */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-title">
-                    Preferred Arrival Window <span className="text-xs font-normal text-muted">(Optional)</span>
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      { id: "morning", label: "Morning", sub: "8 AM – 12 PM", icon: Sunrise },
-                      { id: "afternoon", label: "Afternoon", sub: "12 PM – 5 PM", icon: Sun },
-                      { id: "evening", label: "Evening", sub: "5 PM – 8 PM", icon: Sunset },
-                      { id: "anytime", label: "Anytime", sub: "Flexible", icon: Clock },
-                    ].map((w) => {
-                      const active = timeWindow === w.id;
-                      const Icon = w.icon;
-                      return (
-                        <button
-                          key={w.id}
-                          type="button"
-                          onClick={() => setTimeWindow(w.id)}
-                          className={cn(
-                            "flex h-11 items-center justify-center gap-2 px-3 rounded-xl border text-center transition-all cursor-pointer",
-                            active
-                              ? "border-primary bg-primary/[0.06] text-primary font-semibold ring-1.5 ring-primary/25 shadow-xs"
-                              : "border-line bg-white text-copy hover:border-line/90 hover:bg-slate-50/80",
-                          )}
-                        >
-                          <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted")} />
-                          <div className="text-left leading-tight">
-                            <span className={cn("text-xs font-semibold block", active ? "text-primary" : "text-title")}>
-                              {w.label}
-                            </span>
-                            <span className={cn("text-[10px] block", active ? "text-primary/75" : "text-muted")}>
-                              {w.sub}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
+                {/* 2. Balanced 2-Column Row: Timing & Location */}
+                <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-line/40">
+                  {/* Service Location */}
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-semibold text-title">
+                      Service Location <span className="text-xs font-normal text-muted">(ZIP Code)</span>
+                    </label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                      <input
+                        type="text"
+                        value={zipInput}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 5);
+                          setZipInput(val);
+                        }}
+                        placeholder="e.g. 78701"
+                        maxLength={5}
+                        required
+                        className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-3 font-mono text-sm font-semibold tracking-wider text-title outline-none transition-colors placeholder:text-muted focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Preferred Arrival Window (Dropdown) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-semibold text-title">
+                      Preferred Arrival Window <span className="text-xs font-normal text-muted">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                      <select
+                        value={timeWindow}
+                        onChange={(e) => setTimeWindow(e.target.value)}
+                        className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-9 text-sm font-medium text-title outline-none transition-colors appearance-none cursor-pointer focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
+                      >
+                        <option value="anytime">Anytime (Flexible arrival)</option>
+                        <option value="morning">Morning (8:00 AM – 12:00 PM)</option>
+                        <option value="afternoon">Afternoon (12:00 PM – 5:00 PM)</option>
+                        <option value="evening">Evening (5:00 PM – 8:00 PM)</option>
+                      </select>
+                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                    </div>
                   </div>
                 </div>
 
-                {/* 3. Service Location */}
-                <div className="space-y-2 pt-2 border-t border-line/40">
-                  <label className="block text-sm font-semibold text-title">
-                    Service Location
-                  </label>
-                  <div className="relative max-w-xs">
-                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
-                    <input
-                      type="text"
-                      value={zipInput}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "").slice(0, 5);
-                        setZipInput(val);
-                      }}
-                      placeholder="Enter 5-digit ZIP code (e.g. 78701)"
-                      maxLength={5}
-                      required
-                      className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-3 font-mono text-sm font-semibold tracking-wider text-title outline-none transition-colors placeholder:text-muted focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
-                    />
+                {/* 3. Balanced 2-Column Row: Property & Materials */}
+                <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-line/40">
+                  {/* Property Type (Dropdown) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-semibold text-title">
+                      Property Type
+                    </label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                      <select
+                        value={propertyType}
+                        onChange={(e) => setPropertyType(e.target.value as PropertyType)}
+                        className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-9 text-sm font-medium text-title outline-none transition-colors appearance-none cursor-pointer focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
+                      >
+                        <option value="single_family">Single-Family Home</option>
+                        <option value="condo">Condo / HOA / Townhome</option>
+                        <option value="apartment">Apartment / Multi-Family</option>
+                        <option value="commercial">Commercial / Office Space</option>
+                      </select>
+                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Parts & Materials (Dropdown) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-semibold text-title">
+                      Parts &amp; Materials
+                    </label>
+                    <div className="relative">
+                      <Package className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                      <select
+                        value={materialsStatus}
+                        onChange={(e) => setMaterialsStatus(e.target.value as MaterialsStatus)}
+                        className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-9 text-sm font-medium text-title outline-none transition-colors appearance-none cursor-pointer focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
+                      >
+                        <option value="contractor">Pro supplies parts (Fittings &amp; hardware)</option>
+                        <option value="on_site">I have parts (Pieces already on-site)</option>
+                        <option value="diagnostic">Inspect first (Diagnose before buying parts)</option>
+                      </select>
+                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                    </div>
                   </div>
                 </div>
 
-                {/* 4. Property Type */}
-                <div className="space-y-2 pt-2 border-t border-line/40">
-                  <label className="block text-sm font-semibold text-title">
-                    Property Type
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      { id: "single_family", label: "Single-Family", icon: Home },
-                      { id: "condo", label: "Condo / HOA", icon: Building },
-                      { id: "apartment", label: "Apartment", icon: Building2 },
-                      { id: "commercial", label: "Commercial", icon: Store },
-                    ].map((p) => {
-                      const active = propertyType === p.id;
-                      const Icon = p.icon;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => setPropertyType(p.id as PropertyType)}
-                          className={cn(
-                            "flex h-10 items-center justify-center gap-2 px-3 rounded-xl border text-center transition-all cursor-pointer",
-                            active
-                              ? "border-primary bg-primary/[0.06] text-primary font-semibold ring-1.5 ring-primary/25 shadow-xs"
-                              : "border-line bg-white text-title hover:border-line/90 hover:bg-slate-50/80 text-xs sm:text-sm font-medium",
-                          )}
-                        >
-                          <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted")} />
-                          <span>{p.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 5. Parts & Materials */}
-                <div className="space-y-2 pt-2 border-t border-line/40">
-                  <label className="block text-sm font-semibold text-title">
-                    Parts &amp; Materials
-                  </label>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {MATERIAL_OPTIONS.map((item) => {
-                      const active = materialsStatus === item.id;
-                      const Icon = item.icon;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setMaterialsStatus(item.id)}
-                          className={cn(
-                            "flex items-center justify-between p-2.5 sm:px-3 rounded-xl border text-left transition-all cursor-pointer",
-                            active
-                              ? "border-primary bg-primary/[0.05] ring-1.5 ring-primary/20 shadow-xs"
-                              : "border-line bg-white hover:border-line/90 hover:bg-slate-50/60",
-                          )}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span
-                              className={cn(
-                                "grid h-7 w-7 place-items-center rounded-lg shrink-0 transition-colors",
-                                active ? "bg-primary text-white" : "bg-smoke text-primary",
-                              )}
-                            >
-                              <Icon className="h-3.5 w-3.5" />
-                            </span>
-                            <div className="min-w-0">
-                              <span className="font-display text-xs sm:text-sm font-semibold text-title block leading-tight truncate">
-                                {item.title}
-                              </span>
-                              <span className="text-[11px] text-muted block truncate mt-0.5">
-                                {item.desc}
-                              </span>
-                            </div>
-                          </div>
-                          {active && (
-                            <Check className="h-4 w-4 text-primary shrink-0 ml-1.5 stroke-[2.5]" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 6. Budget (Optional) */}
-                <div className="space-y-2 pt-2 border-t border-line/40">
+                {/* 4. Estimated Budget (Dropdown) */}
+                <div className="space-y-1.5 pt-2 border-t border-line/40">
                   <label className="block text-sm font-semibold text-title">
                     Estimated Budget <span className="text-xs font-normal text-muted">(Optional)</span>
                   </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {BUDGET_OPTIONS.map((item) => {
-                      const active = budget === item;
-                      return (
-                        <button
-                          key={item || "none"}
-                          type="button"
-                          onClick={() => setBudget(item)}
-                          className={cn(
-                            "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer",
-                            active
-                              ? "border-primary bg-primary text-white shadow-2xs font-semibold"
-                              : "border-line bg-white text-copy hover:border-line/90 hover:bg-slate-50",
-                          )}
-                        >
-                          {item || "Not specified"}
-                        </button>
-                      );
-                    })}
+                  <div className="relative max-w-sm">
+                    <Wallet className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                    <select
+                      value={budget}
+                      onChange={(e) => setBudget(e.target.value)}
+                      className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-9 text-sm font-medium text-title outline-none transition-colors appearance-none cursor-pointer focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
+                    >
+                      <option value="">Not specified / Flexible budget</option>
+                      <option value="Under $250">Under $250 (Minor fix / quick repair)</option>
+                      <option value="$250–$500">$250 – $500 (Standard repair)</option>
+                      <option value="$500–$1,000">$500 – $1,000 (Substantial service)</option>
+                      <option value="$1,000–$3,000">$1,000 – $3,000 (Major repair or install)</option>
+                      <option value="$3,000+">$3,000+ (Extensive renovation / replacement)</option>
+                    </select>
+                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
                   </div>
                 </div>
               </div>
