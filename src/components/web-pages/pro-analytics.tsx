@@ -106,7 +106,7 @@ const recentCompletedJobs = [
   { id: "comp-5", client: "David Miller", service: "Garbage disposal", date: "Aug 12, 2026", amount: "$240" },
 ];
 
-type AnalyticsTab = "overview" | "revenue" | "jobs";
+type AnalyticsTab = "overview" | "jobs";
 
 export function ProAnalytics() {
   const [activeTab, setActiveTab] = useState<AnalyticsTab>("overview");
@@ -135,7 +135,6 @@ export function ProAnalytics() {
           onChange={setActiveTab}
           items={[
             { key: "overview", label: "Overview" },
-            { key: "revenue", label: "Revenue Analytics" },
             { key: "jobs", label: "History" },
           ]}
         />
@@ -396,83 +395,7 @@ export function ProAnalytics() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 4. TAB 2: REVENUE ANALYTICS (Deep Dive Breakdown & Direct Payout Terms) */}
-      {/* ========================================================================= */}
-      {activeTab === "revenue" && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          <Card className="p-5 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 pb-4">
-              <div>
-                <h2 className="font-display text-base font-bold text-title">
-                  Revenue Breakdown &amp; Monthly Performance ({selectedYear})
-                </h2>
-                <p className="mt-0.5 text-xs text-muted">
-                  Itemized view of income, completed jobs, and average earnings per job.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-800">
-                  Year Total: ${activeData.totalRevenue.toLocaleString()}
-                </span>
-              </div>
-            </div>
 
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-line/70 text-muted uppercase tracking-wider text-[11px]">
-                    <th className="py-2.5 font-semibold">Month</th>
-                    <th className="py-2.5 font-semibold">Monthly Income</th>
-                    <th className="py-2.5 font-semibold">Jobs Completed</th>
-                    <th className="py-2.5 font-semibold">Avg Ticket</th>
-                    <th className="py-2.5 font-semibold text-right">% of Annual Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line/60">
-                  {activeData.monthly.map((m) => {
-                    const avgPerJob = m.jobs > 0 ? Math.round(m.income / m.jobs) : 0;
-                    const pctOfTotal = activeData.totalRevenue > 0
-                      ? Math.round((m.income / activeData.totalRevenue) * 100)
-                      : 0;
-
-                    return (
-                      <tr key={m.month} className="hover:bg-smoke/50 transition-colors">
-                        <td className="py-3 font-semibold text-title">{m.month} {selectedYear}</td>
-                        <td className="py-3 font-display font-bold text-title text-sm">
-                          ${m.income.toLocaleString()}
-                        </td>
-                        <td className="py-3 text-stone-700">{m.jobs} jobs</td>
-                        <td className="py-3 text-stone-700">
-                          {avgPerJob > 0 ? `$${avgPerJob}` : "—"}
-                        </td>
-                        <td className="py-3 text-right">
-                          <span className="font-semibold text-stone-600">{pctOfTotal}%</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-
-          {/* Direct Payout Model Reassurance */}
-          <div className="rounded-2xl border border-blue-200/80 bg-gradient-to-r from-blue-50/70 via-primary/[0.03] to-surface p-4 sm:p-5 flex items-start gap-3.5 shadow-2xs">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-xs">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div className="text-xs">
-              <p className="font-bold text-title text-sm">
-                100% Direct Payout Advantage
-              </p>
-              <p className="text-muted mt-1 leading-relaxed">
-                LocalHomeFix does not hold your payments or take percentage cuts from your invoices. Homeowners pay you directly via credit card, check, or cash upon 100% job completion.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 5. TAB 3: JOBS & CLIENTS (Complete Job Ledger & Retention Analysis)      */}
