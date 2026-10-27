@@ -22,7 +22,6 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs } from "@/components/ui/tabs";
 import { photos } from "@/lib/media";
 import {
   serviceLines,
@@ -105,7 +104,6 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   const effectiveBusinessName = isDemoPro && proProfile?.contactName ? proProfile.contactName : pro.name;
   const effectiveYearsInBusiness = isDemoPro && proProfile?.yearsInBusiness ? proProfile.yearsInBusiness : pro.yearsInBusiness;
   const effectiveStartingPrice = isDemoPro && proProfile?.startingPrice ? proProfile.startingPrice : pro.startingPrice;
-  const effectivePayments = isDemoPro && proProfile?.acceptedPayments?.length ? proProfile.acceptedPayments : ["Cash", "Check", "Credit or debit", "Zelle"];
 
   const replyTime = useMemo(() => {
     if (pro.emergency) return "~15 mins";
@@ -426,28 +424,30 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
         {/* 4. SUB-NAVIGATION TAB RIBBON */}
         <div className="sticky top-[74px] z-30 border-t border-line/70 bg-white/95 backdrop-blur-md shadow-xs">
           <div className="container-site flex items-center justify-between gap-4">
-            <div className="overflow-x-auto py-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              <Tabs
-                value={activeTab}
-                onChange={(key) => {
-                  setActiveTab(key);
-                  scrollToSection(
-                    key === "about"
-                      ? "sec-about"
-                      : key === "services"
-                        ? "sec-services"
-                        : key === "photos"
-                          ? "sec-photos"
-                          : "sec-reviews",
-                  );
-                }}
-                items={[
-                  { key: "about", label: "About" },
-                  { key: "services", label: "Services" },
-                  { key: "photos", label: "Photos", count: galleryPhotos.length },
-                  { key: "reviews", label: "Reviews", count: allReviews.length },
-                ]}
-              />
+            <div className="flex gap-2 sm:gap-6 overflow-x-auto py-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {[
+                { id: "sec-about", tabId: "about", label: "About" },
+                { id: "sec-services", tabId: "services", label: "Services" },
+                { id: "sec-photos", tabId: "photos", label: `Photos (${galleryPhotos.length})` },
+                { id: "sec-reviews", tabId: "reviews", label: `Reviews (${allReviews.length})` },
+              ].map((tab) => (
+                <button
+                  key={tab.tabId}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab.tabId as typeof activeTab);
+                    scrollToSection(tab.id);
+                  }}
+                  className={cn(
+                    "shrink-0 px-2 py-3.5 text-xs sm:text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap cursor-pointer",
+                    activeTab === tab.tabId
+                      ? "border-primary text-primary font-semibold"
+                      : "border-transparent text-muted hover:text-title"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -973,21 +973,10 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
             </div>
 
             <div className="border-t border-line/50 pt-3 text-center">
-              <p className="font-sans text-xs text-muted">
-                Pay the pro directly. No booking fee.
+              <p className="inline-flex items-center justify-center gap-1.5 font-sans text-xs text-muted">
+                <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />
+                Zero booking fees · Pay pro directly
               </p>
-              {effectivePayments.length > 0 ? (
-                <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
-                  {effectivePayments.map((pm) => (
-                    <span
-                      key={pm}
-                      className="rounded-full border border-line/70 bg-smoke px-2 py-0.5 text-[10px] font-medium text-copy"
-                    >
-                      {pm}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
             </div>
           </div>
         </aside>
