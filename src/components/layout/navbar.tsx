@@ -57,16 +57,6 @@ export function Navbar() {
         <div className="hidden items-center gap-3.5 lg:flex">
           {user ? (
             <>
-              {isPro && (
-                <Link
-                  href="/pro/jobs"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 font-display text-xs font-semibold text-primary hover:bg-primary/10 transition"
-                  title="View live homeowner job requests"
-                >
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Pro Contractor</span>
-                </Link>
-              )}
               {/* Notification Popover Dropdown */}
               <NotificationMenu user={user} />
               <AccountMenu user={user} />

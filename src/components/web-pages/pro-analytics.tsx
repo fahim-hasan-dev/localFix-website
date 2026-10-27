@@ -98,6 +98,40 @@ export const yearlyData: Record<number, YearlyMetrics> = {
   },
 };
 
+export type PeriodOption = "this_month" | "this_year" | "all_time";
+
+export const periodData: Record<PeriodOption, YearlyMetrics> = {
+  this_month: {
+    totalRevenue: 3100,
+    completedJobs: 4,
+    totalClients: 4,
+    repeatClients: 2,
+    avgTicket: 775,
+    growthRate: "+12.4%",
+    monthly: [
+      { month: "Wk 1", income: 750, clients: 1, jobs: 1 },
+      { month: "Wk 2", income: 950, clients: 1, jobs: 1 },
+      { month: "Wk 3", income: 850, clients: 1, jobs: 1 },
+      { month: "Wk 4", income: 550, clients: 1, jobs: 1 },
+    ],
+  },
+  this_year: yearlyData[2026],
+  all_time: {
+    totalRevenue: 103650,
+    completedJobs: 123,
+    totalClients: 101,
+    repeatClients: 29,
+    avgTicket: 842,
+    growthRate: "+28.5%",
+    monthly: [
+      { month: "2023", income: 18500, clients: 20, jobs: 24 },
+      { month: "2024", income: 29000, clients: 28, jobs: 35 },
+      { month: "2025", income: 36200, clients: 35, jobs: 43 },
+      { month: "2026", income: 38450, clients: 38, jobs: 45 },
+    ],
+  },
+};
+
 const recentCompletedJobs = [
   { id: "comp-1", client: "Maya Chen", service: "Kitchen sink leak", date: "Oct 14, 2026", amount: "$280" },
   { id: "comp-2", client: "Jordan Hale", service: "Pipe diagnostics", date: "Sep 28, 2026", amount: "$450" },
@@ -110,11 +144,11 @@ type AnalyticsTab = "overview" | "jobs";
 
 export function ProAnalytics() {
   const [activeTab, setActiveTab] = useState<AnalyticsTab>("overview");
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const [period, setPeriod] = useState<PeriodOption>("this_year");
   const [hoveredIncomeMonth, setHoveredIncomeMonth] = useState<number | null>(null);
   const [hoveredClientsMonth, setHoveredClientsMonth] = useState<number | null>(null);
 
-  const activeData = yearlyData[selectedYear] ?? yearlyData[2026];
+  const activeData = periodData[period] ?? periodData.this_year;
 
   const maxIncome = Math.max(...activeData.monthly.map((m) => m.income), 6000);
   const maxClients = Math.max(...activeData.monthly.map((m) => m.clients), 8);
@@ -139,19 +173,19 @@ export function ProAnalytics() {
           ]}
         />
 
-        {/* Unified Year / Period Selector */}
+        {/* Unified Period Selector: This Month, This Year, All Time */}
         <div className="flex items-center gap-2 self-start sm:self-auto rounded-xl border border-line bg-white px-3 py-1.5 shadow-2xs">
           <Calendar className="h-3.5 w-3.5 text-primary" />
           <span className="text-xs font-medium text-muted">Period:</span>
           <select
-            aria-label="Filter analytics by year"
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            aria-label="Filter analytics by period"
+            value={period}
+            onChange={(e) => setPeriod(e.target.value as PeriodOption)}
             className="cursor-pointer bg-transparent text-xs font-bold text-title outline-none focus:text-primary"
           >
-            <option value={2026}>2026 (YTD)</option>
-            <option value={2025}>2025</option>
-            <option value={2024}>2024</option>
+            <option value="this_month">This Month</option>
+            <option value="this_year">This Year</option>
+            <option value="all_time">All Time</option>
           </select>
         </div>
       </div>
@@ -238,7 +272,11 @@ export function ProAnalytics() {
               <div className="border-b border-line/70 pb-3.5">
                 <h2 className="font-display text-base font-bold text-title flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-primary" />
-                  Monthly Income Overview
+                  {period === "this_month"
+                    ? "Weekly Income Overview"
+                    : period === "all_time"
+                    ? "Annual Income Overview"
+                    : "Monthly Income Overview"}
                 </h2>
               </div>
 
@@ -247,7 +285,7 @@ export function ProAnalytics() {
                 <div className="relative h-48 w-full">
                   {activeIncomeItem ? (
                     <div className="absolute top-0 right-0 z-10 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-semibold text-primary">
-                      <span>{activeIncomeItem.month} {selectedYear}:</span>
+                      <span>{activeIncomeItem.month}:</span>
                       <span>${activeIncomeItem.income.toLocaleString()}</span>
                       <span className="text-muted">•</span>
                       <span>{activeIncomeItem.jobs} jobs</span>
@@ -317,7 +355,11 @@ export function ProAnalytics() {
               <div className="border-b border-line/70 pb-3.5">
                 <h2 className="font-display text-base font-bold text-title flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  Clients &amp; Work Volume
+                  {period === "this_month"
+                    ? "Weekly Work Volume"
+                    : period === "all_time"
+                    ? "Annual Work Volume"
+                    : "Clients & Work Volume"}
                 </h2>
               </div>
 
@@ -326,7 +368,7 @@ export function ProAnalytics() {
                 <div className="relative h-48 w-full">
                   {activeClientsItem ? (
                     <div className="absolute top-0 right-0 z-10 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">
-                      <span>{activeClientsItem.month} {selectedYear}:</span>
+                      <span>{activeClientsItem.month}:</span>
                       <span>{activeClientsItem.clients} clients</span>
                       <span className="text-muted">•</span>
                       <span>{activeClientsItem.jobs} jobs</span>

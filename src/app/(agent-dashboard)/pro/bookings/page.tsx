@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Calendar,
   CalendarCheck,
-  CheckCircle2,
   Clock,
   FileCheck2,
   MapPin,
@@ -14,8 +13,6 @@ import {
   Receipt,
   Search,
   Star,
-  Truck,
-  Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,8 +24,7 @@ import {
   selectAllQuotes,
   selectProBookingsGrouped,
 } from "@/lib/marketplace";
-import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/cn";
 import type { Job } from "@/types";
 
@@ -36,7 +32,6 @@ type BookingTab = "all" | "upcoming" | "inProgress" | "history";
 
 export default function ProBookingsPage() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
   const myProId = "pro-1";
   const state = useAppSelector((state) => state);
   const grouped = useMemo(
@@ -238,110 +233,7 @@ export default function ProBookingsPage() {
                       Message
                     </Button>
 
-                    {/* Operational Dispatch Actions */}
-                    {job.status === "scheduled" || job.status === "hired" ? (
-                      <>
-                        <Button
-                          href={`/pro/bookings/${job.id}`}
-                          variant="ghost"
-                          size="sm"
-                          className="rounded-full text-xs font-semibold text-muted hover:text-title"
-                        >
-                          Details ↗
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => {
-                            dispatch(setJobStatus({ jobId: job.id, status: "en_route" }));
-                            dispatch(
-                              addNotification({
-                                title: "Contractor en route",
-                                body: `You marked en route for "${job.title}". Homeowner notified.`,
-                                href: `/pro/bookings/${job.id}`,
-                                createdAt: "Just now",
-                                role: "pro",
-                              }),
-                            );
-                          }}
-                          className="rounded-full gap-1.5 text-xs font-semibold shadow-xs"
-                        >
-                          <Truck className="h-3.5 w-3.5" />
-                          Depart (En Route)
-                        </Button>
-                      </>
-                    ) : job.status === "en_route" ? (
-                      <>
-                        <Button
-                          href={`/pro/bookings/${job.id}`}
-                          variant="ghost"
-                          size="sm"
-                          className="rounded-full text-xs font-semibold text-muted hover:text-title"
-                        >
-                          Details ↗
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => {
-                            dispatch(setJobStatus({ jobId: job.id, status: "in_progress" }));
-                            dispatch(
-                              addNotification({
-                                title: "Work started on-site",
-                                body: `You began work on "${job.title}". Homeowner notified.`,
-                                href: `/pro/bookings/${job.id}`,
-                                createdAt: "Just now",
-                                role: "pro",
-                              }),
-                            );
-                          }}
-                          className="rounded-full gap-1.5 text-xs font-semibold shadow-xs bg-amber-600 hover:bg-amber-700 text-white"
-                        >
-                          <Wrench className="h-3.5 w-3.5" />
-                          Start Work (On-Site)
-                        </Button>
-                      </>
-                    ) : job.status === "in_progress" ? (
-                      <>
-                        <Button
-                          href={`/pro/bookings/${job.id}`}
-                          variant="ghost"
-                          size="sm"
-                          className="rounded-full text-xs font-semibold text-muted hover:text-title"
-                        >
-                          Details ↗
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => {
-                            dispatch(setJobStatus({ jobId: job.id, status: "awaiting_confirm" }));
-                            dispatch(
-                              addNotification({
-                                title: "Work completed, awaiting settlement",
-                                body: `Job "${job.title}" marked complete. Client prompted to release payment.`,
-                                href: `/pro/bookings/${job.id}`,
-                                createdAt: "Just now",
-                                role: "pro",
-                              }),
-                            );
-                          }}
-                          className="rounded-full gap-1.5 text-xs font-semibold shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Complete &amp; Settle
-                        </Button>
-                      </>
-                    ) : job.status === "awaiting_confirm" ? (
-                      <Button
-                        href={`/pro/bookings/${job.id}`}
-                        size="sm"
-                        variant="ghost"
-                        className="rounded-full border border-emerald-300 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                      >
-                        Awaiting Confirmation ↗
-                      </Button>
-                    ) : isCompleted ? (
+                    {isCompleted ? (
                       <Button
                         href={`/pro/bookings/${job.id}`}
                         size="sm"
@@ -356,13 +248,13 @@ export default function ProBookingsPage() {
                         size="sm"
                         className="rounded-full text-xs font-semibold shadow-xs"
                       >
-                        Manage Booking ↗
+                        Details ↗
                       </Button>
                     )}
                   </div>
                 </div>
 
-                {/* Review feedback line if completed */}
+                {/* Clean rating line if completed */}
                 {isCompleted && review ? (
                   <div
                     onClick={(e) => e.stopPropagation()}
@@ -371,18 +263,17 @@ export default function ProBookingsPage() {
                     <div className="flex items-center gap-1.5">
                       <div className="flex text-amber-500">
                         {[...Array(review.rating)].map((_, i) => (
-                          <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-500" />
+                          <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
                         ))}
                       </div>
-                      <span className="font-medium text-title">
-                        {review.rating}.0 Client Review received: &ldquo;{review.body}&rdquo;
-                      </span>
+                      <span className="font-semibold text-title">{review.rating}.0</span>
+                      <span className="text-muted">Homeowner Rating</span>
                     </div>
                     <Link
-                      href={`/pro/reviews`}
+                      href={`/pro/bookings/${job.id}`}
                       className="text-primary font-medium hover:underline text-[11px]"
                     >
-                      View in Reviews →
+                      View Review Details ↗
                     </Link>
                   </div>
                 ) : null}

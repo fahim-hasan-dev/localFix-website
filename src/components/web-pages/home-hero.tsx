@@ -102,7 +102,6 @@ export function HomeHero() {
   const addresses = useAppSelector((state) => state.features.addresses);
   const home = addresses.find((item) => item.label.toLowerCase() === "home") ?? addresses[0];
   const knownZip = fiveDigitZip(user?.zip) || fiveDigitZip(home?.zip);
-  const [mode, setMode] = useState<"ai" | "direct">("ai");
   const [problem, setProblem] = useState("");
   const [categorySlug, setCategorySlug] = useState("");
   const [zip, setZip] = useState(knownZip);
@@ -123,13 +122,8 @@ export function HomeHero() {
       return;
     }
 
-    if (mode === "ai" && problem.trim().length < 8) {
+    if (problem.trim().length < 8) {
       setError("Please describe the issue in a few words (e.g. 'pipe leaking under kitchen sink').");
-      return;
-    }
-
-    if (mode === "direct" && !categorySlug) {
-      setError("Please choose a service trade.");
       return;
     }
 
@@ -293,44 +287,20 @@ export function HomeHero() {
             </div>
           ) : (
             <div className="relative z-10 rounded-[24px] border border-white/80 bg-white/95 p-6 text-title shadow-[0_20px_50px_rgba(0,0,0,0.18)] backdrop-blur-xl md:p-7">
-              {/* Minimal Header with Mode Switcher */}
+              {/* Minimal Header */}
               <div className="flex items-center justify-between border-b border-line/60 pb-3.5">
                 <div className="flex items-center gap-2">
                   <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary">
-                    {mode === "ai" ? <Wrench className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+                    <Wrench className="h-4 w-4" />
                   </span>
                   <h2 className="font-geist text-[17px] sm:text-[19px] font-medium tracking-tight text-title">
-                    {mode === "ai" ? "What needs fixing?" : "Select your trade"}
+                    What needs fixing?
                   </h2>
-                </div>
-
-                {/* Minimalist Segmented Pill */}
-                <div className="inline-flex rounded-full bg-smoke p-1 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => { setMode("ai"); setError(""); }}
-                    className={cn(
-                      "rounded-full px-3 py-1 font-medium transition-all text-xs",
-                      mode === "ai" ? "bg-white text-title font-semibold shadow-xs" : "text-[#757575] hover:text-title",
-                    )}
-                  >
-                    Describe
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setMode("direct"); setError(""); }}
-                    className={cn(
-                      "rounded-full px-3 py-1 font-medium transition-all text-xs",
-                      mode === "direct" ? "bg-white text-title font-semibold shadow-xs" : "text-[#757575] hover:text-title",
-                    )}
-                  >
-                    Pick Trade
-                  </button>
                 </div>
               </div>
 
               <div className="mt-4 space-y-3">
-                {mode === "direct" || isChangingCategory ? (
+                {isChangingCategory && (
                   <div className="relative">
                     <Wrench className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                     <NativeSelect
@@ -354,24 +324,22 @@ export function HomeHero() {
                       ))}
                     </NativeSelect>
                   </div>
-                ) : null}
+                )}
 
-                {mode === "ai" ? (
-                  <div>
-                    <TextArea
-                      value={problem}
-                      onChange={(event) => {
-                        setProblem(event.target.value);
-                        if (detectEmergency(event.target.value)) {
-                          setShowEmergency(true);
-                        }
-                      }}
-                      placeholder="Describe your issue (e.g. water leaking under sink, AC blowing warm air upstairs...)"
-                      className="min-h-[84px] resize-none text-sm rounded-xl border-line/80 bg-surface/50 p-3.5 focus:bg-white transition-colors"
-                      rows={3}
-                    />
-                  </div>
-                ) : null}
+                <div>
+                  <TextArea
+                    value={problem}
+                    onChange={(event) => {
+                      setProblem(event.target.value);
+                      if (detectEmergency(event.target.value)) {
+                        setShowEmergency(true);
+                      }
+                    }}
+                    placeholder="Describe your issue (e.g. water leaking under sink, AC blowing warm air upstairs...)"
+                    className="min-h-[84px] resize-none text-sm rounded-xl border-line/80 bg-surface/50 p-3.5 focus:bg-white transition-colors"
+                    rows={3}
+                  />
+                </div>
 
                 <div className="relative">
                   <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -387,10 +355,9 @@ export function HomeHero() {
                   <Button
                     type="button"
                     size="md"
-                    className="w-full justify-center shadow-xs transition-all hover:shadow-md"
                     onClick={handleSummarize}
                   >
-                    {mode === "ai" ? "Review My Request ↗" : "Find Matching Pros ↗"}
+                    Review My Request ↗
                   </Button>
                 </div>
 

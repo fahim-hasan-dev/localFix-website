@@ -170,12 +170,12 @@ export default function ContactPage() {
           {/* ========================================================= */}
           {/* RIGHT COLUMN: SEND MESSAGE FORM                           */}
           {/* ========================================================= */}
-          <div className="lg:col-span-6 flex flex-col justify-between rounded-[28px] border border-line/80 bg-white p-6 sm:p-8 md:p-9 shadow-xs space-y-6">
+          <div className="lg:col-span-6 flex flex-col rounded-[28px] border border-line/80 bg-white p-6 sm:p-8 md:p-9 shadow-xs space-y-5">
             <div>
               <h2 className="font-display text-2xl sm:text-3xl font-semibold text-title tracking-tight">
                 Send a Message
               </h2>
-              <p className="mt-2 text-sm sm:text-[15px] leading-relaxed text-muted">
+              <p className="mt-1.5 text-sm sm:text-[15px] leading-relaxed text-muted">
                 Drop us a note below and a representative will reply to your email promptly.
               </p>
             </div>
@@ -196,7 +196,7 @@ export default function ContactPage() {
                 </div>
               </div>
             ) : (
-              <form className="space-y-4" onSubmit={submit}>
+              <form className="space-y-4 pt-1" onSubmit={submit}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="Full Name">
                     <TextField required name="name" placeholder="Luis Ortega" />
@@ -211,7 +211,7 @@ export default function ContactPage() {
                 </Field>
 
                 <Field label="Your Message">
-                  <TextArea required name="message" placeholder="Provide as much detail as possible..." className="min-h-32" />
+                  <TextArea required name="message" rows={5} placeholder="Provide as much detail as possible..." className="min-h-[170px] resize-y" />
                 </Field>
 
                 <Button type="submit" size="lg" className="w-full justify-center rounded-full shadow-xs">

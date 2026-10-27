@@ -174,46 +174,7 @@ export default function ProServicesPage() {
         </Button>
       </div>
 
-      {/* 2. Key Service Stats Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <Card className="rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Active Services</p>
-              <p className="text-base sm:text-lg font-bold text-title">{services.length} Listed</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <DollarSign className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Lowest Starting Rate</p>
-              <p className="text-base sm:text-lg font-bold text-title">${minStartingRate} starting</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Client Guarantee</p>
-              <p className="text-base sm:text-lg font-bold text-title">Zero Hidden Fees</p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* 3. Search & Filter Bar */}
+      {/* 2. Search & Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative flex-1">
           <input

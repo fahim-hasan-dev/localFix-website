@@ -286,10 +286,10 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
     const cleanWorkCount = allReviews.filter((r) => r.tag === "clean-work").length;
 
     return [
-      { id: "all", label: `All (${allReviews.length})` },
-      { id: "punctual", label: `Punctual (${punctualCount})` },
-      { id: "fair-price", label: `Fair Price (${fairPriceCount})` },
-      { id: "clean-work", label: `Clean Work (${cleanWorkCount})` },
+      { id: "all", name: "All", count: allReviews.length },
+      { id: "punctual", name: "Punctual", count: punctualCount },
+      { id: "fair-price", name: "Fair Price", count: fairPriceCount },
+      { id: "clean-work", name: "Clean Work", count: cleanWorkCount },
     ];
   }, [allReviews]);
 
@@ -310,37 +310,37 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
 
   return (
     <div className="min-h-screen bg-white pb-20">
-      {/* 1. BREADCRUMBS BAR */}
-      <nav aria-label="Breadcrumb" className="border-b border-line/60 bg-surface/40 py-2">
-        <div className="container-site flex items-center gap-2 text-xs text-muted">
-          <Link href="/" className="transition hover:text-primary">
-            Home
-          </Link>
-          <span className="text-line">/</span>
-          <Link href="/browse-pros" className="transition hover:text-primary">
-            Find Pros
-          </Link>
-          <span className="text-line">/</span>
-          <Link
-            href={`/browse-pros?category=${pro.categorySlug}`}
-            className="capitalize transition hover:text-primary"
-          >
-            {pro.trade}
-          </Link>
-          <span className="text-line">/</span>
-          <span className="truncate font-semibold text-title">{pro.name}</span>
-        </div>
-      </nav>
-
-      {/* 2. REFINED COMPACT COVER HERO */}
-      <section className="relative h-28 sm:h-36 md:h-40 w-full overflow-hidden bg-gradient-to-r from-title via-slate-900 to-primary">
+      {/* 1. REFINED COMPACT COVER HERO WITH EMBEDDED BREADCRUMB */}
+      <section className="relative h-32 sm:h-40 md:h-44 w-full overflow-hidden bg-gradient-to-r from-title via-slate-900 to-primary">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={cover}
           alt={pro.name}
           className="h-full w-full object-cover object-center opacity-30 mix-blend-overlay"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/20 to-black/50" />
+
+        {/* Embedded Breadcrumb inside cover */}
+        <nav aria-label="Breadcrumb" className="absolute top-3 left-0 right-0 z-10">
+          <div className="container-site flex items-center gap-2 text-xs text-white/80 font-medium">
+            <Link href="/" className="transition hover:text-white">
+              Home
+            </Link>
+            <span className="text-white/40">/</span>
+            <Link href="/browse-pros" className="transition hover:text-white">
+              Find Pros
+            </Link>
+            <span className="text-white/40">/</span>
+            <Link
+              href={`/browse-pros?category=${pro.categorySlug}`}
+              className="capitalize transition hover:text-white"
+            >
+              {pro.trade}
+            </Link>
+            <span className="text-white/40">/</span>
+            <span className="truncate font-semibold text-white">{pro.name}</span>
+          </div>
+        </nav>
       </section>
 
       {/* 3. PROFILE IDENTITY HEADER */}
@@ -384,7 +384,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                   <span className="text-muted/60">·</span>
                   <span className="inline-flex items-center text-muted">
                     <MapPin className="h-3.5 w-3.5 mr-1 shrink-0 text-muted" />
-                    {pro.city}, {pro.state} (~{pro.radiusMiles} mi radius)
+                    {pro.city}, {pro.state}
                   </span>
                 </div>
               </div>
@@ -649,7 +649,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                         {srv.name}
                       </span>
                       {srv.description && (
-                        <p className="mt-0.5 text-xs text-muted leading-relaxed line-clamp-1">
+                        <p className="mt-0.5 text-xs text-muted leading-relaxed">
                           {srv.description}
                         </p>
                       )}
@@ -662,15 +662,6 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 No specific services match this filter. Select &ldquo;All Services&rdquo; to view full offerings.
               </div>
             )}
-
-            <div className="rounded-xl bg-surface/60 border border-line/60 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-muted">
-              <span>Looking for a specific repair or custom installation?</span>
-              {quoteHref && (
-                <Link href={quoteHref} className="font-semibold text-primary hover:underline inline-flex items-center gap-1">
-                  Request a custom estimate ↗
-                </Link>
-              )}
-            </div>
           </section>
 
           {/* ============================================================ */}
@@ -827,22 +818,31 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
               </div>
             </div>
 
-            {/* Filter Pills */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="text-xs font-medium text-muted mr-1">Filter:</span>
+            {/* Standard Review Filter Pills */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               {reviewTags.map((tag) => (
                 <button
                   key={tag.id}
                   type="button"
                   onClick={() => setSelectedReviewTag(tag.id)}
                   className={cn(
-                    "rounded-full px-3 py-1 text-xs font-medium transition-colors cursor-pointer",
+                    "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all cursor-pointer",
                     selectedReviewTag === tag.id
-                      ? "bg-title text-white font-semibold"
-                      : "bg-surface text-copy hover:bg-smoke border border-line/70"
+                      ? "bg-title text-white shadow-xs font-semibold ring-1 ring-title"
+                      : "bg-surface/80 text-copy hover:bg-smoke border border-line/80 hover:border-line"
                   )}
                 >
-                  {tag.label}
+                  <span>{tag.name}</span>
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                      selectedReviewTag === tag.id
+                        ? "bg-white/20 text-white"
+                        : "bg-smoke text-muted border border-line/50"
+                    )}
+                  >
+                    {tag.count}
+                  </span>
                 </button>
               ))}
             </div>
@@ -911,9 +911,6 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                     </span>
                     <span className="font-sans text-sm text-muted">starting estimate</span>
                   </div>
-                  <p className="mt-2 font-sans text-sm leading-5 text-muted">
-                    Itemized estimate agreed before any work begins.
-                  </p>
                 </div>
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50 px-2.5 py-1 font-sans text-xs font-medium text-emerald-800">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -929,7 +926,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                   Service area
                 </span>
                 <span className="font-display text-sm font-medium text-title text-right">
-                  {pro.city} (~{pro.radiusMiles} mi)
+                  {pro.city}, {pro.state}
                 </span>
               </div>
 

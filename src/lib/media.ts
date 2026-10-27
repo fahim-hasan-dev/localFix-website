@@ -25,17 +25,17 @@ export const photos = {
     about: "/images/about/banner.jpg",
     legal: u("photo-1504328345606-18bbc8c9d7d1", 1800),
   },
-  /** Cover / card image per trade — must match the craft visually */
+  /** Cover / card image per trade — diverse authentic craft photography */
   services: {
-    "appliance-repair": "/images/services/appliance-repair.jpg",
-    electrical: "/images/services/electrical.jpg",
-    hvac: "/images/services/hvac.jpg",
-    handyman: "/images/services/handyman.jpg",
-    landscaping: "/images/services/landscaping.jpg",
-    painting: "/images/services/painting.jpg",
-    "pest-control": "/images/services/pest-control.jpg",
-    plumbing: "/images/services/plumbing.jpg",
-    roofing: "/images/services/roofing.jpg",
+    plumbing: u("photo-1585704032915-c3400ca199e7", 1200),
+    electrical: u("photo-1621905252472-943afaa20e20", 1200),
+    hvac: u("photo-1621905251189-08b45d6a269e", 1200),
+    roofing: u("photo-1632759145351-1d592919f522", 1200),
+    handyman: u("photo-1505798577917-a65157d3320a", 1200),
+    "appliance-repair": u("photo-1584622650111-993a426fbf0a", 1200),
+    painting: u("photo-1589939705384-5185137a7f0f", 1200),
+    landscaping: u("photo-1558904541-efa8c4a08931", 1200),
+    "pest-control": u("photo-1581578731548-c64695cc6952", 1200),
     "house-cleaning": u("photo-1581578731548-c64695cc6952", 1600),
   } as Record<string, string>,
   /** Extra portfolio shots — kept trade-pure */
