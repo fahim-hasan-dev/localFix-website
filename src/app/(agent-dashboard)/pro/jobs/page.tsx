@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CalendarCheck,
   CheckCircle2,
@@ -37,6 +38,7 @@ type MainTab = "direct" | "leads" | "quoted";
 type SortKey = "newest" | "budget-high" | "urgent";
 
 export default function ProJobsPage() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const { access } = useRoleAccess();
   const myProId = "pro-1";
@@ -248,8 +250,9 @@ export default function ProJobsPage() {
             return (
               <Card
                 key={job.id}
+                onClick={() => router.push(`/pro/jobs/${job.id}`)}
                 className={cn(
-                  "overflow-hidden rounded-2xl border bg-white p-4 sm:p-5 shadow-xs hover:border-line hover:shadow-sm transition-all duration-200",
+                  "group overflow-hidden rounded-2xl border bg-white p-4 sm:p-5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer",
                   isDirect && activeTab === "direct"
                     ? "border-primary/40 ring-1 ring-primary/20"
                     : "border-line/80",
@@ -263,7 +266,7 @@ export default function ProJobsPage() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-display text-sm font-bold text-title truncate">
+                        <span className="font-display text-sm font-bold text-title group-hover:text-primary transition-colors truncate">
                           {job.homeownerName}
                         </span>
                         <span className="text-[11px] font-medium text-muted">Client</span>
@@ -292,12 +295,9 @@ export default function ProJobsPage() {
                 {/* Body: Title, Urgency, Budget + Pro Action Buttons */}
                 <div className="mt-3.5 pt-3 border-t border-line/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
-                    <Link
-                      href={`/pro/jobs/${job.id}`}
-                      className="font-display text-sm sm:text-base font-semibold text-title hover:text-primary transition line-clamp-1"
-                    >
+                    <span className="font-display text-sm sm:text-base font-semibold text-title group-hover:text-primary transition line-clamp-1">
                       {job.title}
-                    </Link>
+                    </span>
                     <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
                       <span className="inline-flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5 text-muted" />
@@ -310,7 +310,10 @@ export default function ProJobsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-2 shrink-0"
+                  >
                     <Button
                       href={`/pro/messages?dm=${job.homeownerName}`}
                       size="sm"

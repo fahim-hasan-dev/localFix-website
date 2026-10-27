@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Calendar,
   CalendarCheck,
@@ -34,6 +35,7 @@ import type { Job } from "@/types";
 type BookingTab = "all" | "upcoming" | "inProgress" | "history";
 
 export default function ProBookingsPage() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const myProId = "pro-1";
   const state = useAppSelector((state) => state);
@@ -179,7 +181,8 @@ export default function ProBookingsPage() {
             return (
               <Card
                 key={job.id}
-                className="overflow-hidden rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs hover:border-line hover:shadow-sm transition-all duration-200"
+                onClick={() => router.push(`/pro/bookings/${job.id}`)}
+                className="group overflow-hidden rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer"
               >
                 {/* Header: Client Info + Status Badge (matches homeowner pro visual) */}
                 <div className="flex items-center justify-between gap-3">
@@ -189,7 +192,7 @@ export default function ProBookingsPage() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-display text-sm font-bold text-title truncate">
+                        <span className="font-display text-sm font-bold text-title group-hover:text-primary transition-colors truncate">
                           {job.homeownerName}
                         </span>
                         <span className="text-[11px] font-medium text-muted">Client</span>
@@ -206,12 +209,9 @@ export default function ProBookingsPage() {
                 {/* Job Info + Meta + Operational Pro Actions */}
                 <div className="mt-3.5 pt-3 border-t border-line/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
-                    <Link
-                      href={`/pro/jobs/${job.id}`}
-                      className="font-display text-sm sm:text-base font-semibold text-title hover:text-primary transition line-clamp-1"
-                    >
+                    <span className="font-display text-sm sm:text-base font-semibold text-title group-hover:text-primary transition line-clamp-1">
                       {job.title}
-                    </Link>
+                    </span>
                     <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5 text-muted" />
@@ -225,7 +225,10 @@ export default function ProBookingsPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex flex-wrap items-center gap-2 shrink-0"
+                  >
                     <Button
                       href={`/pro/messages?dm=${job.homeownerName}`}
                       size="sm"
@@ -237,80 +240,110 @@ export default function ProBookingsPage() {
 
                     {/* Operational Dispatch Actions */}
                     {job.status === "scheduled" || job.status === "hired" ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => {
-                          dispatch(setJobStatus({ jobId: job.id, status: "en_route" }));
-                          dispatch(
-                            addNotification({
-                              title: "Contractor en route",
-                              body: `You marked en route for "${job.title}". Homeowner notified.`,
-                              href: `/pro/jobs/${job.id}`,
-                              createdAt: "Just now",
-                              role: "pro",
-                            }),
-                          );
-                        }}
-                        className="rounded-full gap-1.5 text-xs font-semibold shadow-xs"
-                      >
-                        <Truck className="h-3.5 w-3.5" />
-                        Depart (En Route)
-                      </Button>
+                      <>
+                        <Button
+                          href={`/pro/bookings/${job.id}`}
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-full text-xs font-semibold text-muted hover:text-title"
+                        >
+                          Details ↗
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            dispatch(setJobStatus({ jobId: job.id, status: "en_route" }));
+                            dispatch(
+                              addNotification({
+                                title: "Contractor en route",
+                                body: `You marked en route for "${job.title}". Homeowner notified.`,
+                                href: `/pro/bookings/${job.id}`,
+                                createdAt: "Just now",
+                                role: "pro",
+                              }),
+                            );
+                          }}
+                          className="rounded-full gap-1.5 text-xs font-semibold shadow-xs"
+                        >
+                          <Truck className="h-3.5 w-3.5" />
+                          Depart (En Route)
+                        </Button>
+                      </>
                     ) : job.status === "en_route" ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => {
-                          dispatch(setJobStatus({ jobId: job.id, status: "in_progress" }));
-                          dispatch(
-                            addNotification({
-                              title: "Work started on-site",
-                              body: `You began work on "${job.title}". Homeowner notified.`,
-                              href: `/pro/jobs/${job.id}`,
-                              createdAt: "Just now",
-                              role: "pro",
-                            }),
-                          );
-                        }}
-                        className="rounded-full gap-1.5 text-xs font-semibold shadow-xs bg-amber-600 hover:bg-amber-700 text-white"
-                      >
-                        <Wrench className="h-3.5 w-3.5" />
-                        Start Work (On-Site)
-                      </Button>
+                      <>
+                        <Button
+                          href={`/pro/bookings/${job.id}`}
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-full text-xs font-semibold text-muted hover:text-title"
+                        >
+                          Details ↗
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            dispatch(setJobStatus({ jobId: job.id, status: "in_progress" }));
+                            dispatch(
+                              addNotification({
+                                title: "Work started on-site",
+                                body: `You began work on "${job.title}". Homeowner notified.`,
+                                href: `/pro/bookings/${job.id}`,
+                                createdAt: "Just now",
+                                role: "pro",
+                              }),
+                            );
+                          }}
+                          className="rounded-full gap-1.5 text-xs font-semibold shadow-xs bg-amber-600 hover:bg-amber-700 text-white"
+                        >
+                          <Wrench className="h-3.5 w-3.5" />
+                          Start Work (On-Site)
+                        </Button>
+                      </>
                     ) : job.status === "in_progress" ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => {
-                          dispatch(setJobStatus({ jobId: job.id, status: "awaiting_confirm" }));
-                          dispatch(
-                            addNotification({
-                              title: "Work completed, awaiting settlement",
-                              body: `Job "${job.title}" marked complete. Client prompted to release payment.`,
-                              href: `/pro/jobs/${job.id}`,
-                              createdAt: "Just now",
-                              role: "pro",
-                            }),
-                          );
-                        }}
-                        className="rounded-full gap-1.5 text-xs font-semibold shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Complete &amp; Settle
-                      </Button>
+                      <>
+                        <Button
+                          href={`/pro/bookings/${job.id}`}
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-full text-xs font-semibold text-muted hover:text-title"
+                        >
+                          Details ↗
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            dispatch(setJobStatus({ jobId: job.id, status: "awaiting_confirm" }));
+                            dispatch(
+                              addNotification({
+                                title: "Work completed, awaiting settlement",
+                                body: `Job "${job.title}" marked complete. Client prompted to release payment.`,
+                                href: `/pro/bookings/${job.id}`,
+                                createdAt: "Just now",
+                                role: "pro",
+                              }),
+                            );
+                          }}
+                          className="rounded-full gap-1.5 text-xs font-semibold shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Complete &amp; Settle
+                        </Button>
+                      </>
                     ) : job.status === "awaiting_confirm" ? (
                       <Button
-                        href={`/pro/jobs/${job.id}`}
+                        href={`/pro/bookings/${job.id}`}
                         size="sm"
                         variant="ghost"
-                        className="rounded-full border border-emerald-300 text-xs font-semibold text-emerald-700"
+                        className="rounded-full border border-emerald-300 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
                       >
                         Awaiting Confirmation ↗
                       </Button>
                     ) : isCompleted ? (
                       <Button
-                        href={`/pro/jobs/${job.id}`}
+                        href={`/pro/bookings/${job.id}`}
                         size="sm"
                         className="rounded-full text-xs font-semibold gap-1.5 shadow-xs"
                       >
@@ -319,7 +352,7 @@ export default function ProBookingsPage() {
                       </Button>
                     ) : (
                       <Button
-                        href={`/pro/jobs/${job.id}`}
+                        href={`/pro/bookings/${job.id}`}
                         size="sm"
                         className="rounded-full text-xs font-semibold shadow-xs"
                       >
@@ -331,7 +364,10 @@ export default function ProBookingsPage() {
 
                 {/* Review feedback line if completed */}
                 {isCompleted && review ? (
-                  <div className="mt-3 pt-2.5 border-t border-line/40 text-xs flex items-center justify-between gap-2 text-muted">
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-3 pt-2.5 border-t border-line/40 text-xs flex items-center justify-between gap-2 text-muted"
+                  >
                     <div className="flex items-center gap-1.5">
                       <div className="flex text-amber-500">
                         {[...Array(review.rating)].map((_, i) => (

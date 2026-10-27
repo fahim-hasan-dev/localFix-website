@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Calendar,
   CalendarCheck,
@@ -38,6 +39,7 @@ import { cn } from "@/lib/cn";
 import type { Job } from "@/types";
 
 export default function AccountPage() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const allJobs = useAppSelector(selectAllJobs);
@@ -148,8 +150,9 @@ export default function AccountPage() {
             return (
               <Card
                 key={job.id}
+                onClick={() => router.push(isHired ? `/account/bookings/${job.id}` : `/account/jobs/${job.id}`)}
                 className={cn(
-                  "group relative rounded-[18px] border bg-white p-4 sm:p-5 shadow-xs transition-all duration-200 hover:shadow-sm",
+                  "group relative rounded-[18px] border bg-white p-4 sm:p-5 shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/50 cursor-pointer",
                   job.status === "awaiting_confirm"
                     ? "border-emerald-400 bg-emerald-50/[0.12]"
                     : job.status === "in_progress" || job.status === "en_route"
@@ -193,12 +196,9 @@ export default function AccountPage() {
                     </div>
 
                     {/* Title */}
-                    <Link
-                      href={`/account/jobs/${job.id}`}
-                      className="block mt-1.5 font-display text-base sm:text-lg font-bold text-title hover:text-primary transition-colors"
-                    >
+                    <span className="block mt-1.5 font-display text-base sm:text-lg font-bold text-title group-hover:text-primary transition-colors">
                       {job.title}
-                    </Link>
+                    </span>
 
                     {/* Clean Meta Details */}
                     <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
@@ -235,7 +235,10 @@ export default function AccountPage() {
                   </div>
 
                   {/* Contextual Action Button */}
-                  <div className="flex items-center justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-line/50">
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-line/50"
+                  >
                     {job.status === "awaiting_confirm" ? (
                       <Button
                         href={`/account/jobs/${job.id}`}

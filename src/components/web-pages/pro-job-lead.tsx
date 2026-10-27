@@ -11,7 +11,15 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 
 import { cn } from "@/lib/cn";
 
-export function ProJobLead({ jobId }: { jobId: string }) {
+export function ProJobLead({
+  jobId,
+  backHref,
+  backLabel,
+}: {
+  jobId: string;
+  backHref?: string;
+  backLabel?: string;
+}) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { access } = useRoleAccess();
@@ -26,21 +34,25 @@ export function ProJobLead({ jobId }: { jobId: string }) {
   const accepted = leadAction === "accepted" || alreadyQuoted;
   const passed = leadAction === "declined";
 
+  const isBooked = job && ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm", "completed"].includes(job.status);
+  const resolvedBackHref = backHref ?? (isBooked ? "/pro/bookings" : "/pro/jobs");
+  const resolvedBackLabel = backLabel ?? (isBooked ? "My Bookings" : "Available jobs");
+
   function accept() {
     dispatch(setLeadAction({ jobId, action: "accepted" }));
   }
 
   function pass() {
     dispatch(setLeadAction({ jobId, action: "declined" }));
-    router.push("/pro/jobs");
+    router.push(resolvedBackHref);
   }
 
   return (
     <div className="w-full max-w-5xl space-y-5">
       <RequestDetail
         id={jobId}
-        backHref="/pro/jobs"
-        backLabel="Available jobs"
+        backHref={resolvedBackHref}
+        backLabel={resolvedBackLabel}
         inboxHref="/pro/messages"
         viewer="pro"
       />

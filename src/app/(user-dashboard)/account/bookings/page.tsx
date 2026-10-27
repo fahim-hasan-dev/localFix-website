@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Calendar,
   CalendarCheck,
@@ -35,6 +36,7 @@ import type { Job } from "@/types";
 type BookingTab = "all" | "upcoming" | "inProgress" | "history";
 
 export default function MyBookingsPage() {
+  const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
   const state = useAppSelector((state) => state);
   const grouped = useMemo(
@@ -184,7 +186,8 @@ export default function MyBookingsPage() {
             return (
               <Card
                 key={job.id}
-                className="overflow-hidden rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs hover:border-line hover:shadow-sm transition-all duration-200"
+                onClick={() => router.push(`/account/bookings/${job.id}`)}
+                className="group overflow-hidden rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer"
               >
                 {/* Header: Pro Info + Status Badge */}
                 <div className="flex items-center justify-between gap-3">
@@ -192,6 +195,7 @@ export default function MyBookingsPage() {
                     {pro ? (
                       <Link
                         href={`/browse-pros/${pro.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         title={`View ${pro.name}'s profile`}
                         className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-title text-sm font-semibold text-white transition hover:ring-2 hover:ring-primary/40 cursor-pointer"
                       >
@@ -207,7 +211,8 @@ export default function MyBookingsPage() {
                         {pro ? (
                           <Link
                             href={`/browse-pros/${pro.id}`}
-                            className="font-display text-sm font-bold text-title hover:text-primary transition-colors hover:underline truncate"
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-display text-sm font-bold text-title group-hover:text-primary transition-colors hover:underline truncate"
                           >
                             {pro.name}
                           </Link>
@@ -232,12 +237,9 @@ export default function MyBookingsPage() {
                 {/* Job Info + Meta + Actions in clean single row */}
                 <div className="mt-3.5 pt-3 border-t border-line/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
-                    <Link
-                      href={`/account/jobs/${job.id}`}
-                      className="font-display text-sm sm:text-base font-semibold text-title hover:text-primary transition line-clamp-1"
-                    >
+                    <span className="font-display text-sm sm:text-base font-semibold text-title group-hover:text-primary transition line-clamp-1">
                       {job.title}
-                    </Link>
+                    </span>
                     <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5 text-muted" />
@@ -250,7 +252,10 @@ export default function MyBookingsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-2 shrink-0"
+                  >
                     {pro ? (
                       <Button
                         href={`/account/messages?dm=${pro.id}`}
@@ -263,7 +268,7 @@ export default function MyBookingsPage() {
                     ) : null}
                     {job.status === "awaiting_confirm" ? (
                       <Button
-                        href={`/account/jobs/${job.id}`}
+                        href={`/account/bookings/${job.id}`}
                         size="sm"
                         className="rounded-full text-xs font-semibold gap-1.5 shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                       >
@@ -272,7 +277,7 @@ export default function MyBookingsPage() {
                       </Button>
                     ) : isCompleted ? (
                       <Button
-                        href={`/account/jobs/${job.id}`}
+                        href={`/account/bookings/${job.id}`}
                         size="sm"
                         className="rounded-full text-xs font-semibold gap-1.5 shadow-xs"
                       >
@@ -281,7 +286,7 @@ export default function MyBookingsPage() {
                       </Button>
                     ) : (
                       <Button
-                        href={`/account/jobs/${job.id}`}
+                        href={`/account/bookings/${job.id}`}
                         size="sm"
                         className="rounded-full text-xs font-semibold shadow-xs"
                       >
@@ -293,7 +298,10 @@ export default function MyBookingsPage() {
 
                 {/* Review line if completed */}
                 {isCompleted && review ? (
-                  <div className="mt-3 pt-2.5 border-t border-line/40 text-xs flex items-center justify-between gap-2 text-muted">
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-3 pt-2.5 border-t border-line/40 text-xs flex items-center justify-between gap-2 text-muted"
+                  >
                     <div className="flex items-center gap-1.5">
                       <div className="flex text-amber-500">
                         {[...Array(review.rating)].map((_, i) => (
@@ -305,7 +313,7 @@ export default function MyBookingsPage() {
                       </span>
                     </div>
                     <Link
-                      href={`/account/jobs/${job.id}`}
+                      href={`/account/bookings/${job.id}`}
                       className="text-primary font-medium hover:underline text-[11px]"
                     >
                       View on profile →
