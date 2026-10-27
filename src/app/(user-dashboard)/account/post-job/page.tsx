@@ -469,7 +469,7 @@ function BookingFlow() {
   }
 
   return (
-    <div className="w-full max-w-4xl space-y-6">
+    <div className="w-full max-w-5xl space-y-6">
       {/* 1. Invited Pro Banner (If directly booking) */}
       {invitedPro ? (
         <Card className="rounded-[20px] border border-primary/30 bg-gradient-to-r from-primary/5 via-blue-50/20 to-white p-4 sm:p-5 shadow-xs">

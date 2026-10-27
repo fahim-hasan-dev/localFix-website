@@ -14,7 +14,7 @@ export default function SavedProsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-5xl space-y-6">
       {/* Consistent Standard Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line/70 pb-4 pt-1">
         <div className="flex items-center gap-2.5">

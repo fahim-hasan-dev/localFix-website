@@ -16,7 +16,7 @@ export default function AnalyticsPage() {
   ];
 
   return (
-    <div>
+    <div className="w-full max-w-5xl space-y-6">
       <h1 className="text-[28px]">Activity</h1>
       <p className="mt-1 text-sm text-copy">Counts from this demo session only. No invented conversion rates.</p>
       <div className="mt-6 grid gap-3 sm:grid-cols-3">

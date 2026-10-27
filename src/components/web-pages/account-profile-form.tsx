@@ -226,7 +226,7 @@ export function AccountProfileForm() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-5xl space-y-6">
       {/* Page Title */}
       <div className="border-b border-line/70 pb-4 pt-1">
         <h1 className="font-display text-[22px] sm:text-[26px] font-semibold text-title tracking-tight">

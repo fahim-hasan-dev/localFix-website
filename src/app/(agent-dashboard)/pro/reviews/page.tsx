@@ -137,7 +137,7 @@ export default function ProReviewsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="w-full max-w-5xl space-y-6">
       {/* Floating Interactive Toast */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-2xl bg-title px-4 py-3 text-white shadow-xl text-xs sm:text-sm font-medium animate-in slide-in-from-bottom-5">
@@ -192,13 +192,6 @@ export default function ProReviewsPage() {
               <p className="mt-2 text-xs font-medium text-title/70">
                 Based on {stats.total} verified {stats.total === 1 ? "review" : "reviews"}
               </p>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-line/60 w-full flex items-center justify-center md:justify-start">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 border border-emerald-500/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                100% Client Satisfaction
-              </span>
             </div>
           </div>
 

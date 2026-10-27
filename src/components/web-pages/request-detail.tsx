@@ -318,7 +318,7 @@ export function RequestDetail({
   const requestFacts = jobRequestFacts(job);
 
   return (
-    <div className="space-y-4">
+    <div className="w-full max-w-5xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href={backHref} className="inline-flex font-display text-sm font-semibold text-primary">
           ← {backLabel}

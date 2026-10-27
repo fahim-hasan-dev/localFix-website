@@ -64,7 +64,7 @@ export function AccountPasswordForm() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="w-full max-w-2xl space-y-6">
       {/* Top Header */}
       <div className="border-b border-line/70 pb-4 pt-1">
         <Link

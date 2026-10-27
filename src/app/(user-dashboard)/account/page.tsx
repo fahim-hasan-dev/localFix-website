@@ -85,7 +85,7 @@ export default function AccountPage() {
   }, [activeRequests, searchQuery]);
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="w-full max-w-5xl space-y-6">
       {/* 1. Header with Title & CTA */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line/70 pb-4 pt-1">
         <div>

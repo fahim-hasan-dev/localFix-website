@@ -267,7 +267,7 @@ export function ProProfileForm() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="w-full max-w-5xl space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-2xl bg-title px-5 py-3 text-white shadow-xl animate-in slide-in-from-bottom-5">
@@ -445,6 +445,7 @@ export function ProProfileForm() {
             </div>
 
             <Tabs
+              size="sm"
               value={hoursMode}
               onChange={changeHoursMode}
               items={[

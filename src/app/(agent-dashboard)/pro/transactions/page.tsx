@@ -37,7 +37,7 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="w-full max-w-5xl space-y-6">
       {/* 1. Header with Breadcrumb & Context */}
       <div className="border-b border-line/70 pb-4 pt-1">
         <Link
