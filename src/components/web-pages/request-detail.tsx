@@ -11,6 +11,7 @@ import {
   FileCheck2,
   MapPin,
   MessageSquare,
+  Package,
   ShieldCheck,
   Star,
   Trash2,
@@ -599,6 +600,28 @@ export function RequestDetail({
           {hiredQuote?.notes ? (
             <div className="mt-2 text-xs text-muted leading-relaxed">
               <span className="font-semibold text-title">Site Notes:</span> {hiredQuote.notes}
+            </div>
+          ) : null}
+
+          {(hiredQuote?.warranty || hiredQuote?.materialsIncluded !== undefined || hiredQuote?.exclusions) ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 text-xs">
+              {hiredQuote.warranty ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-medium text-emerald-800 border border-emerald-200">
+                  <ShieldCheck className="h-3 w-3" />
+                  Warranty: {hiredQuote.warranty}
+                </span>
+              ) : null}
+              {hiredQuote.materialsIncluded !== undefined ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 font-medium text-copy">
+                  <Package className="h-3 w-3" />
+                  {hiredQuote.materialsIncluded ? "Parts & materials included" : "Labor only (parts extra)"}
+                </span>
+              ) : null}
+              {hiredQuote.exclusions ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-muted">
+                  Exclusions: {hiredQuote.exclusions}
+                </span>
+              ) : null}
             </div>
           ) : null}
 

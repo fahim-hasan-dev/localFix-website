@@ -307,7 +307,20 @@ export default function ProJobsPage() {
                       <span className="font-semibold text-title">
                         Budget: {job.budget || "Open estimate"}
                       </span>
+                      {job.propertyType ? (
+                        <>
+                          <span>·</span>
+                          <span className="capitalize text-copy font-medium">
+                            {job.propertyType.replace("_", " ")}
+                          </span>
+                        </>
+                      ) : null}
                     </div>
+                    {jobCardSummary(job) && jobCardSummary(job) !== job.description ? (
+                      <p className="mt-1 text-xs text-muted line-clamp-1">
+                        {jobCardSummary(job)}
+                      </p>
+                    ) : null}
                   </div>
 
                   <div

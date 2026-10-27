@@ -102,7 +102,10 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
 
   const effectiveBio = isDemoPro && proProfile?.bio ? proProfile.bio : defaultBio;
   const isBioLong = effectiveBio.length > 420;
+  const effectiveBusinessName = isDemoPro && proProfile?.businessName ? proProfile.businessName : pro.name;
+  const effectiveYearsInBusiness = isDemoPro && proProfile?.yearsInBusiness ? proProfile.yearsInBusiness : pro.yearsInBusiness;
   const effectiveStartingPrice = isDemoPro && proProfile?.startingPrice ? proProfile.startingPrice : pro.startingPrice;
+  const effectivePayments = isDemoPro && proProfile?.acceptedPayments?.length ? proProfile.acceptedPayments : ["Cash", "Check", "Credit or debit", "Zelle"];
 
   const replyTime = useMemo(() => {
     if (pro.emergency) return "~15 mins";
@@ -351,7 +354,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-5">
               <div className="relative -mt-10 sm:-mt-12 shrink-0">
                 <span className="grid h-20 w-20 sm:h-24 sm:w-24 place-items-center rounded-2xl border-4 border-white bg-gradient-to-br from-primary to-blue-700 font-display text-2xl sm:text-3xl font-bold text-white shadow-md">
-                  {initials(pro.name)}
+                  {initials(effectiveBusinessName)}
                 </span>
                 <span
                   title="Screened & Verified Professional"
@@ -363,7 +366,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
 
               <div className="space-y-1 pt-1 sm:pt-2">
                 <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-title leading-tight">
-                  {pro.name}
+                  {effectiveBusinessName}
                 </h1>
 
                 {/* Clean, Non-repetitive Meta Line */}
@@ -519,15 +522,19 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                     </div>
                   </div>
 
-                  {/* Background Checked */}
+                  {/* Background Checked & License */}
                   <div className="flex items-start gap-2.5">
                     <ShieldCheck className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
                     <div>
                       <p className="font-display text-sm font-semibold text-title flex items-center gap-1.5">
-                        Background checked
+                        Verified &amp; Licensed
                         <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[2.5]" />
                       </p>
-                      <p className="text-xs text-muted">Identity &amp; record verified</p>
+                      <p className="text-xs text-muted">
+                        {isDemoPro && proProfile?.licenseNumber
+                          ? `Lic #${proProfile.licenseNumber} · ${proProfile.insuranceCoverage || "$1M"} coverage`
+                          : "Identity, license & record verified"}
+                      </p>
                     </div>
                   </div>
 
@@ -536,10 +543,10 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                     <Calendar className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
                     <div>
                       <p className="font-display text-sm font-semibold text-title">
-                        {pro.yearsInBusiness
-                          ? pro.yearsInBusiness.includes("year")
-                            ? pro.yearsInBusiness
-                            : `${pro.yearsInBusiness} in business`
+                        {effectiveYearsInBusiness
+                          ? effectiveYearsInBusiness.includes("year")
+                            ? effectiveYearsInBusiness
+                            : `${effectiveYearsInBusiness} in business`
                           : "1+ years in business"}
                       </p>
                       <p className="text-xs text-muted">Trade experience</p>
@@ -638,22 +645,39 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
               ))}
             </div>
 
-            {/* Clean 2-column checklist matching Thumbtack reference image */}
+            {/* Clean 2-column checklist with upfront pricing matching pro catalog */}
             {servicesList.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3.5 gap-x-8 pt-1">
                 {servicesList.map((srv) => (
-                  <div key={srv.id} className="flex items-start gap-2.5">
-                    <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0 stroke-[2.5]" />
-                    <div className="min-w-0">
-                      <span className="font-display text-sm font-semibold text-title leading-tight">
-                        {srv.name}
-                      </span>
-                      {srv.description && (
-                        <p className="mt-0.5 text-xs text-muted leading-relaxed">
-                          {srv.description}
-                        </p>
-                      )}
+                  <div
+                    key={srv.id}
+                    className="flex items-start justify-between gap-3 border-b border-line/40 pb-3 last:border-0 sm:last:border-b-0"
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0 stroke-[2.5]" />
+                      <div className="min-w-0">
+                        <span className="font-display text-sm font-semibold text-title leading-tight">
+                          {srv.name}
+                        </span>
+                        {srv.description && (
+                          <p className="mt-0.5 text-xs text-muted leading-relaxed">
+                            {srv.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    {"price" in srv && typeof srv.price === "number" && srv.price > 0 ? (
+                      <div className="shrink-0 text-right">
+                        <span className="font-display text-sm font-bold text-title">
+                          ${srv.price}
+                        </span>
+                        {"unit" in srv && srv.unit ? (
+                          <span className="block text-[10px] text-muted capitalize">
+                            {srv.unit}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -965,9 +989,23 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
               ) : null}
             </div>
 
-            <p className="border-t border-line/50 pt-3 text-center font-sans text-sm text-muted">
-              Pay the pro directly. No booking fee.
-            </p>
+            <div className="border-t border-line/50 pt-3 text-center">
+              <p className="font-sans text-xs text-muted">
+                Pay the pro directly. No booking fee.
+              </p>
+              {effectivePayments.length > 0 ? (
+                <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
+                  {effectivePayments.map((pm) => (
+                    <span
+                      key={pm}
+                      className="rounded-full border border-line/70 bg-smoke px-2 py-0.5 text-[10px] font-medium text-copy"
+                    >
+                      {pm}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
         </aside>
       </div>

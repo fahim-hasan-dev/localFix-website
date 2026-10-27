@@ -209,6 +209,24 @@ export default function AccountPage() {
                       <span>•</span>
                       <span>{urgencyLabels[job.urgency]}</span>
 
+                      {!isHired && job.budget ? (
+                        <>
+                          <span>•</span>
+                          <span className="font-semibold text-title">
+                            Budget: {job.budget}
+                          </span>
+                        </>
+                      ) : null}
+
+                      {!isHired && job.propertyType ? (
+                        <>
+                          <span>•</span>
+                          <span className="capitalize text-copy">
+                            {job.propertyType.replace("_", " ")}
+                          </span>
+                        </>
+                      ) : null}
+
                       {isHired && hiredPro && booking ? (
                         <>
                           <span>•</span>
@@ -232,6 +250,12 @@ export default function AccountPage() {
                         </>
                       ) : null}
                     </div>
+
+                    {jobCardSummary(job) && jobCardSummary(job) !== job.description ? (
+                      <p className="mt-1.5 text-xs text-muted line-clamp-1">
+                        {jobCardSummary(job)}
+                      </p>
+                    ) : null}
                   </div>
 
                   {/* Contextual Action Button */}

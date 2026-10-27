@@ -148,6 +148,21 @@ export function jobRequestFacts(job: Job) {
     facts.push({ label: "Property", value: labels[job.propertyType] ?? job.propertyType });
   }
   if (job.budget) facts.push({ label: "Budget", value: job.budget });
+
+  if (job.intakeAnswers && job.intakeAnswers.length > 0) {
+    job.intakeAnswers.forEach((ans) => {
+      if (
+        ans.id !== "timing" &&
+        ans.id !== "materials" &&
+        !/timing|schedule|part|material/i.test(ans.label) &&
+        ans.value &&
+        ans.label
+      ) {
+        facts.push({ label: ans.label, value: ans.value });
+      }
+    });
+  }
+
   return facts;
 }
 
