@@ -71,7 +71,6 @@ export function RequestDetail({
   id,
   backHref,
   backLabel,
-  inboxHref: _inboxHref,
   canHire = false,
   viewer = "homeowner",
 }: {

@@ -41,7 +41,6 @@ export function ProJobLead({
   const alreadyQuoted = Boolean(myQuote);
   const forSomeoneElse = Boolean(job?.requestedProId && job.requestedProId !== "pro-1");
   const hiredElsewhere = Boolean(hiredQuoteId && !quotes.some((quote) => quote.id === hiredQuoteId && quote.proId === "pro-1"));
-  const accepted = leadAction === "accepted" || alreadyQuoted;
   const passed = leadAction === "declined";
 
   const isBooked = job && ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm", "completed"].includes(job.status);

@@ -11,7 +11,6 @@ import {
   Trash2,
   Upload,
   User,
-  Wrench,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field"
 import { updateUser } from "@/redux/slices/authSlice";
 import {
   updateProProfile,
-  type ProServiceItem,
 } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/cn";

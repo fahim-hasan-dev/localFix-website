@@ -16,12 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Field, TextField } from "@/components/ui/field";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { updateProProfile, type ProServiceItem } from "@/redux/slices/featuresSlice";
-import { cn } from "@/lib/cn";
 
 export default function ProServicesPage() {
   const dispatch = useAppDispatch();
   const proProfile = useAppSelector((state) => state.features.proProfile);
-  const services = proProfile.services ?? [];
+  const services = useMemo(() => proProfile.services ?? [], [proProfile.services]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -40,11 +39,6 @@ export default function ProServicesPage() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   }
-
-  const minStartingRate = useMemo(() => {
-    if (!services.length) return 0;
-    return Math.min(...services.map((s) => s.price));
-  }, [services]);
 
   const filteredServices = useMemo(() => {
     if (!searchQuery.trim()) return services;

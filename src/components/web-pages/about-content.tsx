@@ -125,23 +125,26 @@ function getPillarIcon(name?: string) {
 export function AboutContent() {
   const user = useAppSelector((state) => state.auth.user);
   const [activeTab, setActiveTab] = useState<"mission" | "vision">("mission");
-  const [data, setData] = useState<AboutContentData>(defaultAboutData);
-
-  useEffect(() => {
+  const [data, setData] = useState<AboutContentData>(() => {
+    if (typeof window === "undefined") return defaultAboutData;
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        setData((prev) => ({
-          ...prev,
+        return {
+          ...defaultAboutData,
           ...parsed,
-          pillars: Array.isArray(parsed.pillars) && parsed.pillars.length > 0 ? parsed.pillars : prev.pillars,
-          checklist: Array.isArray(parsed.checklist) && parsed.checklist.length > 0 ? parsed.checklist : prev.checklist,
-        }));
+          pillars: Array.isArray(parsed.pillars) && parsed.pillars.length > 0 ? parsed.pillars : defaultAboutData.pillars,
+          checklist: Array.isArray(parsed.checklist) && parsed.checklist.length > 0 ? parsed.checklist : defaultAboutData.checklist,
+        };
       }
     } catch {
       // fallback to default
     }
+    return defaultAboutData;
+  });
+
+  useEffect(() => {
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY && e.newValue) {

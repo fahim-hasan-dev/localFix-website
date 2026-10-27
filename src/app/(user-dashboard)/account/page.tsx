@@ -1,25 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
-  CalendarCheck,
-  CheckCircle2,
-  ClipboardList,
-  Clock,
-  Layers,
   MapPin,
   Plus,
   Receipt,
   Search,
-  ShieldCheck,
-  Star,
   Trash2,
-  Truck,
-  Wrench,
-  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

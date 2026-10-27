@@ -6,7 +6,6 @@ import {
   Copy,
   MessageSquare,
   Send,
-  Share2,
   Star,
   X,
 } from "lucide-react";

@@ -19,7 +19,6 @@ import { loginAs } from "@/redux/slices/authSlice";
 import { saveDraft } from "@/redux/slices/intakeSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { postJobHref } from "@/lib/role-access";
-import { cn } from "@/lib/cn";
 
 const EMERGENCY_PATTERNS = [
   "gas leak",

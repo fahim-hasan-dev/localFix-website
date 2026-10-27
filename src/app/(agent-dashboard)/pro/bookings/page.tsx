@@ -5,9 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
-  CalendarCheck,
-  Clock,
-  MapPin,
   Receipt,
   Search,
   Star,
@@ -16,9 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { getCategory, getPro } from "@/Mockdata";
+import { getCategory } from "@/Mockdata";
 import {
-  jobCardSummary,
   selectAllQuotes,
   selectProBookingsGrouped,
 } from "@/lib/marketplace";
@@ -160,8 +156,6 @@ export default function ProBookingsPage() {
             const review = reviews.find((r) => r.jobId === job.id);
             const category = getCategory(job.categorySlug);
 
-            const isUpcoming = ["hired", "scheduled"].includes(job.status);
-            const isInProgress = ["en_route", "in_progress", "awaiting_confirm"].includes(job.status);
             const isCompleted = job.status === "completed";
 
             return (

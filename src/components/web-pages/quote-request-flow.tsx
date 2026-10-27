@@ -34,6 +34,10 @@ function urgencyFromWhen(value?: string): Urgency {
   return "this_week";
 }
 
+function createJobId() {
+  return `job-local-${Date.now()}`;
+}
+
 function fiveDigitZip(value?: string) {
   const match = value?.trim().match(/\d{5}/);
   return match?.[0] ?? "";
@@ -175,7 +179,7 @@ export function QuoteRequestFlow() {
   function publishJob(pro?: Professional) {
     const title = [category?.name, intakeAnswers[0]?.value].filter(Boolean).join(" · ");
     const fullDescription = (description.trim() || draft.problem || "").trim();
-    const createdId = `job-local-${Date.now()}`;
+    const createdId = createJobId();
     const visibility: JobVisibility = pro ? "direct" : "open";
     const matchedIds = pro ? [pro.id] : matches.map((item) => item.id);
 

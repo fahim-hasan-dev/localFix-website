@@ -5,18 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
-  CalendarCheck,
   CheckCircle2,
-  Clock,
   FileCheck2,
-  MapPin,
-  MessageCircle,
-  Plus,
   Search,
-  ShieldCheck,
   Star,
-  Truck,
-  Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,8 +16,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { getCategory, getPro } from "@/Mockdata";
 import {
-  jobCardSummary,
-  paymentMethodLabels,
   selectAllQuotes,
   selectHomeownerBookingsGrouped,
 } from "@/lib/marketplace";
@@ -174,12 +164,7 @@ export default function MyBookingsPage() {
               : booking?.proId
               ? getPro(booking.proId)
               : null;
-            const category = getCategory(job.categorySlug);
             const review = reviews.find((r) => r.jobId === job.id);
-            const summary = jobCardSummary(job);
-
-            const isUpcoming = ["hired", "scheduled"].includes(job.status);
-            const isInProgress = ["en_route", "in_progress", "awaiting_confirm"].includes(job.status);
             const isCompleted = job.status === "completed";
 
             return (

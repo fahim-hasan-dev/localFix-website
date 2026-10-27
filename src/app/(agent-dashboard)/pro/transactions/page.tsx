@@ -11,7 +11,6 @@ import {
   Download,
   FileText,
   Percent,
-  Receipt,
   ShieldCheck,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";

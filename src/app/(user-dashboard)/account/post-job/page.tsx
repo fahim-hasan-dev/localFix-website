@@ -7,7 +7,6 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
-  Building,
   Building2,
   Calendar,
   Check,
@@ -21,10 +20,6 @@ import {
   Pencil,
   Send,
   Star,
-  Store,
-  Sun,
-  Sunrise,
-  Sunset,
   Truck,
   Wallet,
   Wrench,
@@ -79,15 +74,6 @@ const MATERIAL_OPTIONS = [
     icon: Wrench,
   },
 ] as const;
-
-const BUDGET_OPTIONS = [
-  "",
-  "Under $250",
-  "$250–$500",
-  "$500–$1,000",
-  "$1,000–$3,000",
-  "$3,000+",
-];
 
 type MaterialsStatus = (typeof MATERIAL_OPTIONS)[number]["id"];
 
@@ -148,43 +134,38 @@ function BookingFlow() {
   const [propertyType, setPropertyType] = useState<PropertyType>("single_family");
   const [materialsStatus, setMaterialsStatus] = useState<MaterialsStatus>("contractor");
   const [budget, setBudget] = useState("");
-  // Only select saved address if user explicitly picks it; default to empty so homepage zip is used without fabricating 418 West 5th St
-  const [selectedAddressId, setSelectedAddressId] = useState("");
   const [zipInput, setZipInput] = useState(() => {
     const raw = draft.zip || user?.zip || "78701";
     const clean = raw.replace(/\D/g, "").slice(0, 5);
     return clean || "78701";
   });
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [editingLocation, setEditingLocation] = useState(true);
-  const [appliedDraft, setAppliedDraft] = useState(false);
+  const appliedDraftRef = useRef(false);
 
   useEffect(() => {
-    if (!intakeReady || appliedDraft) return;
-    if (!(draft.problem || draft.summary || draft.categorySlug)) {
-      setAppliedDraft(true);
-      return;
-    }
-    const nextCategory = invitedPro?.categorySlug || draft.categorySlug || startingCategory;
-    const nextCategoryName = categories.find((item) => item.slug === nextCategory)?.name;
-    setCategorySlug(nextCategory);
-    setTitleInput(
-      headlineFromDraft(draft.problem || draft.summary || "", draft.title || "", nextCategoryName),
-    );
-    setDescriptionInput(draft.problem || draft.summary || "");
-    if (draft.zip) {
-      const cleanZip = draft.zip.replace(/\D/g, "").slice(0, 5);
-      if (cleanZip) setZipInput(cleanZip);
-    }
-    setAppliedDraft(true);
-  }, [appliedDraft, draft, intakeReady, invitedPro, startingCategory]);
+    if (!intakeReady || appliedDraftRef.current) return;
+    if (!(draft.problem || draft.summary || draft.categorySlug)) return;
+    appliedDraftRef.current = true;
+    queueMicrotask(() => {
+      const nextCategory = invitedPro?.categorySlug || draft.categorySlug || startingCategory;
+      const nextCategoryName = categories.find((item) => item.slug === nextCategory)?.name;
+      setCategorySlug(nextCategory);
+      setTitleInput(
+        headlineFromDraft(draft.problem || draft.summary || "", draft.title || "", nextCategoryName),
+      );
+      setDescriptionInput(draft.problem || draft.summary || "");
+      if (draft.zip) {
+        const cleanZip = draft.zip.replace(/\D/g, "").slice(0, 5);
+        if (cleanZip) setZipInput(cleanZip);
+      }
+    });
+  }, [draft, intakeReady, invitedPro, startingCategory]);
 
   const selectedCategory = categories.find((c) => c.slug === categorySlug) ?? categories[0];
-  const activeAddress = addresses.find((a) => a.id === selectedAddressId);
+  const activeAddress = addresses.find((a) => a.label?.toLowerCase() === "home") ?? addresses[0];
   const displayLocation = activeAddress?.street
     ? `${activeAddress.street}, ${activeAddress.city || "Austin"}, ${activeAddress.state || "TX"} ${zipInput}`
     : `Austin, TX ${zipInput}`;
-  const areaDescription = `${activeAddress?.city || "Austin"}, TX ${zipInput}`;
 
   // Simple Step Validations
   function validateStep(currentStep: number): boolean {

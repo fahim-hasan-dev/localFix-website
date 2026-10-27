@@ -1,21 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CalendarCheck,
-  CheckCircle2,
-  ClipboardList,
   Clock,
-  DollarSign,
   FileText,
   Filter,
   Globe,
   Inbox,
-  MapPin,
-  MessageCircle,
-  MessageSquare,
   Search,
   Zap,
 } from "lucide-react";
@@ -23,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { categories, getCategory, getPro, urgencyLabels } from "@/Mockdata";
+import { categories, getCategory, urgencyLabels } from "@/Mockdata";
 import {
   jobCardSummary,
   selectProBookingsGrouped,

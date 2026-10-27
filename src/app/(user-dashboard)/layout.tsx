@@ -35,7 +35,6 @@ export default function UserDashboardLayout({
     const bookings = selectHomeownerBookingsGrouped(state, homeownerName);
     const activeRequests = requests.length;
     const activeBookings = bookings.upcoming.length + bookings.inProgress.length;
-    const favoritesCount = state.features.favorites.length;
 
     return [
       {

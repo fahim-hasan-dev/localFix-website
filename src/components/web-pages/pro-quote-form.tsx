@@ -10,7 +10,6 @@ import { addQuote, acceptCounter, setOfferStatus } from "@/redux/slices/marketpl
 import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
 import { selectJob, selectQuotesForJob } from "@/lib/marketplace";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { cn } from "@/lib/cn";
 import type { QuotePriceType } from "@/types";
 
 function getISODatePlus(days: number) {

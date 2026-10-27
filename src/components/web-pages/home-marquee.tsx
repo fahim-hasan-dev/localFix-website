@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -25,43 +25,48 @@ export const defaultTickerItems: MarqueeItemData[] = [
 
 const STORAGE_KEY = "homefix_marquee_cms";
 
-export function HomeMarquee() {
-  const [items, setItems] = useState<MarqueeItemData[]>(defaultTickerItems);
-  const [isEnabled, setIsEnabled] = useState(true);
-  const [speed, setSpeed] = useState<"slow" | "normal" | "fast">("normal");
-
-  const loadCmsConfig = () => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.isEnabled === false) {
-          setIsEnabled(false);
-          return;
-        }
-        setIsEnabled(true);
-
-        if (Array.isArray(parsed.items)) {
-          const active = parsed.items.filter((item: { isActive?: boolean }) => item.isActive !== false);
-          if (active.length > 0) {
-            setItems(active.map((item: { label: string; href: string }) => ({ label: item.label, href: item.href })));
-          }
-        }
-        if (parsed.speed === "slow" || parsed.speed === "normal" || parsed.speed === "fast") {
-          setSpeed(parsed.speed);
+function getCmsConfig() {
+  if (typeof window === "undefined") {
+    return { isEnabled: true, items: defaultTickerItems, speed: "normal" as const };
+  }
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed.isEnabled === false) {
+        return { isEnabled: false, items: [], speed: "normal" as const };
+      }
+      let items = defaultTickerItems;
+      if (Array.isArray(parsed.items)) {
+        const active = parsed.items.filter((item: { isActive?: boolean }) => item.isActive !== false);
+        if (active.length > 0) {
+          items = active.map((item: { label: string; href: string }) => ({ label: item.label, href: item.href }));
         }
       }
-    } catch {
-      // fallback to default items
+      const speed =
+        parsed.speed === "slow" || parsed.speed === "normal" || parsed.speed === "fast"
+          ? parsed.speed
+          : ("normal" as const);
+      return { isEnabled: true, items, speed };
     }
-  };
+  } catch {
+    // fallback to default
+  }
+  return { isEnabled: true, items: defaultTickerItems, speed: "normal" as const };
+}
+
+export function HomeMarquee() {
+  const [items, setItems] = useState<MarqueeItemData[]>(() => getCmsConfig().items);
+  const [isEnabled, setIsEnabled] = useState(() => getCmsConfig().isEnabled);
+  const [speed, setSpeed] = useState<"slow" | "normal" | "fast">(() => getCmsConfig().speed);
 
   useEffect(() => {
-    loadCmsConfig();
-
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === STORAGE_KEY) {
-        loadCmsConfig();
+        const config = getCmsConfig();
+        setIsEnabled(config.isEnabled);
+        setItems(config.items);
+        setSpeed(config.speed);
       }
     };
 
