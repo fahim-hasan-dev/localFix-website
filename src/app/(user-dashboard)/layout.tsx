@@ -53,15 +53,9 @@ export default function UserDashboardLayout({
           },
           { href: "/account/messages", label: "Messages" },
           { href: "/account/post-job", label: "Post a Request" },
-          {
-            href: "/account/saved",
-            label: "Saved Pros",
-            badge: favoritesCount > 0 ? favoritesCount : undefined,
-          },
         ],
       },
       {
-        title: "Account",
         items: [
           { href: "/account/profile", label: "Profile" },
           { href: "/account/password", label: "Password" },

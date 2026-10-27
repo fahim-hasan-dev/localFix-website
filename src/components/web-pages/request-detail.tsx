@@ -149,6 +149,7 @@ export function RequestDetail({
     state.features.reviews.find((item) => item.jobId === id)
   );
   const [proReplyDraft, setProReplyDraft] = useState("");
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
 
   const currentDisplayRating = hoverRating || reviewRating;
   const activeSentiment = useMemo(() => {
@@ -407,13 +408,19 @@ export function RequestDetail({
             </p>
             <div className="flex flex-wrap gap-2.5">
               {photosForJob.map((src, idx) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <button
                   key={idx}
-                  src={src}
-                  alt={`Job photo ${idx + 1}`}
-                  className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl border border-line object-cover shadow-2xs hover:opacity-95 transition"
-                />
+                  type="button"
+                  onClick={() => setPreviewPhoto(src)}
+                  className="group relative h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-xl border border-line bg-surface shadow-2xs hover:ring-2 hover:ring-primary/40 transition cursor-zoom-in text-left"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={src}
+                    alt={`Job photo ${idx + 1}`}
+                    className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                  />
+                </button>
               ))}
             </div>
           </div>
@@ -546,7 +553,7 @@ export function RequestDetail({
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-muted font-medium">Client / Homeowner</dt>
+              <dt className="text-xs text-muted font-medium">Homeowner</dt>
               <dd className="font-semibold text-title flex items-center gap-1.5 mt-0.5">
                 <span>{job.homeownerName}</span>
               </dd>
@@ -1569,6 +1576,36 @@ export function RequestDetail({
               >
                 {isJobBooked ? "Cancel Booking" : "Delete"}
               </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Lightbox Photo Preview Modal */}
+      {previewPhoto ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs animate-in fade-in"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-2xl overflow-hidden rounded-2xl bg-white p-2 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewPhoto}
+              alt="Attached photo enlargement"
+              className="max-h-[80vh] w-auto rounded-xl object-contain"
+            />
+            <div className="mt-2 flex items-center justify-between px-2 pb-1">
+              <span className="text-xs font-medium text-muted">Attached Job Photo</span>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="rounded-lg bg-smoke px-3 py-1 text-xs font-semibold text-title hover:bg-line transition cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

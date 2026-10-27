@@ -784,63 +784,25 @@ function BookingFlow() {
                   </div>
                 </div>
 
-                {/* 3. Service Location (Clean & Uncluttered) */}
+                {/* 3. Service Location */}
                 <div className="space-y-2 pt-2 border-t border-line/40">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-sm font-semibold text-title">
-                      Service Location
-                    </label>
-                    <span className="text-[11px] text-muted">
-                      Austin radius • Address shared only after hire
-                    </span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div className="relative w-40 shrink-0">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
-                      <input
-                        type="text"
-                        value={zipInput}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "").slice(0, 5);
-                          setZipInput(val);
-                          setSelectedAddressId("");
-                        }}
-                        placeholder="ZIP Code"
-                        maxLength={5}
-                        required
-                        className="w-full h-10 rounded-xl border border-line bg-white pl-9 pr-3 font-mono text-sm font-semibold tracking-wider text-title outline-none transition-colors placeholder:text-muted focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
-                      />
-                    </div>
-                    {addresses.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-xs text-muted mr-1">Saved:</span>
-                        {addresses.map((addr) => {
-                          const active = selectedAddressId === addr.id;
-                          return (
-                            <button
-                              key={addr.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedAddressId(addr.id);
-                                if (addr.zip) setZipInput(addr.zip);
-                              }}
-                              className={cn(
-                                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer",
-                                active
-                                  ? "border-primary bg-primary text-white shadow-2xs font-semibold"
-                                  : "border-line bg-white text-muted hover:text-title hover:border-line/90",
-                              )}
-                            >
-                              <MapPin className="h-3 w-3" />
-                              <span>{addr.label}</span>
-                              <span className={cn("text-[11px]", active ? "text-white/80" : "text-muted/70")}>
-                                ({addr.zip})
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                  <label className="block text-sm font-semibold text-title">
+                    Service Location
+                  </label>
+                  <div className="relative max-w-xs">
+                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                    <input
+                      type="text"
+                      value={zipInput}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 5);
+                        setZipInput(val);
+                      }}
+                      placeholder="Enter 5-digit ZIP code (e.g. 78701)"
+                      maxLength={5}
+                      required
+                      className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-3 font-mono text-sm font-semibold tracking-wider text-title outline-none transition-colors placeholder:text-muted focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
+                    />
                   </div>
                 </div>
 

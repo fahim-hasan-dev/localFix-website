@@ -796,6 +796,10 @@ export const jobs: Job[] = [
     postedAt: "2026-10-12",
     homeownerName: "Maya Chen",
     visibility: "open",
+    photos: [
+      "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1542013936693-884638332954?auto=format&fit=crop&w=800&q=80",
+    ],
   },
   {
     id: "job-2",

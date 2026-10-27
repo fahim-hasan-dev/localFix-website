@@ -16,7 +16,7 @@ const steps = [
   },
   {
     step: "03",
-    title: "Compare & select your pro",
+    title: "Compare & select pros",
     text: "Review estimates side-by-side, read verified neighbor reviews, and chat directly with contractors before making a decision.",
     icon: Scale,
   },

@@ -36,8 +36,6 @@ const emptyDraft = (): AddressDraft => ({
   isPrimary: false,
 });
 
-const QUICK_LABELS = ["Home", "Rental Property", "Office", "Condo"];
-
 export function AccountProfileForm() {
   const user = useAppSelector((state) => state.auth.user);
   const dispatch = useAppDispatch();
@@ -468,31 +466,6 @@ function AddressEditor({
 }) {
   return (
     <div className="space-y-4">
-      {/* Quick label selection chips */}
-      <div>
-        <span className="block font-display text-xs font-semibold text-title mb-1.5">
-          Quick Label
-        </span>
-        <div className="flex flex-wrap gap-1.5">
-          {QUICK_LABELS.map((item) => {
-            const isSelected = draft.label.toLowerCase() === item.toLowerCase();
-            return (
-              <button
-                key={item}
-                type="button"
-                onClick={() => onChange({ ...draft, label: item })}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                  isSelected
-                    ? "bg-primary text-white"
-                    : "bg-white border border-line text-copy hover:border-primary/50"
-                }`}
-              >
-                {item}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Address Label">

@@ -15,7 +15,7 @@ export const photos = {
   trustAlt: u("photo-1581578731548-c64695cc6952", 900),
   cta: u("photo-1558618666-fcd25c85cd64", 2000),
   banner: u("photo-1504328345606-18bbc8c9d7d1", 1800),
-  auth: u("photo-1621905252507-b35492cc74b4", 2200),
+  auth: "/images/auth-hero.jpg",
   banners: {
     pros: u("photo-1621905252472-943afaa20e20", 1800),
     how: u("photo-1585704032915-c3400ca199e7", 1800),
@@ -28,8 +28,8 @@ export const photos = {
   /** Cover / card image per trade — diverse authentic craft photography */
   services: {
     plumbing: u("photo-1585704032915-c3400ca199e7", 1200),
-    electrical: u("photo-1621905251918-48416bd8575a", 1200),
-    hvac: u("photo-1621905251189-08b45d6a269e", 1200),
+    electrical: u("photo-1558618666-fcd25c85cd64", 1200),
+    hvac: u("photo-1591357167522-61d54313c8a4", 1200),
     roofing: u("photo-1632759145351-1d592919f522", 1200),
     handyman: u("photo-1505798577917-a65157d3320a", 1200),
     "appliance-repair": u("photo-1584622650111-993a426fbf0a", 1200),
