@@ -817,6 +817,10 @@ export const jobs: Job[] = [
     postedAt: "2026-10-13",
     homeownerName: "Jordan Hale",
     visibility: "open",
+    photos: [
+      "https://images.unsplash.com/photo-1589834390005-5d4fb9bf3d32?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=800&q=80",
+    ],
   },
   {
     id: "job-3",
@@ -885,6 +889,10 @@ export const jobs: Job[] = [
     homeownerName: "Maya Chen",
     visibility: "direct",
     requestedProId: "pro-1",
+    photos: [
+      "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=800&q=80",
+    ],
   },
   {
     id: "job-7",
@@ -1263,7 +1271,7 @@ export const urgencyLabels: Record<Job["urgency"], string> = {
 export const statusLabels: Record<Job["status"], string> = {
   draft: "Draft",
   active: "Posted",
-  getting_quotes: "Matched",
+  getting_quotes: "Getting Quotes",
   quotes_in: "Offers in",
   hired: "Hired",
   scheduled: "Scheduled",

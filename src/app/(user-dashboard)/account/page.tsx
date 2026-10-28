@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Calendar,
   MapPin,
-  Plus,
   Receipt,
   Search,
   Trash2,
@@ -75,25 +74,14 @@ export default function AccountPage() {
 
   return (
     <div className="w-full max-w-5xl space-y-6">
-      {/* 1. Header with Title & CTA */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line/70 pb-4 pt-1">
-        <div>
-          <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight">
-            Service Requests
-          </h1>
-          <p className="mt-0.5 text-xs sm:text-sm text-muted">
-            Track your repair requests. Click to view incoming quotes and hire a pro.
-          </p>
-        </div>
-
-        <Button
-          href="/account/post-job"
-          size="sm"
-          className="rounded-full gap-1.5 shadow-xs font-semibold self-start sm:self-auto"
-        >
-          <Plus className="h-4 w-4" />
-          New Request
-        </Button>
+      {/* 1. Header with Title */}
+      <div className="border-b border-line/70 pb-4 pt-1">
+        <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight">
+          Service Requests
+        </h1>
+        <p className="mt-0.5 text-xs sm:text-sm text-muted">
+          Track your repair requests. Click to view incoming quotes and hire a pro.
+        </p>
       </div>
 
       {/* 2. Search Filter */}
@@ -125,7 +113,7 @@ export default function AccountPage() {
           <p className="font-display text-sm font-semibold text-title">No matching requests found.</p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {filteredJobs.map((job) => {
             const jobQuotes = quotes.filter((q) => q.jobId === job.id);
             const booking = bookings[job.id];
@@ -139,7 +127,7 @@ export default function AccountPage() {
                 key={job.id}
                 onClick={() => router.push(isHired ? `/account/bookings/${job.id}` : `/account/jobs/${job.id}`)}
                 className={cn(
-                  "group relative rounded-[18px] border bg-white p-4 sm:p-5 shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/50 cursor-pointer",
+                  "group relative rounded-[20px] border bg-white p-5 sm:p-6 shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/50 cursor-pointer",
                   job.status === "awaiting_confirm"
                     ? "border-emerald-400 bg-emerald-50/[0.12]"
                     : job.status === "in_progress" || job.status === "en_route"

@@ -389,15 +389,19 @@ export function QuoteRequestFlow() {
                   rows={4}
                 />
               </Field>
-              <Field label="Budget (optional)">
-                <NativeSelect value={budget} onChange={(event) => setBudget(event.target.value)}>
-                  <option value="">No budget listed</option>
-                  <option value="Under $250">Under $250</option>
-                  <option value="$250–$500">$250–$500</option>
-                  <option value="$500–$1,000">$500–$1,000</option>
-                  <option value="$1,000–$5,000">$1,000–$5,000</option>
-                  <option value="$5,000+">$5,000+</option>
-                </NativeSelect>
+              <Field label="Estimated Budget (optional)" hint="Type your target amount or range">
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted select-none pointer-events-none">
+                    $
+                  </span>
+                  <input
+                    type="text"
+                    value={budget}
+                    onChange={(event) => setBudget(event.target.value)}
+                    placeholder="e.g. 250, 300–500, or flexible"
+                    className="h-11 w-full rounded-xl border border-line bg-white pl-8 pr-3.5 text-sm font-medium text-title outline-none transition focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs placeholder:text-muted/60"
+                  />
+                </div>
               </Field>
               <Field label="Photos (optional, up to 4)">
                 <input

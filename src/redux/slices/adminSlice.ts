@@ -9,6 +9,7 @@ import {
   type AdminDispute,
   type ListingVisibility,
 } from "@/lib/admin-data";
+import { defaultCategoryQuestions, type IntakeQuestion } from "@/lib/intake-questions";
 
 const STORAGE_KEY = "lhf-admin-ops-v1";
 
@@ -18,6 +19,7 @@ interface AdminState {
   listingStatus: Record<string, ListingVisibility>;
   memberships: typeof seedMemberships;
   activity: AdminActivity[];
+  categoryQuestions: Record<string, IntakeQuestion[]>;
   hydrated: boolean;
 }
 
@@ -27,6 +29,7 @@ const initialState: AdminState = {
   listingStatus: {},
   memberships: seedMemberships,
   activity: seedActivity,
+  categoryQuestions: defaultCategoryQuestions,
   hydrated: false,
 };
 
@@ -41,6 +44,7 @@ function persist(state: AdminState) {
         listingStatus: state.listingStatus,
         memberships: state.memberships,
         activity: state.activity,
+        categoryQuestions: state.categoryQuestions,
       }),
     );
   } catch {
@@ -86,11 +90,34 @@ const adminSlice = createSlice({
           state.listingStatus = saved.listingStatus ?? {};
           if (saved.memberships?.length) state.memberships = saved.memberships;
           if (saved.activity?.length) state.activity = saved.activity;
+          if (saved.categoryQuestions && Object.keys(saved.categoryQuestions).length) {
+            state.categoryQuestions = saved.categoryQuestions;
+          }
         }
       } catch {
         /* ignore */
       }
       state.hydrated = true;
+    },
+    updateCategoryQuestions(
+      state,
+      action: PayloadAction<{ slug: string; questions: IntakeQuestion[] }>,
+    ) {
+      state.categoryQuestions[action.payload.slug] = action.payload.questions;
+      pushActivity(
+        state,
+        "Updated category questions",
+        `Category: ${action.payload.slug}`,
+      );
+      persist(state);
+    },
+    resetCategoryQuestions(state, action: PayloadAction<string | undefined>) {
+      if (action.payload) {
+        state.categoryQuestions[action.payload] = defaultCategoryQuestions[action.payload] ?? [];
+      } else {
+        state.categoryQuestions = defaultCategoryQuestions;
+      }
+      persist(state);
     },
     decideApplication(
       state,
@@ -242,5 +269,7 @@ export const {
   openDispute,
   addDisputeNote,
   updateDispute,
+  updateCategoryQuestions,
+  resetCategoryQuestions,
 } = adminSlice.actions;
 export default adminSlice.reducer;

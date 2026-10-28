@@ -5,19 +5,35 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Ban,
+  Bath,
+  BedDouble,
+  Broom,
+  CalendarDays,
+  CalendarSync,
+  Camera,
   Check,
   CheckCircle2,
+  CircleDollarSign,
   Clock,
+  Droplets,
   FileCheck2,
+  FileText,
+  Flame,
+  Home,
   MapPin,
   MessageSquare,
   Package,
+  PawPrint,
   ShieldCheck,
   Star,
+  Tag,
   Trash2,
   Truck,
+  User,
   Wrench,
   X,
+  Zap,
+  ZoomIn,
 } from "lucide-react";
 import { QuoteCard } from "@/components/shared/quote-card";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -26,6 +42,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import {
+  cleanFactLabel,
+  cleanJobDescription,
   jobRequestFacts,
   paymentMethodLabels,
   selectBooking,
@@ -33,6 +51,7 @@ import {
   selectCompletion,
   selectJob,
   selectQuotesForJob,
+  splitJobDescription,
 } from "@/lib/marketplace";
 import {
   getCategory,
@@ -53,6 +72,7 @@ import {
   addReview,
   updateReview,
   replyToReview,
+  setJobPhotos,
   setJobStatus,
 } from "@/redux/slices/featuresSlice";
 import type { DirectPaymentMethod } from "@/types";
@@ -65,6 +85,50 @@ function initials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function getFactIcon(label: string) {
+  const l = label.toLowerCase();
+  if (l.includes("time") || l.includes("timing") || l.includes("schedule") || l.includes("date") || l.includes("when")) {
+    return CalendarDays;
+  }
+  if (l.includes("bed")) {
+    return BedDouble;
+  }
+  if (l.includes("bath")) {
+    return Bath;
+  }
+  if (l.includes("clean") || l.includes("maid") || l.includes("wash") || l.includes("mop")) {
+    return Broom;
+  }
+  if (l.includes("freq") || l.includes("often") || l.includes("repeat") || l.includes("interval")) {
+    return CalendarSync;
+  }
+  if (l.includes("pet") || l.includes("dog") || l.includes("cat") || l.includes("animal")) {
+    return PawPrint;
+  }
+  if (l.includes("property") || l.includes("home") || l.includes("house") || l.includes("building") || l.includes("condo") || l.includes("apartment")) {
+    return Home;
+  }
+  if (l.includes("budget") || l.includes("price") || l.includes("cost") || l.includes("fee")) {
+    return CircleDollarSign;
+  }
+  if (l.includes("part") || l.includes("material") || l.includes("supply")) {
+    return Package;
+  }
+  if (l.includes("water") || l.includes("plumb") || l.includes("leak") || l.includes("drain") || l.includes("pipe") || l.includes("faucet")) {
+    return Droplets;
+  }
+  if (l.includes("electric") || l.includes("power") || l.includes("light") || l.includes("breaker") || l.includes("wiring")) {
+    return Zap;
+  }
+  if (l.includes("heat") || l.includes("hvac") || l.includes("furnace") || l.includes("air")) {
+    return Flame;
+  }
+  if (l.includes("tool") || l.includes("repair") || l.includes("handyman") || l.includes("install") || l.includes("fix") || l.includes("issue")) {
+    return Wrench;
+  }
+  return CheckCircle2;
 }
 
 export function RequestDetail({
@@ -293,10 +357,13 @@ export function RequestDetail({
   const photosForJob = storedPhotos.length ? storedPhotos : job.photos ?? [];
   const category = getCategory(job.categorySlug);
   const hiredPro = hiredQuote ? getPro(hiredQuote.proId) : null;
+  const isTitleHavingCategory = Boolean(
+    category?.name && job.title.toLowerCase().includes(category.name.toLowerCase())
+  );
   const meta = [
-    category?.name,
+    !isTitleHavingCategory ? category?.name : null,
     `${job.city}, ${job.state} ${job.zip}`,
-    urgencyLabels[job.urgency],
+    job.postedAt ? `Posted ${job.postedAt}` : null,
     isProView ? `Client: ${job.homeownerName}` : null,
   ].filter(Boolean);
 
@@ -316,21 +383,73 @@ export function RequestDetail({
   ];
 
   const requestFacts = jobRequestFacts(job);
+  const cleanDescription = cleanJobDescription(job.description, job.intakeAnswers);
+
+  function handlePhotoUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []).slice(0, 4 - photosForJob.length);
+    if (!files.length) return;
+    const readUrls: string[] = [];
+    let completed = 0;
+    files.forEach((file) => {
+      if (!file.type.startsWith("image/")) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          readUrls.push(reader.result);
+        }
+        completed++;
+        if (completed === files.length) {
+          const updated = [...photosForJob, ...readUrls].slice(0, 6);
+          dispatch(setJobPhotos({ jobId: id, photos: updated }));
+          setSavedMsg("Photos updated successfully!");
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    event.target.value = "";
+  }
+
+  const detailedWorkDescription = useMemo(() => {
+    if (cleanDescription && cleanDescription.trim().length > 0) {
+      return cleanDescription.trim();
+    }
+    const { text: rawText } = splitJobDescription(job.description || "");
+    if (rawText && rawText.trim().length > 0) {
+      return rawText.trim();
+    }
+    if (job.description && job.description.trim().length > 0) {
+      return job.description.trim();
+    }
+    return `${job.title} service requested for property in ${job.city || "Austin"}, ${job.state || "TX"} (${job.zip}).`;
+  }, [cleanDescription, job]);
 
   return (
-    <div className="w-full max-w-5xl space-y-4">
+    <div className="w-full max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-12">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href={backHref} className="inline-flex font-display text-sm font-semibold text-primary">
           ← {backLabel}
         </Link>
         <div className="flex items-center gap-2">
+          {!isProView && photosForJob.length === 0 && (
+            <label className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke cursor-pointer shadow-2xs transition">
+              <Camera className="h-3.5 w-3.5" />
+              <span>+ Add photos</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                onChange={handlePhotoUpload}
+              />
+            </label>
+          )}
           {!isProView && job.status !== "completed" && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={() => setShowCancelModal(true)}
-              className="rounded-full text-xs font-semibold text-muted hover:text-error hover:bg-error/10 gap-1.5 cursor-pointer"
+              className="rounded-full text-xs font-semibold text-muted hover:text-error hover:bg-error/10 gap-1.5 cursor-pointer px-3"
             >
               {isJobBooked ? (
                 <>
@@ -350,7 +469,7 @@ export function RequestDetail({
               href={`/pro/messages?dm=${job.id}`}
               size="sm"
               variant="ghost"
-              className="rounded-full text-xs font-semibold border border-line"
+              className="rounded-full text-xs font-semibold border border-line px-3.5"
             >
               <MessageSquare className="h-3.5 w-3.5 mr-1 text-primary" />
               Message {job.homeownerName}
@@ -359,59 +478,133 @@ export function RequestDetail({
         </div>
       </div>
 
-      <div className="rounded-[16px] border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
+      <div className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 md:p-8 shadow-xs">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 mb-1.5 text-xs text-muted">
+            <div className="flex flex-wrap items-center gap-2 mb-2 text-xs text-muted">
               {job.visibility === "direct" || job.requestedProId ? (
-                <span className="font-medium text-title">
+                <span className="inline-flex items-center gap-1.5 font-medium text-title">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
                   Direct request {requestedPro ? `to ${requestedPro.name}` : ""}
                 </span>
               ) : (
                 <span className="font-medium text-muted">Marketplace Request</span>
               )}
               {job.urgency === "asap" ? (
-                <span className="text-error font-medium">· Urgent</span>
+                <span className="inline-flex items-center gap-1 text-error font-semibold">
+                  <Clock className="h-3.5 w-3.5 text-error" /> Urgent
+                </span>
               ) : null}
             </div>
             <h1 className="font-display text-xl font-semibold text-title sm:text-2xl">{job.title}</h1>
-            <p className="mt-1 text-xs text-muted">{meta.join(" · ")}</p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
+              <span className="inline-flex items-center gap-1.5 font-medium text-copy">
+                <MapPin className="h-3.5 w-3.5 text-muted shrink-0" />
+                <span>{job.city}, {job.state} {job.zip}</span>
+              </span>
+              {job.postedAt ? (
+                <span className="inline-flex items-center gap-1.5 font-medium text-copy">
+                  <CalendarDays className="h-3.5 w-3.5 text-muted shrink-0" />
+                  <span>Posted {job.postedAt}</span>
+                </span>
+              ) : null}
+              {isProView ? (
+                <span className="inline-flex items-center gap-1.5 font-medium text-copy">
+                  <User className="h-3.5 w-3.5 text-muted shrink-0" />
+                  <span>Client: {job.homeownerName}</span>
+                </span>
+              ) : null}
+            </div>
           </div>
-          <StatusBadge status={job.status} />
+          {!isProView && (job.status === "getting_quotes" || job.status === "active") ? null : (
+            <StatusBadge status={job.status} />
+          )}
         </div>
 
-        {/* Project Description */}
-        {job.description ? (
-          <p className="mt-3 text-xs sm:text-sm leading-relaxed text-copy whitespace-pre-line">
-            {job.description}
-          </p>
-        ) : null}
+        {/* Detailed Work Description - Clean, open typography (suppressed if identical to title) */}
+        {detailedWorkDescription && detailedWorkDescription.trim().toLowerCase() !== job.title.trim().toLowerCase() && (
+          <div className="mt-6 border-t border-line/50 pt-5">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <FileText className="h-3.5 w-3.5" />
+              </div>
+              <h3 className="font-display text-sm font-semibold text-title">
+                Detailed Work Description
+              </h3>
+            </div>
+            <p className="text-xs sm:text-sm text-copy leading-relaxed whitespace-pre-line">
+              {detailedWorkDescription}
+            </p>
+          </div>
+        )}
 
-        {/* Request Facts (Property, Budget, Materials, Timing) */}
+        {/* Structured Service Specifications - Clean open grid */}
         {requestFacts.length ? (
-          <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted border-t border-line/60 pt-3">
-            {requestFacts.map((fact) => (
-              <span key={fact.label} className="inline-flex items-center gap-1.5">
-                <span className="text-muted font-medium">{fact.label}:</span>
-                <strong className="text-title font-semibold">{fact.value}</strong>
-              </span>
-            ))}
+          <div className="mt-6 border-t border-line/50 pt-5">
+            <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted mb-3.5">
+              Service Details &amp; Requirements
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-y-4 sm:gap-y-5 gap-x-6 text-xs">
+              {requestFacts.map((fact) => {
+                const Icon = getFactIcon(fact.label);
+                return (
+                  <div key={fact.label} className="flex items-start gap-2.5">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-smoke/80 border border-line/70 text-primary shadow-2xs">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[11px] text-muted block leading-none font-normal">
+                        {fact.label}
+                      </span>
+                      <strong className="font-semibold text-title text-xs sm:text-[13px] block mt-1 break-words leading-tight">
+                        {fact.value}
+                      </strong>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : null}
 
-        {/* Attached Photos */}
-        {photosForJob.length ? (
-          <div className="mt-4 border-t border-line/60 pt-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">
-              Attached Photos ({photosForJob.length})
-            </p>
-            <div className="flex flex-wrap gap-2.5">
+        {/* Attached Photos & Site Documentation (Only shown when photos exist) */}
+        {photosForJob.length > 0 && (
+          <div className="mt-6 border-t border-line/50 pt-5">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <Camera className="h-3.5 w-3.5" />
+                </div>
+                <h3 className="font-display text-sm font-semibold text-title">
+                  Attached Photos &amp; Site Media
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-surface text-muted border border-line/80 text-[10px] font-medium px-2.5 py-0.5">
+                  {photosForJob.length} photo{photosForJob.length > 1 ? "s" : ""} attached
+                </span>
+                {!isProView && photosForJob.length < 6 && (
+                  <label className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline cursor-pointer">
+                    + Add more
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="sr-only"
+                      onChange={handlePhotoUpload}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3.5 sm:gap-4">
               {photosForJob.map((src, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => setPreviewPhoto(src)}
-                  className="group relative h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-xl border border-line bg-surface shadow-2xs hover:ring-2 hover:ring-primary/40 transition cursor-zoom-in text-left"
+                  className="group relative aspect-square overflow-hidden rounded-xl border border-line bg-surface shadow-2xs hover:ring-2 hover:ring-primary/40 transition cursor-zoom-in text-left"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -419,11 +612,19 @@ export function RequestDetail({
                     alt={`Job photo ${idx + 1}`}
                     className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-2">
+                    <span className="text-[10px] font-medium text-white flex items-center gap-1">
+                      <ZoomIn className="h-3 w-3" /> Zoom
+                    </span>
+                    <span className="text-[10px] font-semibold text-white/90">
+                      #{idx + 1}
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>
           </div>
-        ) : null}
+        )}
 
         {canHire && job.status === "cancelled" && !hiredQuoteId ? (
           <div className="mt-3 flex items-center justify-between border-t border-line/70 pt-3">
@@ -1583,27 +1784,48 @@ export function RequestDetail({
       {/* Lightbox Photo Preview Modal */}
       {previewPhoto ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm animate-in fade-in"
           onClick={() => setPreviewPhoto(null)}
         >
           <div
-            className="relative max-h-[90vh] max-w-2xl overflow-hidden rounded-2xl bg-white p-2 shadow-2xl"
+            className="relative max-h-[92vh] max-w-3xl w-full overflow-hidden rounded-2xl bg-white p-3 sm:p-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewPhoto}
-              alt="Attached photo enlargement"
-              className="max-h-[80vh] w-auto rounded-xl object-contain"
-            />
-            <div className="mt-2 flex items-center justify-between px-2 pb-1">
-              <span className="text-xs font-medium text-muted">Attached Job Photo</span>
+            <div className="flex items-center justify-between pb-3 border-b border-line/60">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Camera className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-semibold text-title">Attached Job Photo</h4>
+                  <p className="text-[11px] text-muted">{job.title}</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setPreviewPhoto(null)}
-                className="rounded-lg bg-smoke px-3 py-1 text-xs font-semibold text-title hover:bg-line transition cursor-pointer"
+                className="rounded-full p-1.5 text-muted hover:text-title hover:bg-smoke transition cursor-pointer"
+                aria-label="Close photo preview"
               >
-                Close
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-3 flex items-center justify-center bg-surface/50 rounded-xl overflow-hidden p-2 max-h-[72vh]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewPhoto}
+                alt="Attached photo enlargement"
+                className="max-h-[70vh] w-auto max-w-full rounded-lg object-contain"
+              />
+            </div>
+            <div className="mt-3 flex items-center justify-between pt-1 text-xs">
+              <span className="text-[11px] text-muted">Click anywhere outside to dismiss</span>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="rounded-lg bg-smoke px-3.5 py-1.5 text-xs font-semibold text-title hover:bg-line transition cursor-pointer"
+              >
+                Close Preview
               </button>
             </div>
           </div>

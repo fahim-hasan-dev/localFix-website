@@ -675,18 +675,13 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
           {/* SECTION 3: MEDIA & PROJECT PHOTOS GALLERY                  */}
           {/* ============================================================ */}
           <section id="sec-photos" className="scroll-mt-[135px] border-b border-line/60 pb-10 sm:pb-12 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-              <div>
-                <h2 className="font-display text-xl sm:text-[22px] font-semibold text-title tracking-tight">
-                  Project Photos &amp; Past Work
-                </h2>
-                <p className="mt-0.5 text-xs sm:text-sm text-muted">
-                  Real project completions and verified craftsmanship by {pro.name}
-                </p>
-              </div>
-              <span className="self-start sm:self-auto rounded-full bg-surface border border-line px-3 py-1 text-xs font-semibold text-title">
-                {galleryPhotos.length} Photos
-              </span>
+            <div>
+              <h2 className="font-display text-xl sm:text-[22px] font-semibold text-title tracking-tight">
+                Project Photos &amp; Past Work
+              </h2>
+              <p className="mt-0.5 text-xs sm:text-sm text-muted">
+                Real project completions and verified craftsmanship by {pro.name}
+              </p>
             </div>
 
             {/* Photo Category Filter Chips */}

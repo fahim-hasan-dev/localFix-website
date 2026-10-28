@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Building2,
   Calendar,
+  Camera,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -31,6 +32,8 @@ import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import { categories, getPro, professionals } from "@/Mockdata";
 import { matchEligiblePros } from "@/lib/matching";
+import { questionsForCategory } from "@/lib/intake-questions";
+import { cleanFactLabel } from "@/lib/marketplace";
 import { loginAs } from "@/redux/slices/authSlice";
 import { clearDraft } from "@/redux/slices/intakeSlice";
 import { addJob, addQuote } from "@/redux/slices/marketplaceSlice";
@@ -50,8 +53,9 @@ function initials(name: string) {
 
 const STEPS = [
   { id: 1, label: "Job Details", shortLabel: "Details" },
-  { id: 2, label: "When & Where", shortLabel: "Schedule" },
-  { id: 3, label: "Review & Submit", shortLabel: "Review" },
+  { id: 2, label: "Category Specifics", shortLabel: "Specifications" },
+  { id: 3, label: "When & Where", shortLabel: "Schedule" },
+  { id: 4, label: "Review & Submit", shortLabel: "Review" },
 ];
 
 const MATERIAL_OPTIONS = [
@@ -140,7 +144,14 @@ function BookingFlow() {
     return clean || "78701";
   });
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [categoryAnswers, setCategoryAnswers] = useState<Record<string, string>>({});
   const appliedDraftRef = useRef(false);
+
+  const adminCategoryQuestions = useAppSelector((state) => state.admin.categoryQuestions);
+  const categoryQuestions = useMemo(() => {
+    const list = adminCategoryQuestions?.[categorySlug] ?? questionsForCategory(categorySlug);
+    return list.filter((q) => q.id !== "when");
+  }, [adminCategoryQuestions, categorySlug]);
 
   useEffect(() => {
     if (!intakeReady || appliedDraftRef.current) return;
@@ -180,7 +191,8 @@ function BookingFlow() {
         return false;
       }
     }
-    if (currentStep === 2) {
+    // Step 2 is Category Specifics - completely optional and skippable
+    if (currentStep === 3) {
       if (!/^\d{5}$/.test(zipInput.trim())) {
         setError("Please enter a valid 5-digit ZIP code.");
         return false;
@@ -191,8 +203,13 @@ function BookingFlow() {
 
   function handleNext() {
     if (validateStep(step)) {
-      setStep((prev) => Math.min(prev + 1, 3));
+      setStep((prev) => Math.min(prev + 1, 4));
     }
+  }
+
+  function handleSkipCategory() {
+    setError("");
+    setStep(3);
   }
 
   function handleBack() {
@@ -224,8 +241,8 @@ function BookingFlow() {
       setStep(1);
       return;
     }
-    if (!validateStep(2)) {
-      setStep(2);
+    if (!validateStep(3)) {
+      setStep(3);
       return;
     }
 
@@ -256,6 +273,20 @@ function BookingFlow() {
       dispatch(loginAs("homeowner"));
     }
 
+    // Only include category answers that were actually chosen by the user
+    const dynamicAnswers = Object.entries(categoryAnswers)
+      .map(([qId, val]) => {
+        const q = categoryQuestions.find((item) => item.id === qId);
+        if (!q || !val) return null;
+        const opt = q.options.find((o) => o.value === val);
+        return {
+          id: q.id,
+          label: cleanFactLabel(q.prompt),
+          value: opt?.label ?? val,
+        };
+      })
+      .filter((a): a is { id: string; label: string; value: string } => Boolean(a));
+
     dispatch(
       addJob({
         id: jobId,
@@ -269,6 +300,7 @@ function BookingFlow() {
         budget: budget || undefined,
         propertyType,
         intakeAnswers: [
+          ...dynamicAnswers,
           {
             id: "materials",
             label: "Parts & materials",
@@ -451,7 +483,7 @@ function BookingFlow() {
   }
 
   return (
-    <div className="w-full max-w-5xl space-y-6">
+    <div className="w-full max-w-3xl mx-auto space-y-6 sm:space-y-8 pb-12">
       {/* 1. Invited Pro Banner (If directly booking) */}
       {invitedPro ? (
         <Card className="rounded-[20px] border border-primary/30 bg-gradient-to-r from-primary/5 via-blue-50/20 to-white p-4 sm:p-5 shadow-xs">
@@ -486,25 +518,25 @@ function BookingFlow() {
         </Card>
       ) : null}
 
-      {/* 2. Streamlined 3-Step Progress Indicator */}
-      <div className="rounded-[20px] border border-line/80 bg-white p-4 shadow-xs">
-        <div className="flex items-center justify-between pb-2 text-xs">
-          <span className="font-display font-bold text-title text-sm">
-            Step {step} of 3: <span className="text-primary">{STEPS[step - 1].label}</span>
+      {/* 2. Streamlined 4-Step Progress Indicator */}
+      <div className="rounded-[20px] border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
+        <div className="flex items-center justify-between pb-2.5 text-xs">
+          <span className="font-display font-bold text-title text-sm sm:text-base">
+            Step {step} of 4: <span className="text-primary">{STEPS[step - 1].label}</span>
           </span>
-          <span className="font-medium text-muted">{Math.round((step / 3) * 100)}% Completed</span>
+          <span className="font-medium text-muted">{Math.round((step / 4) * 100)}% Completed</span>
         </div>
 
         {/* Animated Progress Bar */}
         <div className="h-2 w-full overflow-hidden rounded-full bg-smoke">
           <div
             className="h-full bg-primary transition-all duration-300 ease-out"
-            style={{ width: `${(step / 3) * 100}%` }}
+            style={{ width: `${(step / 4) * 100}%` }}
           />
         </div>
 
-        {/* Step Tabs */}
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        {/* Step Tabs with responsive touch targets */}
+        <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {STEPS.map((s) => {
             const isCompleted = s.id < step;
             const isCurrent = s.id === step;
@@ -517,7 +549,7 @@ function BookingFlow() {
                 }}
                 disabled={s.id > step}
                 className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-xl py-2 px-2 text-xs font-semibold transition-all",
+                  "flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-2 text-xs font-semibold transition-all min-h-[42px]",
                   isCurrent && "bg-primary text-white shadow-xs font-bold",
                   isCompleted && "bg-smoke text-title hover:bg-smoke/80 cursor-pointer",
                   !isCurrent && !isCompleted && "bg-transparent text-muted/60 opacity-60 cursor-not-allowed",
@@ -526,7 +558,7 @@ function BookingFlow() {
                 {isCompleted ? (
                   <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[3]" />
                 ) : (
-                  <span className="text-[11px]">{s.id}.</span>
+                  <span className="text-[11px] opacity-70">{s.id}.</span>
                 )}
                 <span>{s.shortLabel}</span>
               </button>
@@ -537,10 +569,10 @@ function BookingFlow() {
 
       {/* 3. Main Layout: Focused Wizard Form */}
       <div className="w-full">
-        <Card className="rounded-[22px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
+        <Card className="rounded-[24px] border border-line/80 bg-white p-5 sm:p-8 md:p-10 shadow-xs">
           {/* STEP 1: JOB DETAILS */}
           {step === 1 && (
-            <div className="space-y-5 animate-in fade-in duration-150">
+            <div className="space-y-6 animate-in fade-in duration-150">
               <div className="border-b border-line/60 pb-3">
                 <h2 className="font-display text-xl font-bold text-title">
                   What do you need help with?
@@ -635,7 +667,7 @@ function BookingFlow() {
                       <button
                         type="button"
                         onClick={() => fileRef.current?.click()}
-                        className="flex h-20 w-28 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line bg-smoke/40 text-muted transition hover:border-primary hover:text-primary hover:bg-primary/[0.02]"
+                        className="flex h-20 w-28 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line bg-smoke/40 text-muted transition hover:border-primary hover:text-primary hover:bg-primary/[0.02] cursor-pointer"
                       >
                         <ImagePlus className="h-5 w-5" />
                         <span className="text-[11px] font-semibold">+ Add Photos</span>
@@ -646,9 +678,97 @@ function BookingFlow() {
               </div>
             )}
 
-            {/* STEP 2: WHEN & WHERE */}
+            {/* STEP 2: CATEGORY SPECIFICS (DEDICATED STEP WITH SKIP OPTION) */}
             {step === 2 && (
               <div className="space-y-6 animate-in fade-in duration-150">
+                <div className="border-b border-line/60 pb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-display text-xl font-bold text-title">
+                      {selectedCategory.name} Specifications
+                    </h2>
+                    <p className="mt-0.5 text-xs text-muted">
+                      Common details to help contractors give accurate upfront estimates. Answer or skip.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSkipCategory}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer rounded-lg bg-primary/5 px-3 py-1.5"
+                  >
+                    Skip this step ↗
+                  </button>
+                </div>
+
+                {categoryQuestions.length > 0 ? (
+                  <div className="grid gap-3.5 sm:grid-cols-2">
+                    {categoryQuestions.map((q, qIndex) => {
+                      const activeVal = categoryAnswers[q.id];
+                      return (
+                        <div
+                          key={q.id}
+                          className="rounded-xl border border-line/70 bg-white p-4 shadow-2xs space-y-3 transition hover:border-line"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <label className="text-xs font-bold text-title flex items-center gap-1.5">
+                              <span className="grid h-4.5 w-4.5 place-items-center rounded bg-smoke text-[10px] font-bold text-muted">
+                                Q{qIndex + 1}
+                              </span>
+                              <span>{q.prompt.replace(/\?$/, "")}</span>
+                            </label>
+                            {activeVal ? (
+                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md shrink-0">
+                                Selected
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted shrink-0">Optional</span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {q.options.map((opt) => {
+                              const isSelected = activeVal === opt.value;
+                              return (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() =>
+                                    setCategoryAnswers((prev) => ({
+                                      ...prev,
+                                      [q.id]: isSelected ? "" : opt.value,
+                                    }))
+                                  }
+                                  className={cn(
+                                    "inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer min-h-[34px]",
+                                    isSelected
+                                      ? "border-primary bg-primary text-white shadow-2xs font-semibold"
+                                      : "border-line bg-white text-title hover:bg-smoke hover:border-slate-300"
+                                  )}
+                                >
+                                  {isSelected && <Check className="h-3 w-3 mr-1.5 stroke-[2.5]" />}
+                                  {opt.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-line/80 bg-surface/30 p-8 text-center space-y-2">
+                    <p className="text-sm font-medium text-title">
+                      No additional specifications required for {selectedCategory.name}.
+                    </p>
+                    <p className="text-xs text-muted">
+                      You can click Continue or Skip to set your schedule and location.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* STEP 3: WHEN & WHERE */}
+            {step === 3 && (
+              <div className="space-y-7 animate-in fade-in duration-150">
                 <div className="border-b border-line/60 pb-3">
                   <h2 className="font-display text-xl font-bold text-title">
                     When and where do you need service?
@@ -659,7 +779,7 @@ function BookingFlow() {
                 </div>
 
                 {/* 1. Primary Decision: Urgency / Timeframe (Visual Hero) */}
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <label className="block text-sm font-semibold text-title">
                     When would you like this done?
                   </label>
@@ -692,7 +812,7 @@ function BookingFlow() {
                           type="button"
                           onClick={() => setUrgency(item.id as Urgency)}
                           className={cn(
-                            "group relative flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer",
+                            "group relative flex items-center justify-between p-4 rounded-xl border text-left transition-all cursor-pointer min-h-[68px]",
                             active
                               ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 shadow-xs"
                               : "border-line bg-white hover:border-line/90 hover:bg-slate-50/60",
@@ -726,9 +846,9 @@ function BookingFlow() {
                 </div>
 
                 {/* 2. Balanced 2-Column Row: Timing & Location */}
-                <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-line/40">
+                <div className="grid gap-5 sm:grid-cols-2 pt-2">
                   {/* Service Location */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <label className="block text-sm font-semibold text-title">
                       Service Location <span className="text-xs font-normal text-muted">(ZIP Code)</span>
                     </label>
@@ -750,7 +870,7 @@ function BookingFlow() {
                   </div>
 
                   {/* Preferred Arrival Window (Dropdown) */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <label className="block text-sm font-semibold text-title">
                       Preferred Arrival Window <span className="text-xs font-normal text-muted">(Optional)</span>
                     </label>
@@ -772,9 +892,9 @@ function BookingFlow() {
                 </div>
 
                 {/* 3. Balanced 2-Column Row: Property & Materials */}
-                <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-line/40">
+                <div className="grid gap-5 sm:grid-cols-2">
                   {/* Property Type (Dropdown) */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <label className="block text-sm font-semibold text-title">
                       Property Type
                     </label>
@@ -795,7 +915,7 @@ function BookingFlow() {
                   </div>
 
                   {/* Parts & Materials (Dropdown) */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <label className="block text-sm font-semibold text-title">
                       Parts &amp; Materials
                     </label>
@@ -815,55 +935,62 @@ function BookingFlow() {
                   </div>
                 </div>
 
-                {/* 4. Estimated Budget (Dropdown) */}
-                <div className="space-y-1.5 pt-2 border-t border-line/40">
-                  <label className="block text-sm font-semibold text-title">
-                    Estimated Budget <span className="text-xs font-normal text-muted">(Optional)</span>
-                  </label>
+                {/* 4. Estimated Budget (Typeable Input) */}
+                <div className="space-y-2 pt-2 border-t border-line/40">
+                  <div className="flex items-center justify-between max-w-sm">
+                    <label className="block text-sm font-semibold text-title">
+                      Estimated Budget <span className="text-xs font-normal text-muted">(Optional)</span>
+                    </label>
+                    <span className="text-xs text-muted">Type amount or range</span>
+                  </div>
                   <div className="relative max-w-sm">
-                    <Wallet className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
-                    <select
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted select-none pointer-events-none">
+                      $
+                    </span>
+                    <input
+                      type="text"
                       value={budget}
                       onChange={(e) => setBudget(e.target.value)}
-                      className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-9 text-sm font-medium text-title outline-none transition-colors appearance-none cursor-pointer focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
-                    >
-                      <option value="">Not specified / Flexible budget</option>
-                      <option value="Under $250">Under $250 (Minor fix / quick repair)</option>
-                      <option value="$250–$500">$250 – $500 (Standard repair)</option>
-                      <option value="$500–$1,000">$500 – $1,000 (Substantial service)</option>
-                      <option value="$1,000–$3,000">$1,000 – $3,000 (Major repair or install)</option>
-                      <option value="$3,000+">$3,000+ (Extensive renovation / replacement)</option>
-                    </select>
-                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                      placeholder="e.g. 250, 350–500, or flexible"
+                      className="w-full h-11 rounded-xl border border-line bg-white pl-8 pr-3.5 text-sm font-medium text-title outline-none transition-colors focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs placeholder:text-muted/60"
+                    />
                   </div>
+                  <p className="text-[11px] text-muted">
+                    Enter target amount or range. Leave blank if open to contractor estimates.
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* STEP 3: REVIEW & CONFIRM */}
-            {step === 3 && (
-              <div className="space-y-5 animate-in fade-in duration-150">
-                <div className="border-b border-line/60 pb-3">
-                  <h2 className="font-display text-xl font-bold text-title">
-                    Review &amp; Submit
-                  </h2>
-                  <p className="mt-0.5 text-xs text-muted">
-                    Check your details before we notify top-rated pros in your area.
-                  </p>
+            {/* STEP 4: REVIEW & CONFIRM */}
+            {step === 4 && (
+              <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="border-b border-line/60 pb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-display text-xl font-bold text-title">
+                      Review &amp; Submit
+                    </h2>
+                    <p className="mt-0.5 text-xs text-muted">
+                      Check your request details before we notify local pros.
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-full shrink-0">
+                    Ready to post
+                  </span>
                 </div>
 
                 {/* Direct Pro Invitation Banner (if directed to specific pro) */}
                 {invitedPro && (
-                  <div className="flex items-center justify-between gap-3.5 rounded-2xl border border-line/80 bg-white p-4 shadow-xs">
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-title text-white font-display text-sm font-bold shadow-xs">
+                  <div className="flex items-center justify-between gap-3.5 rounded-xl border border-line/80 bg-white p-3.5 shadow-xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-title text-white font-display text-sm font-bold shadow-xs">
                         {initials(invitedPro.name)}
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted block">
                           Direct Request to Pro
                         </span>
-                        <h3 className="font-display text-base font-bold text-title truncate mt-0.5">
+                        <h3 className="font-display text-sm font-bold text-title truncate mt-0.5">
                           {invitedPro.name}
                         </h3>
                         <p className="text-xs text-muted flex items-center gap-2 mt-0.5">
@@ -877,26 +1004,34 @@ function BookingFlow() {
                         </p>
                       </div>
                     </div>
-                    <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-smoke/80 border border-line/70 px-3 py-1.5 text-xs text-stone-700 font-medium shrink-0">
+                    <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-smoke/80 border border-line/70 px-2.5 py-1 text-xs text-stone-700 font-medium shrink-0">
                       <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-400" />
                       Replies {invitedPro.responseTime}
                     </div>
                   </div>
                 )}
 
-                {/* Structured Review Card with Strong Visual Hierarchy */}
-                <div className="rounded-2xl border border-line/80 bg-white p-5 sm:p-6 shadow-xs">
+                {/* Unified, Compact Review Slab (No nested box-in-box) */}
+                <div className="rounded-xl border border-line/70 bg-surface/30 p-5 sm:p-6 space-y-5">
                   {/* Category, Title & Edit Action */}
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3 border-b border-line/60 pb-3.5">
                     <div className="min-w-0 flex-1">
-                      <span className="inline-flex items-center rounded-md bg-smoke px-2.5 py-0.5 text-xs font-semibold text-title/80">
-                        {selectedCategory.name}
-                      </span>
-                      <h3 className="font-display text-xl sm:text-2xl font-bold text-title mt-2 tracking-tight">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center rounded-md bg-white border border-line/70 px-2.5 py-0.5 text-xs font-semibold text-title/80 shadow-2xs">
+                          {selectedCategory.name}
+                        </span>
+                        {photoUrls.length > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted">
+                            <Camera className="h-3 w-3 text-muted" />
+                            {photoUrls.length} photo{photoUrls.length > 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-display text-base sm:text-lg font-bold text-title mt-1.5 tracking-tight truncate">
                         {titleInput}
                       </h3>
-                      {descriptionInput ? (
-                        <p className="mt-2 text-xs sm:text-sm text-stone-600 leading-relaxed whitespace-pre-line">
+                      {descriptionInput.trim() && descriptionInput.trim() !== titleInput.trim() ? (
+                        <p className="mt-1 text-xs text-stone-600 line-clamp-2 leading-relaxed">
                           {descriptionInput}
                         </p>
                       ) : null}
@@ -904,150 +1039,181 @@ function BookingFlow() {
                     <button
                       type="button"
                       onClick={() => setStep(1)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline shrink-0 pt-1 cursor-pointer"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline shrink-0 pt-0.5 cursor-pointer"
                     >
-                      <Pencil className="h-3.5 w-3.5" />
+                      <Pencil className="h-3 w-3" />
                       Edit Details
                     </button>
                   </div>
 
                   {/* Clean Specification Grid without nested boxed tiles */}
-                  <div className="mt-5 pt-5 border-t border-line/70 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-y-4 gap-x-5 text-xs">
                     {/* Timeframe */}
-                    <div className="flex items-start gap-2.5">
-                      <Calendar className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-muted shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          Timeframe
-                        </span>
-                        <span className="text-xs sm:text-sm font-semibold text-title capitalize block mt-0.5">
+                        <span className="text-[11px] text-muted block leading-none">Timeframe</span>
+                        <span className="font-semibold text-title capitalize truncate block mt-1">
                           {urgency === "asap" ? "Emergency / ASAP" : urgency.replace("_", " ")}
                         </span>
                       </div>
                     </div>
 
                     {/* Arrival Window */}
-                    <div className="flex items-start gap-2.5">
-                      <Clock className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2">
+                      <Clock className="h-3.5 w-3.5 text-muted shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          Arrival Window
-                        </span>
-                        <span className="text-xs sm:text-sm font-semibold text-title block mt-0.5">
+                        <span className="text-[11px] text-muted block leading-none">Arrival Window</span>
+                        <span className="font-semibold text-title block mt-1 capitalize truncate">
                           {timeWindow}
                         </span>
                       </div>
                     </div>
 
                     {/* Service Location */}
-                    <div className="flex items-start gap-2.5">
-                      <MapPin className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-3.5 w-3.5 text-muted shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          Service Location
-                        </span>
-                        <span className="text-xs sm:text-sm font-semibold text-title block mt-0.5">
+                        <span className="text-[11px] text-muted block leading-none">Location</span>
+                        <span className="font-semibold text-title block mt-1 truncate">
                           {displayLocation}
                         </span>
                       </div>
                     </div>
 
                     {/* Property Type */}
-                    <div className="flex items-start gap-2.5">
-                      <Home className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2">
+                      <Building2 className="h-3.5 w-3.5 text-muted shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          Property Type
-                        </span>
-                        <span className="text-xs sm:text-sm font-semibold text-title capitalize block mt-0.5">
+                        <span className="text-[11px] text-muted block leading-none">Property</span>
+                        <span className="font-semibold text-title capitalize block mt-1 truncate">
                           {propertyType.replace("_", " ")}
                         </span>
                       </div>
                     </div>
 
                     {/* Parts & Materials */}
-                    <div className="flex items-start gap-2.5">
-                      <Package className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2">
+                      <Package className="h-3.5 w-3.5 text-muted shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          Parts &amp; Materials
-                        </span>
-                        <span className="text-xs sm:text-sm font-semibold text-title block mt-0.5">
-                          {MATERIAL_OPTIONS.find((item) => item.id === materialsStatus)?.title}
+                        <span className="text-[11px] text-muted block leading-none">Materials</span>
+                        <span className="font-semibold text-title block mt-1 truncate">
+                          {MATERIAL_OPTIONS.find((item) => item.id === materialsStatus)?.title ?? "Pro supplies parts"}
                         </span>
                       </div>
                     </div>
 
-                    {/* Budget */}
+                    {/* Budget (if provided) */}
                     {budget ? (
-                      <div className="flex items-start gap-2.5">
-                        <Wallet className="h-4 w-4 text-muted shrink-0 mt-0.5" />
+                      <div className="flex items-start gap-2">
+                        <Wallet className="h-3.5 w-3.5 text-muted shrink-0 mt-0.5" />
                         <div className="min-w-0">
-                          <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
-                            Estimated Budget
-                          </span>
-                          <span className="text-xs sm:text-sm font-semibold text-title block mt-0.5">
-                            {budget}
+                          <span className="text-[11px] text-muted block leading-none">Est. Budget</span>
+                          <span className="font-semibold text-title block mt-1 truncate">
+                            {budget.startsWith("$") || budget.toLowerCase().startsWith("under") || budget.toLowerCase().startsWith("flex") ? budget : `$${budget}`}
                           </span>
                         </div>
                       </div>
                     ) : null}
                   </div>
 
+                  {/* Answered Category Specifics (Only rendered if user answered) */}
+                  {Object.keys(categoryAnswers).some((k) => categoryAnswers[k]) ? (
+                    <div className="border-t border-line/60 pt-3 flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted mr-1">
+                        Specifics:
+                      </span>
+                      {categoryQuestions
+                        .filter((q) => categoryAnswers[q.id])
+                        .map((q) => {
+                          const selectedVal = categoryAnswers[q.id];
+                          const opt = q.options.find((o) => o.value === selectedVal);
+                          return (
+                            <span
+                              key={q.id}
+                              className="inline-flex items-center gap-1 rounded-md bg-white border border-line/80 px-2.5 py-1 text-xs text-title font-medium shadow-2xs"
+                            >
+                              <span className="text-muted">{cleanFactLabel(q.prompt)}:</span>
+                              <span className="font-semibold">{opt?.label ?? selectedVal}</span>
+                            </span>
+                          );
+                        })}
+                      <button
+                        type="button"
+                        onClick={() => setStep(2)}
+                        className="text-xs font-semibold text-primary hover:underline ml-auto cursor-pointer"
+                      >
+                        Edit specs
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {/* Attached Photos (Only rendered if user attached photos) */}
+                  {photoUrls.length > 0 && (
+                    <div className="border-t border-line/60 pt-3">
+                      <div className="flex items-center justify-between text-xs mb-2.5">
+                        <span className="font-semibold text-title flex items-center gap-1.5">
+                          <Camera className="h-3.5 w-3.5 text-primary" />
+                          Attached Photos ({photoUrls.length})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setStep(1)}
+                          className="text-primary hover:underline font-semibold cursor-pointer"
+                        >
+                          Edit photos
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2.5">
+                        {photoUrls.map((src, index) => (
+                          <div
+                            key={src.slice(0, 48)}
+                            className="h-16 w-16 overflow-hidden rounded-xl border border-line shadow-2xs"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={src} alt={`Site photo ${index + 1}`} className="h-full w-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Bottom Strip */}
-                  <div className="mt-5 pt-4 border-t border-line/60 flex items-center justify-between text-xs text-muted">
+                  <div className="border-t border-line/60 pt-3 flex items-center justify-between text-xs text-muted">
                     <span>
-                      {photoUrls.length > 0
-                        ? `📷 ${photoUrls.length} job photo${photoUrls.length > 1 ? "s" : ""} attached`
-                        : "No photos attached (optional)"}
+                      {invitedPro
+                        ? `Direct request will be sent to ${invitedPro.name}`
+                        : "Quotes from top matching pros will arrive directly in your dashboard"}
                     </span>
                     <button
                       type="button"
-                      onClick={() => setStep(2)}
+                      onClick={() => setStep(3)}
                       className="font-semibold text-primary hover:underline cursor-pointer"
                     >
                       Edit schedule &amp; address
                     </button>
                   </div>
                 </div>
-
-                {/* Photos Preview in Review (if any) */}
-                {photoUrls.length > 0 && (
-                  <div className="space-y-2 rounded-2xl border border-line/70 bg-white p-4">
-                    <span className="text-xs font-semibold text-title block">Attached Photos ({photoUrls.length})</span>
-                    <div className="flex flex-wrap gap-2.5">
-                      {photoUrls.map((src) => (
-                        <div
-                          key={src.slice(0, 48)}
-                          className="h-16 w-16 overflow-hidden rounded-xl border border-line shadow-2xs"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={src} alt="Attached" className="h-full w-full object-cover" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
             {/* Error Banner */}
             {error && (
-              <div className="mt-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-xs font-medium text-error border border-red-200">
+              <div className="mt-5 flex items-center gap-2 rounded-xl bg-red-50 p-3.5 text-xs font-medium text-error border border-red-200">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {/* Navigation Buttons */}
-            <div className="mt-6 flex items-center justify-between border-t border-line/60 pt-4">
+            <div className="mt-8 flex items-center justify-between border-t border-line/60 pt-6">
               {step > 1 ? (
                 <Button
                   type="button"
                   variant="ghost"
                   size="md"
                   onClick={handleBack}
-                  className="rounded-full gap-1.5"
+                  className="rounded-full gap-1.5 cursor-pointer px-5"
                 >
                   <ArrowLeft className="h-4 w-4" /> Back
                 </Button>
@@ -1056,34 +1222,48 @@ function BookingFlow() {
                   href="/account"
                   variant="ghost"
                   size="md"
-                  className="rounded-full text-muted"
+                  className="rounded-full text-muted cursor-pointer px-5"
                 >
                   Cancel
                 </Button>
               )}
 
-              {step < 3 ? (
-                <Button
-                  type="button"
-                  size="md"
-                  onClick={handleNext}
-                  className="rounded-full gap-1.5 font-semibold shadow-xs"
-                >
-                  Continue <ArrowRight className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  size="md"
-                  onClick={handleFinalSubmit}
-                  className="rounded-full gap-2 font-semibold shadow-sm bg-primary hover:bg-primary-hover px-6"
-                >
-                  <Send className="h-4 w-4" />
-                  {invitedPro
-                    ? `Send Request to ${invitedPro.name}`
-                    : "Post Request & Get Quotes"}
-                </Button>
-              )}
+              <div className="flex items-center gap-2.5">
+                {step === 2 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="md"
+                    onClick={handleSkipCategory}
+                    className="rounded-full text-xs font-semibold text-muted hover:text-title cursor-pointer px-4"
+                  >
+                    Skip this step ↗
+                  </Button>
+                )}
+
+                {step < 4 ? (
+                  <Button
+                    type="button"
+                    size="md"
+                    onClick={handleNext}
+                    className="rounded-full gap-1.5 font-semibold shadow-xs cursor-pointer px-6"
+                  >
+                    Continue <ArrowRight className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="md"
+                    onClick={handleFinalSubmit}
+                    className="rounded-full gap-2 font-semibold shadow-sm bg-primary hover:bg-primary-hover px-7 cursor-pointer"
+                  >
+                    <Send className="h-4 w-4" />
+                    {invitedPro
+                      ? `Send Request to ${invitedPro.name}`
+                      : "Post Request & Get Quotes"}
+                  </Button>
+                )}
+              </div>
             </div>
           </Card>
         </div>

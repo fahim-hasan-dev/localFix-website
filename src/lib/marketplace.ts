@@ -125,6 +125,92 @@ export function jobCardSummary(job: Job) {
   return text;
 }
 
+export function cleanFactLabel(rawLabel: string): string {
+  const clean = rawLabel.replace(/[?:.]+$/g, "").trim();
+  const lower = clean.toLowerCase();
+
+  const labelMap: Record<string, string> = {
+    "what kind of clean do you need": "Clean type",
+    "how many bedrooms": "Bedrooms",
+    "how many bathrooms": "Bathrooms",
+    "how often": "Frequency",
+    "any pets": "Pets",
+    "when do you need this done": "Timing",
+    "what's the plumbing issue": "Issue",
+    "what is the plumbing issue": "Issue",
+    "where is it": "Location",
+    "is water still running": "Water running",
+    "what electrical work do you need": "Service needed",
+    "how many spots": "Spot count",
+    "is power still on in the rest of the home": "Power status",
+    "what needs work": "Equipment",
+    "what's happening": "Issue",
+    "what are you painting": "Area",
+    "how much space": "Space / Rooms",
+    "do you have the paint": "Paint supplied",
+    "what type of roof is it": "Roof type",
+    "how steep is the roof": "Roof pitch",
+    "what appliance is having issues": "Appliance",
+    "what's the brand": "Brand",
+    "what's the landscaping service": "Service type",
+    "how big is the yard": "Yard size",
+    "what handyman service do you need": "Task type",
+  };
+
+  if (labelMap[lower]) return labelMap[lower];
+
+  if (lower.startsWith("how many ")) {
+    const rest = clean.slice(9).trim();
+    return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : clean;
+  }
+  if (lower.startsWith("what type of ")) {
+    const rest = clean.slice(13).trim();
+    return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : clean;
+  }
+  if (lower.startsWith("what kind of ")) {
+    const rest = clean.slice(13).trim();
+    return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : clean;
+  }
+  if (lower.startsWith("what is the ")) {
+    const rest = clean.slice(12).trim();
+    return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : clean;
+  }
+  if (lower.startsWith("what's the ")) {
+    const rest = clean.slice(11).trim();
+    return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : clean;
+  }
+
+  return clean;
+}
+
+export function cleanJobDescription(description?: string, intakeAnswers?: Job["intakeAnswers"]): string {
+  if (!description) return "";
+  const { text } = splitJobDescription(description);
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+
+  if (intakeAnswers && intakeAnswers.length > 0) {
+    const firstPrompt = intakeAnswers[0]?.label;
+    if (firstPrompt && trimmed.includes(firstPrompt)) {
+      const customPrefix = trimmed.split(firstPrompt)[0].replace(/[. :–-]+$/, "").trim();
+      return customPrefix;
+    }
+
+    const allAnswerValuesFound = intakeAnswers
+      .filter((a) => a.value && a.value.length > 1)
+      .every((a) => trimmed.includes(a.value));
+    if (allAnswerValuesFound && trimmed.includes("?")) {
+      return "";
+    }
+  }
+
+  if (/^([A-Z][^?]+\?\s*[^?.]+)+$/i.test(trimmed.replace(/\n/g, " "))) {
+    return "";
+  }
+
+  return trimmed;
+}
+
 export function jobRequestFacts(job: Job) {
   const { timing: taggedTiming } = splitJobDescription(job.description);
   const byId = (id: string) => job.intakeAnswers?.find((item) => item.id === id)?.value;
@@ -132,7 +218,7 @@ export function jobRequestFacts(job: Job) {
     job.intakeAnswers?.find((item) => pattern.test(item.label))?.value;
 
   const facts: { label: string; value: string }[] = [];
-  const timing = byId("timing") ?? byLabel(/timing/i) ?? taggedTiming;
+  const timing = byId("timing") ?? byId("when") ?? byLabel(/timing|schedule|when/i) ?? taggedTiming;
   const materials = byId("materials") ?? byLabel(/part|material/i);
   if (timing) facts.push({ label: "Timing", value: timing });
   if (materials) facts.push({ label: "Materials", value: materials });
@@ -147,23 +233,40 @@ export function jobRequestFacts(job: Job) {
     };
     facts.push({ label: "Property", value: labels[job.propertyType] ?? job.propertyType });
   }
-  if (job.budget) facts.push({ label: "Budget", value: job.budget });
+  if (job.budget) {
+    const raw = job.budget.trim();
+    const formatted =
+      raw.startsWith("$") ||
+      raw.toLowerCase().startsWith("under") ||
+      raw.toLowerCase().startsWith("open") ||
+      raw.toLowerCase().startsWith("flex")
+        ? raw
+        : `$${raw}`;
+    facts.push({ label: "Budget", value: formatted });
+  }
 
   if (job.intakeAnswers && job.intakeAnswers.length > 0) {
     job.intakeAnswers.forEach((ans) => {
       if (
         ans.id !== "timing" &&
+        ans.id !== "when" &&
         ans.id !== "materials" &&
-        !/timing|schedule|part|material/i.test(ans.label) &&
+        !/timing|schedule|when|part|material/i.test(ans.label) &&
         ans.value &&
         ans.label
       ) {
-        facts.push({ label: ans.label, value: ans.value });
+        facts.push({ label: cleanFactLabel(ans.label), value: ans.value });
       }
     });
   }
 
-  return facts;
+  const seen = new Set<string>();
+  return facts.filter((f) => {
+    const key = f.label.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export const paymentMethodLabels: Record<string, string> = {

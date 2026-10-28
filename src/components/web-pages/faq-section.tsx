@@ -97,14 +97,6 @@ export function FaqSection({
               >
                 <Home className="h-4 w-4 text-primary shrink-0" />
                 <span>For Homeowners</span>
-                <span
-                  className={cn(
-                    "rounded-md px-1.5 py-0.5 text-[10px] font-bold",
-                    tab === "homeowner" ? "bg-primary/10 text-primary" : "bg-slate-200/60 text-muted",
-                  )}
-                >
-                  {homeownerFaqs.length}
-                </span>
               </button>
 
               <button
@@ -122,14 +114,6 @@ export function FaqSection({
               >
                 <Wrench className="h-4 w-4 text-primary shrink-0" />
                 <span>For Contractors &amp; Pros</span>
-                <span
-                  className={cn(
-                    "rounded-md px-1.5 py-0.5 text-[10px] font-bold",
-                    tab === "pro" ? "bg-primary/10 text-primary" : "bg-slate-200/60 text-muted",
-                  )}
-                >
-                  {proFaqs.length}
-                </span>
               </button>
             </div>
           </div>
