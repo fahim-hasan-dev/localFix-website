@@ -77,7 +77,7 @@ export function Navbar() {
           ) : null}
           <button
             type="button"
-            className="grid h-10 w-10 place-items-center rounded-xl border border-line text-title"
+            className="grid h-10 w-10 place-items-center rounded-full border border-line/80 bg-white/95 text-title shadow-2xs hover:bg-stone-50 transition-all duration-200 active:scale-95 cursor-pointer"
             onClick={() => setOpen((value) => !value)}
             aria-label="Toggle menu"
           >

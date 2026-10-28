@@ -71,8 +71,8 @@ export function NotificationMenu({ user }: { user: User }) {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          "relative grid h-10 w-10 place-items-center rounded-xl border border-line/70 bg-white text-title transition-all duration-200 hover:border-primary/40 hover:bg-smoke hover:text-primary shadow-xs",
-          open && "border-primary text-primary bg-smoke ring-2 ring-primary/10",
+          "relative grid h-10 w-10 place-items-center rounded-full border border-line/80 bg-white/95 text-title shadow-2xs backdrop-blur-xs transition-all duration-200 hover:border-primary/40 hover:bg-stone-50/80 hover:text-primary hover:shadow-xs active:scale-95 cursor-pointer select-none",
+          open && "border-primary/60 text-primary bg-white ring-2 ring-primary/15 shadow-xs",
         )}
         aria-label={`Notifications (${unreadCount} unread)`}
         aria-expanded={open}
@@ -81,7 +81,7 @@ export function NotificationMenu({ user }: { user: User }) {
       >
         <Bell className="h-4.5 w-4.5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 font-display text-[10px] font-bold text-white shadow-xs animate-in zoom-in">
+          <span className="absolute -top-1 -right-1 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-error px-1 font-display text-[10px] font-bold text-white shadow-xs ring-2 ring-white animate-in zoom-in">
             {unreadCount}
           </span>
         )}
