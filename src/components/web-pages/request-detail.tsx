@@ -177,6 +177,17 @@ export function RequestDetail({
           role: "homeowner",
         }),
       );
+      if (hiredQuote) {
+        dispatch(
+          addNotification({
+            title: "Booking Cancelled by Homeowner",
+            body: `${job.homeownerName} has cancelled the booking for "${job.title}".`,
+            href: `/pro/jobs/${job.id}`,
+            createdAt: new Date().toISOString(),
+            role: "pro",
+          }),
+        );
+      }
       setSavedMsg("Booking cancelled.");
       setShowCancelModal(false);
     } else {
@@ -443,7 +454,7 @@ export function RequestDetail({
               />
             </label>
           )}
-          {!isProView && job.status !== "completed" && (
+          {!isProView && job.status !== "completed" && job.status !== "cancelled" && (
             <Button
               type="button"
               variant="ghost"
@@ -728,7 +739,7 @@ export function RequestDetail({
       ) : null}
 
       {/* Booking panel */}
-      {booking && (workActive || job.status === "completed") ? (
+      {booking && (workActive || job.status === "completed" || job.status === "cancelled") ? (
         <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
           <div className="flex items-center justify-between gap-2 border-b border-line/60 pb-3">
             <h2 className="font-display text-base sm:text-lg font-bold text-title">Appointment &amp; Booking</h2>
@@ -737,10 +748,22 @@ export function RequestDetail({
                 <Check className="h-3.5 w-3.5 text-primary" />
                 Completed &amp; Settled
               </span>
+            ) : job.status === "cancelled" ? (
+              <span className="text-xs text-error font-medium flex items-center gap-1.5">
+                <Ban className="h-3.5 w-3.5 text-error" />
+                Booking Cancelled
+              </span>
             ) : (
               <span className="text-xs text-muted font-medium">Direct pay</span>
             )}
           </div>
+
+          {job.status === "cancelled" ? (
+            <div className="mt-4 rounded-xl border border-error/20 bg-error/5 p-3.5 text-xs text-error flex items-center gap-2.5">
+              <Ban className="h-4 w-4 shrink-0 text-error" />
+              <span>This booking was cancelled. No charges or fees have been collected.</span>
+            </div>
+          ) : null}
 
           <dl className="mt-4 grid gap-3 text-sm text-copy sm:grid-cols-2">
             <div>
@@ -876,7 +899,8 @@ export function RequestDetail({
           job.status !== "en_route" &&
           job.status !== "in_progress" &&
           job.status !== "awaiting_confirm" &&
-          job.status !== "completed" ? (
+          job.status !== "completed" &&
+          job.status !== "cancelled" ? (
             <div className="mt-5 border-t border-line/60 pt-4">
               <p className="text-xs font-bold uppercase tracking-wider text-muted">
                 {booking.scheduledDate ? "Change appointment time" : "Confirm appointment to lock the booking"}
@@ -1083,6 +1107,20 @@ export function RequestDetail({
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Inspect &amp; Confirm Completion
+              </Button>
+            ) : null}
+
+            {/* Homeowner Cancel Booking Action */}
+            {canHire && job.status !== "completed" && job.status !== "cancelled" && isJobBooked ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCancelModal(true)}
+                className="rounded-full text-xs font-semibold text-muted hover:text-error hover:bg-error/10 gap-1.5 cursor-pointer ml-auto"
+              >
+                <Ban className="h-3.5 w-3.5 text-error" />
+                Cancel Booking
               </Button>
             ) : null}
           </div>
@@ -1747,10 +1785,26 @@ export function RequestDetail({
 
       {/* Cancel Request Confirmation Modal */}
       {showCancelModal && job ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-error/10 text-error">
-              {isJobBooked ? <Ban className="h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setShowCancelModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-xl animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-error/10 text-error">
+                {isJobBooked ? <Ban className="h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                className="rounded-full p-1.5 text-muted hover:text-title hover:bg-smoke transition cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
             <h3 className="font-display text-lg font-bold text-title mt-3">
               {isJobBooked ? "Cancel Booking?" : "Delete Request?"}
@@ -1770,9 +1824,10 @@ export function RequestDetail({
                 {isJobBooked ? "Keep Booking" : "Cancel"}
               </Button>
               <Button
+                variant="danger"
                 size="sm"
                 onClick={handleConfirmCancel}
-                className="rounded-xl text-xs font-semibold bg-error hover:bg-error/90 text-white shadow-xs cursor-pointer"
+                className="rounded-xl text-xs font-semibold cursor-pointer"
               >
                 {isJobBooked ? "Cancel Booking" : "Delete"}
               </Button>

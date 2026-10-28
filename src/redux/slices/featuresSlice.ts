@@ -371,10 +371,56 @@ const initialState: FeaturesState = {
   },
 };
 
+const FEATURES_STORAGE_KEY = "lhf-features-v2";
+
+function persistFeatures(state: FeaturesState) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      FEATURES_STORAGE_KEY,
+      JSON.stringify({
+        jobStatusOverride: state.jobStatusOverride,
+        notifications: state.notifications,
+        reviews: state.reviews,
+        membershipCancelled: state.membershipCancelled,
+        membershipPaused: state.membershipPaused,
+      }),
+    );
+  } catch {
+    /* ignore quota */
+  }
+}
+
 const featuresSlice = createSlice({
   name: "features",
   initialState,
   reducers: {
+    hydrateFeatures(state) {
+      if (typeof window === "undefined") return;
+      try {
+        const raw = window.localStorage.getItem(FEATURES_STORAGE_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw);
+          if (saved.jobStatusOverride) {
+            state.jobStatusOverride = { ...state.jobStatusOverride, ...saved.jobStatusOverride };
+          }
+          if (saved.notifications) {
+            state.notifications = saved.notifications;
+          }
+          if (saved.reviews) {
+            state.reviews = saved.reviews;
+          }
+          if (saved.membershipCancelled !== undefined) {
+            state.membershipCancelled = saved.membershipCancelled;
+          }
+          if (saved.membershipPaused !== undefined) {
+            state.membershipPaused = saved.membershipPaused;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    },
     toggleFavorite(state, action: PayloadAction<string>) {
       const id = action.payload;
       state.favorites = state.favorites.includes(id)
@@ -384,11 +430,13 @@ const featuresSlice = createSlice({
     markNotificationRead(state, action: PayloadAction<string>) {
       const note = state.notifications.find((item) => item.id === action.payload);
       if (note) note.read = true;
+      persistFeatures(state);
     },
     markAllNotificationsRead(state, action: PayloadAction<"homeowner" | "pro" | "admin">) {
       state.notifications.forEach((item) => {
         if (item.role === action.payload || item.role === "all") item.read = true;
       });
+      persistFeatures(state);
     },
     addNotification(state, action: PayloadAction<Omit<AppNotification, "id" | "read">>) {
       state.notifications.unshift({
@@ -396,6 +444,7 @@ const featuresSlice = createSlice({
         id: `n-${Date.now()}`,
         read: false,
       });
+      persistFeatures(state);
     },
     addAddress(state, action: PayloadAction<Omit<SavedAddress, "id">>) {
       state.addresses.push({ ...action.payload, id: `addr-${Date.now()}` });
@@ -415,6 +464,7 @@ const featuresSlice = createSlice({
     },
     setJobStatus(state, action: PayloadAction<{ jobId: string; status: JobStatus }>) {
       state.jobStatusOverride[action.payload.jobId] = action.payload.status;
+      persistFeatures(state);
     },
     invitePro(state, action: PayloadAction<{ jobId: string; proId: string }>) {
       const list = state.invitedPros[action.payload.jobId] ?? [];
@@ -542,6 +592,7 @@ const featuresSlice = createSlice({
 });
 
 export const {
+  hydrateFeatures,
   toggleFavorite,
   markNotificationRead,
   markAllNotificationsRead,

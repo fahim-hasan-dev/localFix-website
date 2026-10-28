@@ -4,11 +4,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Ban,
   Calendar,
   CheckCircle2,
   FileCheck2,
   Search,
   Star,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,7 +21,8 @@ import {
   selectAllQuotes,
   selectHomeownerBookingsGrouped,
 } from "@/lib/marketplace";
-import { useAppSelector } from "@/redux/hooks";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { setJobStatus, addNotification } from "@/redux/slices/featuresSlice";
 import { cn } from "@/lib/cn";
 import type { Job } from "@/types";
 
@@ -27,6 +30,7 @@ type BookingTab = "all" | "upcoming" | "inProgress" | "history";
 
 export default function MyBookingsPage() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const state = useAppSelector((state) => state);
   const grouped = useMemo(
@@ -40,6 +44,42 @@ export default function MyBookingsPage() {
 
   const [activeTab, setActiveTab] = useState<BookingTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [cancellingJob, setCancellingJob] = useState<Job | null>(null);
+  const [cancelReason, setCancelReason] = useState("Change of plans");
+
+  function handleConfirmCancel() {
+    if (!cancellingJob) return;
+    dispatch(setJobStatus({ jobId: cancellingJob.id, status: "cancelled" }));
+    dispatch(
+      addNotification({
+        title: "Booking Cancelled",
+        body: `Your booking for "${cancellingJob.title}" has been cancelled.`,
+        href: "/account/bookings",
+        createdAt: new Date().toISOString(),
+        role: "homeowner",
+      }),
+    );
+    const booking = bookings[cancellingJob.id];
+    const hiredQuoteId = hiredByJob[cancellingJob.id];
+    const hiredQuote = quotes.find((quote) => quote.id === hiredQuoteId);
+    const pro = hiredQuote
+      ? getPro(hiredQuote.proId)
+      : booking?.proId
+      ? getPro(booking.proId)
+      : null;
+    if (pro) {
+      dispatch(
+        addNotification({
+          title: "Booking Cancelled by Homeowner",
+          body: `${user?.name ?? "Homeowner"} cancelled the booking for "${cancellingJob.title}".`,
+          href: `/pro/jobs/${cancellingJob.id}`,
+          createdAt: new Date().toISOString(),
+          role: "pro",
+        }),
+      );
+    }
+    setCancellingJob(null);
+  }
 
   const tabCounts = {
     all: grouped.all.length,
@@ -240,6 +280,17 @@ export default function MyBookingsPage() {
                     onClick={(e) => e.stopPropagation()}
                     className="flex items-center gap-2 shrink-0"
                   >
+                    {!isCompleted && job.status !== "cancelled" && job.status !== "disputed" ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setCancellingJob(job)}
+                        className="rounded-full text-xs font-semibold text-muted hover:text-error hover:bg-error/10 cursor-pointer"
+                      >
+                        Cancel
+                      </Button>
+                    ) : null}
                     {pro ? (
                       <Button
                         href={`/account/messages?dm=${pro.id}`}
@@ -267,6 +318,15 @@ export default function MyBookingsPage() {
                       >
                         <FileCheck2 className="h-3.5 w-3.5" />
                         Receipt &amp; Review ↗
+                      </Button>
+                    ) : job.status === "cancelled" ? (
+                      <Button
+                        href={`/account/bookings/${job.id}`}
+                        size="sm"
+                        variant="ghost"
+                        className="rounded-full text-xs font-semibold border border-line text-muted hover:text-title"
+                      >
+                        View Details ↗
                       </Button>
                     ) : (
                       <Button
@@ -309,6 +369,75 @@ export default function MyBookingsPage() {
           })}
         </div>
       )}
+
+      {/* Cancel Booking Confirmation Modal */}
+      {cancellingJob ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setCancellingJob(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-xl animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-error/10 text-error">
+                <Ban className="h-5 w-5" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setCancellingJob(null)}
+                className="rounded-full p-1.5 text-muted hover:text-title hover:bg-smoke transition cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <h3 className="font-display text-lg font-bold text-title mt-3">
+              Cancel Booking?
+            </h3>
+            <p className="mt-1.5 text-xs sm:text-sm text-muted leading-relaxed">
+              Are you sure you want to cancel your booking for <span className="font-semibold text-title">&ldquo;{cancellingJob.title}&rdquo;</span>?
+              No cancellation penalty will be applied, and your pro will be notified.
+            </p>
+
+            <div className="mt-4 space-y-1.5">
+              <label className="text-xs font-semibold text-title">Reason for cancellation (optional)</label>
+              <select
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full rounded-xl border border-line bg-surface/50 px-3 py-2 text-xs text-title outline-none focus:border-primary focus:bg-white"
+              >
+                <option value="Change of plans">Change of plans / No longer needed</option>
+                <option value="Scheduling conflict">Scheduling conflict</option>
+                <option value="Found alternative solution">Found alternative solution</option>
+                <option value="Price or budget reconsideration">Price or budget reconsideration</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCancellingJob(null)}
+                className="rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Keep Booking
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleConfirmCancel}
+                className="rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Cancel Booking
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
