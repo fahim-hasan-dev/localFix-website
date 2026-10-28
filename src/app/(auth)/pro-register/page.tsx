@@ -144,15 +144,15 @@ export default function ProRegisterPage() {
             <Field label="Full name *">
               <TextField value={form.name} onChange={(e) => patch({ name: e.target.value })} placeholder="Joe Smith" />
             </Field>
-            <Field label="Work email *">
+            <Field label="Email *">
               <TextField
                 type="email"
                 value={form.email}
                 onChange={(e) => patch({ email: e.target.value })}
-                placeholder="joe@business.com"
+                placeholder="joe@example.com"
               />
             </Field>
-            <Field label="Business phone *">
+            <Field label="Phone *">
               <TextField
                 value={form.phone}
                 onChange={(e) => patch({ phone: e.target.value })}
