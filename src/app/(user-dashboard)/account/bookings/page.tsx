@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Ban,
   Calendar,
@@ -42,10 +42,29 @@ export default function MyBookingsPage() {
   const hiredByJob = state.marketplace.hiredByJob;
   const reviews = state.features.reviews;
 
-  const [activeTab, setActiveTab] = useState<BookingTab>("all");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab") as BookingTab | null;
+  const [activeTab, setActiveTab] = useState<BookingTab>(
+    tabParam && ["all", "upcoming", "inProgress", "history"].includes(tabParam)
+      ? tabParam
+      : "all",
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [cancellingJob, setCancellingJob] = useState<Job | null>(null);
   const [cancelReason, setCancelReason] = useState("Change of plans");
+
+  function handleTabChange(tab: BookingTab) {
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (tab === "all") {
+        url.searchParams.delete("tab");
+      } else {
+        url.searchParams.set("tab", tab);
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  }
 
   function handleConfirmCancel() {
     if (!cancellingJob) return;
@@ -137,7 +156,7 @@ export default function MyBookingsPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={cn(
                   "flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap",
                   active
@@ -377,7 +396,7 @@ export default function MyBookingsPage() {
           onClick={() => setCancellingJob(null)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-xl animate-in zoom-in-95 duration-150"
+            className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-white p-6 shadow-xl animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between">

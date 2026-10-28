@@ -1,6 +1,5 @@
 import { getProDistance } from "@/lib/geo-distance";
-import type { ListingVisibility } from "@/lib/admin-data";
-import type { Job, Professional } from "@/types";
+import type { Job, Professional, ListingVisibility } from "@/types";
 
 /**
  * Eligible professionals for an open job:

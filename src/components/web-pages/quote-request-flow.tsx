@@ -82,7 +82,6 @@ export function QuoteRequestFlow() {
   const draft = useAppSelector((state) => state.intake.draft);
   const user = useAppSelector((state) => state.auth.user);
   const addresses = useAppSelector((state) => state.features.addresses);
-  const listingStatus = useAppSelector((state) => state.admin.listingStatus);
   const dispatch = useAppDispatch();
 
   const location = useMemo(
@@ -111,9 +110,8 @@ export function QuoteRequestFlow() {
       matchEligiblePros(
         { categorySlug, zip: location.zip, city: location.city },
         professionals,
-        listingStatus,
       ),
-    [categorySlug, listingStatus, location.city, location.zip],
+    [categorySlug, location.city, location.zip],
   );
 
   const intakeAnswers: IntakeAnswer[] = questions

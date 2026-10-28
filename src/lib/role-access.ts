@@ -1,7 +1,7 @@
 import type { User, UserRole } from "@/types";
 
 /** Public audience plus signed-in roles. */
-export type AccessAudience = "guest" | "homeowner" | "pro" | "admin";
+export type AccessAudience = "guest" | "homeowner" | "pro";
 
 export type ProGate = {
   applicationStatus: "draft" | "submitted" | "needs_info" | "rejected" | "cleared";

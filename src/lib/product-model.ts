@@ -3,7 +3,7 @@
  * Keep UI copy and gates aligned with this file.
  */
 
-export type ProductRole = "guest" | "homeowner" | "pro" | "admin";
+export type ProductRole = "guest" | "homeowner" | "pro";
 
 export type SignupField = {
   key: string;
@@ -64,20 +64,6 @@ export const roleFeatures: Record<
       "See the pro job board",
       "Start pro membership",
       "Quote other homeowners' jobs",
-    ],
-  },
-  admin: {
-    landsOn: "/admin — Queue, then disputes, then directory",
-    can: [
-      "Review applications: approve, request info, or reject with a note",
-      "Suspend or restore public listings",
-      "Resolve job disputes",
-      "Oversee requests and membership state",
-    ],
-    cannot: [
-      "Quote, hire, or message as a marketplace user",
-      "Collect repair payments (none on-platform)",
-      "Appear in Find a Pro",
     ],
   },
   pro: {

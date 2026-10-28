@@ -24,7 +24,7 @@ export default function AgentDashboardLayout({
   }, [hydrated, router, user]);
 
   const sections: SidebarSection[] = useMemo(() => {
-    const myProId = "pro-1";
+    const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
     const proJobs = selectProJobsGrouped(state, myProId);
     const proBookings = selectProBookingsGrouped(state, myProId);
     const pendingQuotes = proJobs.totalDirect + proJobs.totalLeads;
@@ -53,7 +53,7 @@ export default function AgentDashboardLayout({
         title: "Storefront",
         items: [
           { href: "/pro/profile", label: "Profile" },
-          { href: "/pro/services", label: "Services & Pricing" },
+          { href: "/pro/services", label: "Services" },
           {
             href: "/pro/reviews",
             label: "Reviews",

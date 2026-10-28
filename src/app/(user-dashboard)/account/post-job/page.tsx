@@ -32,7 +32,7 @@ import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import { categories, getPro, professionals } from "@/Mockdata";
 import { matchEligiblePros } from "@/lib/matching";
-import { questionsForCategory } from "@/lib/intake-questions";
+import { questionsForCategory, type IntakeQuestion, type IntakeChoice } from "@/lib/intake-questions";
 import { cleanFactLabel } from "@/lib/marketplace";
 import { loginAs } from "@/redux/slices/authSlice";
 import { clearDraft } from "@/redux/slices/intakeSlice";
@@ -115,7 +115,6 @@ function BookingFlow() {
   const intakeReady = useAppSelector((state) => state.intake.hydrated);
   const user = useAppSelector((state) => state.auth.user);
   const addresses = useAppSelector((state) => state.features.addresses);
-  const listingStatus = useAppSelector((state) => state.admin.listingStatus);
   const dispatch = useAppDispatch();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -147,11 +146,10 @@ function BookingFlow() {
   const [categoryAnswers, setCategoryAnswers] = useState<Record<string, string>>({});
   const appliedDraftRef = useRef(false);
 
-  const adminCategoryQuestions = useAppSelector((state) => state.admin.categoryQuestions);
   const categoryQuestions = useMemo(() => {
-    const list = adminCategoryQuestions?.[categorySlug] ?? questionsForCategory(categorySlug);
-    return list.filter((q) => q.id !== "when");
-  }, [adminCategoryQuestions, categorySlug]);
+    const list = questionsForCategory(categorySlug);
+    return list.filter((q: IntakeQuestion) => q.id !== "when");
+  }, [categorySlug]);
 
   useEffect(() => {
     if (!intakeReady || appliedDraftRef.current) return;
@@ -265,7 +263,6 @@ function BookingFlow() {
         city: activeAddress?.city || user?.city || "Austin",
       },
       professionals,
-      listingStatus,
     );
     const matchedIds = invitedPro ? [invitedPro.id] : matches.map((item) => item.id);
 
@@ -276,9 +273,9 @@ function BookingFlow() {
     // Only include category answers that were actually chosen by the user
     const dynamicAnswers = Object.entries(categoryAnswers)
       .map(([qId, val]) => {
-        const q = categoryQuestions.find((item) => item.id === qId);
+        const q = categoryQuestions.find((item: IntakeQuestion) => item.id === qId);
         if (!q || !val) return null;
-        const opt = q.options.find((o) => o.value === val);
+        const opt = q.options.find((o: IntakeChoice) => o.value === val);
         return {
           id: q.id,
           label: cleanFactLabel(q.prompt),
@@ -325,50 +322,15 @@ function BookingFlow() {
     }
 
     if (!invitedPro) {
-      matches.slice(0, 3).forEach((pro, index) => {
-        dispatch(
-          addQuote({
-            jobId,
-            proId: pro.id,
-            priceType: "fixed",
-            amount: 140 + index * 45,
-            scope: `Quoted work for ${titleInput.trim()}.`,
-            availability: urgency === "asap" ? "Same day / tomorrow" : "This week",
-            estimatedDuration: "1–3 hours",
-            proposedSchedule: timeLabel,
-            paymentTerms: "Pay the pro directly after the work is done.",
-            warranty: "90-day workmanship",
-            materialsIncluded: true,
-          }),
-        );
-      });
-      if (matches.length) {
-        dispatch(setJobStatus({ jobId, status: "quotes_in" }));
-      }
+      dispatch(setJobStatus({ jobId, status: "active" }));
     }
 
     if (invitedPro) {
       dispatch(invitePro({ jobId, proId: invitedPro.id }));
-      dispatch(
-        addQuote({
-          jobId,
-          proId: invitedPro.id,
-          priceType: "fixed",
-          amount: invitedPro.startingPrice || 140,
-          scope: `Full service for ${titleInput.trim()} based on your project description.`,
-          availability: urgency === "asap" ? "Same day / tomorrow" : "Next 1–3 business days",
-          estimatedDuration: "2–3 hours",
-          proposedSchedule: timeLabel,
-          paymentTerms: "Pay the pro directly after work is inspected.",
-          warranty: "30-day workmanship guarantee",
-          materialsIncluded: materialsStatus === "contractor",
-          notes: "I have reviewed your request and look forward to working with you.",
-        }),
-      );
-      dispatch(setJobStatus({ jobId, status: "quotes_in" }));
+      dispatch(setJobStatus({ jobId, status: "active" }));
       dispatch(
         addNotification({
-          title: "Quote request",
+          title: "Direct quote request received",
           body: `${user?.name ?? "A homeowner"} asked you to quote "${titleInput.trim()}" in ${zipInput.trim()}.`,
           href: `/pro/jobs/${jobId}`,
           createdAt: "Just now",
@@ -701,7 +663,7 @@ function BookingFlow() {
 
                 {categoryQuestions.length > 0 ? (
                   <div className="grid gap-3.5 sm:grid-cols-2">
-                    {categoryQuestions.map((q, qIndex) => {
+                    {categoryQuestions.map((q: IntakeQuestion, qIndex: number) => {
                       const activeVal = categoryAnswers[q.id];
                       return (
                         <div
@@ -724,7 +686,7 @@ function BookingFlow() {
                             )}
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {q.options.map((opt) => {
+                            {q.options.map((opt: IntakeChoice) => {
                               const isSelected = activeVal === opt.value;
                               return (
                                 <button
@@ -1124,10 +1086,10 @@ function BookingFlow() {
                         Specifics:
                       </span>
                       {categoryQuestions
-                        .filter((q) => categoryAnswers[q.id])
-                        .map((q) => {
+                        .filter((q: IntakeQuestion) => categoryAnswers[q.id])
+                        .map((q: IntakeQuestion) => {
                           const selectedVal = categoryAnswers[q.id];
-                          const opt = q.options.find((o) => o.value === selectedVal);
+                          const opt = q.options.find((o: IntakeChoice) => o.value === selectedVal);
                           return (
                             <span
                               key={q.id}

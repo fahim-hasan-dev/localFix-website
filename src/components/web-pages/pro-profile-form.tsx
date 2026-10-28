@@ -114,7 +114,7 @@ export function ProProfileForm() {
 
   function handleSaveAll() {
     const startingFromServices = formData.services.length
-      ? Math.min(...formData.services.map((service) => service.price))
+      ? Math.min(...formData.services.map((service) => service.price ?? formData.startingPrice ?? 95))
       : formData.startingPrice;
     const proName = formData.contactName || formData.businessName || "Luis Ortega";
     dispatch(
@@ -302,7 +302,7 @@ export function ProProfileForm() {
           { key: "overview", label: "Profile Info", icon: User },
           { key: "hours", label: "Hours & Payments", icon: Clock },
           { key: "credentials", label: "Licenses & Verification", icon: ShieldCheck },
-          { key: "portfolio", label: "Project Photos", icon: ImageIcon, count: formData.portfolio.length },
+          { key: "portfolio", label: "Project Photos", icon: ImageIcon },
         ]}
       />
 
@@ -711,7 +711,7 @@ export function ProProfileForm() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-display text-base sm:text-[17px] font-bold text-title">
-                Project Photos ({formData.portfolio.length})
+                Project Photos
               </h3>
               <p className="text-xs text-muted">
                 Completed project photos displayed on your public storefront portfolio.

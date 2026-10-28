@@ -27,11 +27,9 @@ export default function ProServicesPage() {
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Form state for modal
+  // Form state for modal (pricing completely removed)
   const [serviceForm, setServiceForm] = useState({
     name: "",
-    price: 95,
-    unit: "starting rate",
     description: "",
   });
 
@@ -46,8 +44,7 @@ export default function ProServicesPage() {
     return services.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
-        (s.description && s.description.toLowerCase().includes(q)) ||
-        s.unit.toLowerCase().includes(q),
+        (s.description && s.description.toLowerCase().includes(q)),
     );
   }, [services, searchQuery]);
 
@@ -55,8 +52,6 @@ export default function ProServicesPage() {
     setEditingServiceId(null);
     setServiceForm({
       name: "",
-      price: 95,
-      unit: "starting rate",
       description: "",
     });
     setShowModal(true);
@@ -66,8 +61,6 @@ export default function ProServicesPage() {
     setEditingServiceId(srv.id);
     setServiceForm({
       name: srv.name,
-      price: srv.price,
-      unit: srv.unit || "starting rate",
       description: srv.description || "",
     });
     setShowModal(true);
@@ -83,8 +76,6 @@ export default function ProServicesPage() {
           ? {
               ...s,
               name: serviceForm.name.trim(),
-              price: Number(serviceForm.price) || 0,
-              unit: serviceForm.unit.trim() || "starting rate",
               description: serviceForm.description.trim(),
             }
           : s,
@@ -94,19 +85,15 @@ export default function ProServicesPage() {
       const newService: ProServiceItem = {
         id: `srv-${Date.now()}`,
         name: serviceForm.name.trim(),
-        price: Number(serviceForm.price) || 0,
-        unit: serviceForm.unit.trim() || "starting rate",
         description: serviceForm.description.trim(),
       };
       updatedList = [...services, newService];
       showToast("New service added to public storefront!");
     }
 
-    const newMin = Math.min(...updatedList.map((s) => s.price));
     dispatch(
       updateProProfile({
         services: updatedList,
-        startingPrice: newMin > 0 ? newMin : proProfile.startingPrice,
       }),
     );
     setShowModal(false);
@@ -114,22 +101,35 @@ export default function ProServicesPage() {
 
   function handleDeleteService(id: string) {
     const updatedList = services.filter((s) => s.id !== id);
-    const newMin = updatedList.length ? Math.min(...updatedList.map((s) => s.price)) : 0;
     dispatch(
       updateProProfile({
         services: updatedList,
-        startingPrice: newMin > 0 ? newMin : proProfile.startingPrice,
       }),
     );
     showToast("Service removed from storefront.");
   }
 
   const commonPresets = [
-    { name: "Emergency Pipe Leak Repair", price: 95, unit: "starting rate", desc: "Non-invasive electronic leak detection and immediate pipe reseal." },
-    { name: "Water Heater Diagnostic & Flush", price: 140, unit: "flush & diag", desc: "Tank & tankless servicing, element replacement, and anode rod inspection." },
-    { name: "Main Line Drain Clearing & Hydro-Jetting", price: 89, unit: "starting rate", desc: "Kitchen sinks, bathroom lines, and main sewer branch snake clearing." },
-    { name: "Fixture, Toilet & Faucet Installation", price: 110, unit: "per fixture", desc: "OEM fixture mounting, supply hookups, and leak-tested seal guarantee." },
-    { name: "Garbage Disposal Repair & Swap", price: 85, unit: "starting rate", desc: "Humming or jammed disposals, seal gaskets, and brand new unit installs." },
+    {
+      name: "Emergency Pipe Leak Repair",
+      desc: "Non-invasive electronic leak detection and immediate pipe reseal.",
+    },
+    {
+      name: "Water Heater Flush, Repair & Replacement",
+      desc: "Standard tank & tankless servicing, element replacement, and anode rods.",
+    },
+    {
+      name: "Drain Clearing & Hydro-Jetting",
+      desc: "Kitchen sinks, bathroom lines, and main sewer branch snake clearing.",
+    },
+    {
+      name: "Fixture, Toilet & Faucet Installation",
+      desc: "OEM fixture mounting, supply hookups, and leak-tested seal guarantee.",
+    },
+    {
+      name: "Garbage Disposal Repair & Replacement",
+      desc: "Humming or jammed disposals, seal gaskets, and new unit installs.",
+    },
   ];
 
   return (
@@ -146,10 +146,10 @@ export default function ProServicesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line/70 pb-4 pt-1">
         <div>
           <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight">
-            Services &amp; Pricing
+            Services Offered
           </h1>
           <p className="mt-0.5 text-xs sm:text-sm text-muted">
-            Manage your service offerings, starting prices, and job scopes displayed on your public profile.
+            Manage your service offerings and job scopes displayed on your public storefront.
           </p>
         </div>
 
@@ -171,13 +171,13 @@ export default function ProServicesPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search your services by name, rate or keyword…"
+            placeholder="Search your services by name or description…"
             className="w-full rounded-xl border border-line/80 bg-white py-2 pl-3 pr-3 text-xs sm:text-sm text-title outline-none focus:border-primary shadow-2xs"
           />
         </div>
       </div>
 
-      {/* 4. Services Grid (Consistent with Homeowner Public Profile Look) */}
+      {/* 3. Services Grid: Balanced 2-Column Responsive Cards */}
       {filteredServices.length === 0 ? (
         <Card className="rounded-2xl border border-line/80 bg-white p-10 text-center">
           <Filter className="mx-auto mb-3 h-8 w-8 text-muted/60" />
@@ -196,60 +196,53 @@ export default function ProServicesPage() {
           </Button>
         </Card>
       ) : (
-        <div className="space-y-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredServices.map((srv) => (
             <Card
               key={srv.id}
-              className="overflow-hidden rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs hover:border-line hover:shadow-sm transition-all duration-200"
+              className="flex flex-col justify-between rounded-2xl border border-line/80 bg-white p-5 shadow-xs hover:border-line hover:shadow-sm transition-all duration-200"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3.5 min-w-0">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs mt-0.5">
-                    <Check className="h-5 w-5 stroke-[2.5]" />
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-display text-sm sm:text-base font-bold text-title">
-                        {srv.name}
-                      </h2>
-                      <span className="rounded-full bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 text-xs font-bold text-primary">
-                        ${srv.price}
-                      </span>
-                      <span className="text-xs text-muted font-medium">/ {srv.unit}</span>
+              <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-smoke/80 text-primary border border-line/70 shadow-2xs">
+                      <Wrench className="h-4 w-4" />
                     </div>
+                    <h2 className="font-display text-sm sm:text-[15px] font-bold text-title leading-snug">
+                      {srv.name}
+                    </h2>
+                  </div>
 
-                    <p className="mt-1 text-xs sm:text-[13px] text-stone-600 leading-relaxed">
-                      {srv.description || "Includes full diagnosis, verified labor, and parts warranty."}
-                    </p>
+                  <div className="flex items-center gap-1 shrink-0 -mr-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(srv)}
+                      className="p-1.5 rounded-lg text-muted hover:text-title hover:bg-stone-100 transition cursor-pointer"
+                      title="Edit service"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteService(srv.id)}
+                      className="p-1.5 rounded-lg text-muted hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                      title="Delete service"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEdit(srv)}
-                    className="p-2 rounded-xl text-muted hover:text-title hover:bg-stone-100 transition cursor-pointer"
-                    title="Edit service details"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteService(srv.id)}
-                    className="p-2 rounded-xl text-muted hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
-                    title="Delete service"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+                <p className="mt-3 text-xs sm:text-[13px] text-stone-600 leading-relaxed">
+                  {srv.description || "Full diagnostic, professional trade labor, and guaranteed craftsmanship."}
+                </p>
               </div>
             </Card>
           ))}
         </div>
       )}
 
-      {/* 5. Add / Edit Service Modal */}
+      {/* 4. Add / Edit Service Modal (No Pricing Fields) */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
           <div className="w-full max-w-lg rounded-[22px] border border-line bg-white p-6 shadow-xl animate-in zoom-in-95 space-y-4">
@@ -285,29 +278,7 @@ export default function ProServicesPage() {
                 />
               </Field>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Starting Price ($)">
-                  <TextField
-                    type="number"
-                    value={serviceForm.price}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setServiceForm({ ...serviceForm, price: Number(e.target.value) || 0 })
-                    }
-                    placeholder="95"
-                  />
-                </Field>
-                <Field label="Rate Type">
-                  <TextField
-                    value={serviceForm.unit}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setServiceForm({ ...serviceForm, unit: e.target.value })
-                    }
-                    placeholder="starting rate, per fixture, /hr"
-                  />
-                </Field>
-              </div>
-
-              <Field label="Service Scope &amp; Description">
+              <Field label="Service Scope & Description">
                 <TextField
                   value={serviceForm.description}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -331,15 +302,13 @@ export default function ProServicesPage() {
                         onClick={() =>
                           setServiceForm({
                             name: preset.name,
-                            price: preset.price,
-                            unit: preset.unit,
                             description: preset.desc,
                           })
                         }
-                        className="w-full text-left rounded-xl border border-line/80 p-2 hover:border-primary hover:bg-stone-50 transition text-xs flex items-center justify-between"
+                        className="w-full text-left rounded-xl border border-line/80 p-2.5 hover:border-primary hover:bg-stone-50 transition text-xs"
                       >
-                        <span className="font-semibold text-title truncate">{preset.name}</span>
-                        <span className="text-primary font-bold shrink-0 ml-2">${preset.price}</span>
+                        <span className="font-semibold text-title block">{preset.name}</span>
+                        <span className="text-[11px] text-muted block mt-0.5 truncate">{preset.desc}</span>
                       </button>
                     ))}
                   </div>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Calendar,
   Receipt,
@@ -26,7 +26,10 @@ type BookingTab = "all" | "upcoming" | "inProgress" | "history";
 
 export default function ProBookingsPage() {
   const router = useRouter();
-  const myProId = "pro-1";
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab") as BookingTab | null;
+  const user = useAppSelector((state) => state.auth.user);
+  const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
   const state = useAppSelector((state) => state);
   const grouped = useMemo(
     () => selectProBookingsGrouped(state, myProId),
@@ -37,8 +40,25 @@ export default function ProBookingsPage() {
   const hiredByJob = state.marketplace.hiredByJob;
   const reviews = state.features.reviews;
 
-  const [activeTab, setActiveTab] = useState<BookingTab>("all");
+  const [activeTab, setActiveTab] = useState<BookingTab>(
+    tabParam && ["all", "upcoming", "inProgress", "history"].includes(tabParam)
+      ? tabParam
+      : "all",
+  );
   const [searchQuery, setSearchQuery] = useState("");
+
+  function handleTabChange(tab: BookingTab) {
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (tab === "all") {
+        url.searchParams.delete("tab");
+      } else {
+        url.searchParams.set("tab", tab);
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  }
 
   const tabCounts = {
     all: grouped.all.length,
@@ -91,7 +111,7 @@ export default function ProBookingsPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={cn(
                   "flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap",
                   active

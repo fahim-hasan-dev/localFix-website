@@ -4,8 +4,6 @@ import filterReducer from "@/redux/slices/filterSlice";
 import intakeReducer from "@/redux/slices/intakeSlice";
 import marketplaceReducer from "@/redux/slices/marketplaceSlice";
 import featuresReducer from "@/redux/slices/featuresSlice";
-import adminReducer from "@/redux/slices/adminSlice";
-
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -13,7 +11,6 @@ export const store = configureStore({
     intake: intakeReducer,
     marketplace: marketplaceReducer,
     features: featuresReducer,
-    admin: adminReducer,
   },
 });
 

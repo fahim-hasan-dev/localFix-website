@@ -30,7 +30,7 @@ export default function UserDashboardLayout({
   }, [hydrated, pathname, router, user]);
 
   const sections: SidebarSection[] = useMemo(() => {
-    const homeownerName = user?.name || "Sarah Jenkins";
+    const homeownerName = user?.name || "Maya Chen";
     const requests = selectHomeownerRequests(state, homeownerName);
     const bookings = selectHomeownerBookingsGrouped(state, homeownerName);
     const activeRequests = requests.length;

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  AlertCircle,
   Ban,
   Bath,
   BedDouble,
@@ -209,6 +210,19 @@ export function RequestDetail({
   const [savedMsg, setSavedMsg] = useState("");
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleWindow, setRescheduleWindow] = useState("10:00 AM – 12:00 PM (Late Morning)");
+  const [showRescheduleForm, setShowRescheduleForm] = useState(false);
+
+  useEffect(() => {
+    if (booking?.scheduledDate) {
+      setRescheduleDate(booking.scheduledDate);
+    }
+    if (booking?.arrivalWindow || booking?.scheduledTime) {
+      setRescheduleWindow(booking.arrivalWindow || booking.scheduledTime || "10:00 AM – 12:00 PM (Late Morning)");
+    }
+    if (booking?.paymentArrangement) {
+      setArrangePay(booking.paymentArrangement);
+    }
+  }, [booking?.scheduledDate, booking?.arrivalWindow, booking?.scheduledTime, booking?.paymentArrangement]);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -316,25 +330,6 @@ export function RequestDetail({
 
   const requestedPro = job?.requestedProId ? getPro(job.requestedProId) : null;
 
-  useEffect(() => {
-    if (!job || !requestedPro || quotes.length > 0) return;
-    dispatch(
-      addQuote({
-        jobId: job.id,
-        proId: requestedPro.id,
-        priceType: "fixed",
-        amount: requestedPro.startingPrice || 140,
-        scope: `Full service for ${job.title} based on your project description.`,
-        availability: job.urgency === "asap" ? "Same day / tomorrow" : "Next 1–3 business days",
-        estimatedDuration: "2–3 hours",
-        proposedSchedule: "Tomorrow 10:00 AM – 12:00 PM",
-        paymentTerms: "Direct to pro upon job completion (Cash, Card, or Zelle).",
-        warranty: "30-day workmanship guarantee",
-        materialsIncluded: true,
-        notes: "I have reviewed your request and would be glad to help you with this project.",
-      }),
-    );
-  }, [dispatch, job, quotes.length, requestedPro]);
 
   if (!marketplaceReady) {
     return (
@@ -435,7 +430,7 @@ export function RequestDetail({
   }, [cleanDescription, job]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-12">
+    <div className="w-full max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href={backHref} className="inline-flex font-display text-sm font-semibold text-primary">
           ← {backLabel}
@@ -836,19 +831,20 @@ export function RequestDetail({
           {(hiredQuote?.warranty || hiredQuote?.materialsIncluded !== undefined || hiredQuote?.exclusions) ? (
             <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 text-xs">
               {hiredQuote.warranty ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-medium text-emerald-800 border border-emerald-200">
-                  <ShieldCheck className="h-3 w-3" />
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-smoke/80 text-title border border-line/70 px-2.5 py-1 text-xs font-medium">
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
                   Warranty: {hiredQuote.warranty}
                 </span>
               ) : null}
               {hiredQuote.materialsIncluded !== undefined ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 font-medium text-copy">
-                  <Package className="h-3 w-3" />
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-smoke/80 text-title border border-line/70 px-2.5 py-1 text-xs font-medium">
+                  <Package className="h-3.5 w-3.5 text-primary" />
                   {hiredQuote.materialsIncluded ? "Parts & materials included" : "Labor only (parts extra)"}
                 </span>
               ) : null}
               {hiredQuote.exclusions ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-muted">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-smoke/80 text-title border border-line/70 px-2.5 py-1 text-xs font-medium">
+                  <AlertCircle className="h-3.5 w-3.5 text-muted" />
                   Exclusions: {hiredQuote.exclusions}
                 </span>
               ) : null}
@@ -901,113 +897,154 @@ export function RequestDetail({
           job.status !== "awaiting_confirm" &&
           job.status !== "completed" &&
           job.status !== "cancelled" ? (
-            <div className="mt-5 border-t border-line/60 pt-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted">
-                {booking.scheduledDate ? "Change appointment time" : "Confirm appointment to lock the booking"}
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Field label={booking.scheduledDate ? "New Date" : "Appointment date"}>
-                  <TextField
-                    type="date"
-                    value={rescheduleDate}
-                    onChange={(e) => setRescheduleDate(e.target.value)}
-                  />
-                </Field>
-                <Field label="2-hour arrival window">
-                  <NativeSelect
-                    value={rescheduleWindow}
-                    onChange={(e) => setRescheduleWindow(e.target.value)}
-                  >
-                    {arrivalWindowsList.map((win) => (
-                      <option key={win} value={win}>
-                        {win}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                </Field>
-                {!booking.paidAt ? (
-                  <Field label="Agreed payment method">
-                    <NativeSelect
-                      value={booking.paymentArrangement ?? arrangePay}
-                      onChange={(e) => setArrangePay(e.target.value as DirectPaymentMethod)}
+            booking.scheduledDate && !showRescheduleForm ? (
+              <div className="mt-4 pt-3.5 border-t border-line/60 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-muted">
+                  Need to adjust your arrival time or reschedule?
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowRescheduleForm(true)}
+                  className="rounded-full text-xs font-semibold border border-line hover:border-primary/40 hover:text-primary gap-1.5"
+                >
+                  <CalendarSync className="h-3.5 w-3.5 text-primary" />
+                  Reschedule Appointment
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-5 border-t border-line/60 pt-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted">
+                    {booking.scheduledDate ? "Change appointment time" : "Confirm appointment to lock the booking"}
+                  </p>
+                  {booking.scheduledDate ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowRescheduleForm(false)}
+                      className="text-xs text-muted hover:text-title hover:underline font-medium cursor-pointer"
                     >
-                      {Object.entries(paymentMethodLabels).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <Field label={booking.scheduledDate ? "New Date" : "Appointment date"}>
+                    <TextField
+                      type="date"
+                      value={rescheduleDate}
+                      onChange={(e) => setRescheduleDate(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="2-hour arrival window">
+                    <NativeSelect
+                      value={rescheduleWindow}
+                      onChange={(e) => setRescheduleWindow(e.target.value)}
+                    >
+                      {arrivalWindowsList.map((win) => (
+                        <option key={win} value={win}>
+                          {win}
                         </option>
                       ))}
                     </NativeSelect>
                   </Field>
-                ) : null}
-              </div>
-              <div className="mt-3 flex items-center justify-end">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={booking.scheduledDate ? "ghost" : undefined}
-                  disabled={!rescheduleDate}
-                  onClick={() => {
-                    const chosenPay = booking.paymentArrangement ?? arrangePay;
-                    if (!booking.scheduledDate && hiredQuote) {
+                  {!booking.paidAt ? (
+                    <Field label="Agreed payment method">
+                      <NativeSelect
+                        value={booking.paymentArrangement ?? arrangePay}
+                        onChange={(e) => setArrangePay(e.target.value as DirectPaymentMethod)}
+                      >
+                        {Object.entries(paymentMethodLabels).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                  ) : null}
+                </div>
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  {booking.scheduledDate ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowRescheduleForm(false)}
+                      className="rounded-full text-xs"
+                    >
+                      Cancel
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={booking.scheduledDate ? "ghost" : undefined}
+                    disabled={!rescheduleDate}
+                    onClick={() => {
+                      const chosenPay = booking.paymentArrangement ?? arrangePay;
+                      if (!booking.scheduledDate && hiredQuote) {
+                        dispatch(
+                          confirmBooking({
+                            jobId: id,
+                            quoteId: hiredQuote.id,
+                            proId: hiredQuote.proId,
+                            agreedPrice: hiredQuote.amount,
+                            scheduledDate: rescheduleDate,
+                            scheduledTime: rescheduleWindow,
+                            arrivalWindow: rescheduleWindow,
+                            scopeSnapshot: hiredQuote.scope,
+                            paymentArrangement: chosenPay,
+                          }),
+                        );
+                        dispatch(setJobStatus({ jobId: id, status: "scheduled" }));
+                        dispatch(
+                          addNotification({
+                            title: "Booking confirmed",
+                            body: `${rescheduleDate} · pay the professional directly. HomeFix does not collect this.`,
+                            href: `/account/jobs/${id}`,
+                            createdAt: "Just now",
+                            role: "homeowner",
+                          }),
+                        );
+                        dispatch(
+                          addNotification({
+                            title: "Booking confirmed",
+                            body: `Schedule locked for ${rescheduleDate}.`,
+                            href: `/pro/jobs/${id}`,
+                            createdAt: "Just now",
+                            role: "pro",
+                          }),
+                        );
+                        setSavedMsg("Booking confirmed. Pay the professional directly.");
+                        return;
+                      }
                       dispatch(
-                        confirmBooking({
+                        requestReschedule({
                           jobId: id,
-                          quoteId: hiredQuote.id,
-                          proId: hiredQuote.proId,
-                          agreedPrice: hiredQuote.amount,
                           scheduledDate: rescheduleDate,
                           scheduledTime: rescheduleWindow,
                           arrivalWindow: rescheduleWindow,
-                          scopeSnapshot: hiredQuote.scope,
-                          paymentArrangement: chosenPay,
                         }),
                       );
-                      dispatch(setJobStatus({ jobId: id, status: "scheduled" }));
-                      dispatch(
-                        addNotification({
-                          title: "Booking confirmed",
-                          body: `${rescheduleDate} · pay the professional directly. HomeFix does not collect this.`,
-                          href: `/account/jobs/${id}`,
-                          createdAt: "Just now",
-                          role: "homeowner",
-                        }),
-                      );
-                      dispatch(
-                        addNotification({
-                          title: "Booking confirmed",
-                          body: `Schedule locked for ${rescheduleDate}.`,
-                          href: `/pro/jobs/${id}`,
-                          createdAt: "Just now",
-                          role: "pro",
-                        }),
-                      );
-                      setSavedMsg("Booking confirmed. Pay the professional directly.");
-                      return;
-                    }
-                    dispatch(
-                      requestReschedule({
-                        jobId: id,
-                        scheduledDate: rescheduleDate,
-                        scheduledTime: rescheduleWindow,
-                        arrivalWindow: rescheduleWindow,
-                      }),
-                    );
-                    if (chosenPay !== booking.paymentArrangement) {
-                      dispatch(
-                        setPaymentArrangement({
-                          jobId: id,
-                          paymentArrangement: chosenPay,
-                        }),
-                      );
-                    }
-                    setSavedMsg("Appointment rescheduled successfully.");
-                  }}
-                  className="rounded-full border border-line"
-                >
-                  {booking.scheduledDate ? "Update Schedule" : "Confirm Appointment & Schedule"}
-                </Button>
+                      if (chosenPay !== booking.paymentArrangement) {
+                        dispatch(
+                          setPaymentArrangement({
+                            jobId: id,
+                            paymentArrangement: chosenPay,
+                          }),
+                        );
+                      }
+                      setSavedMsg("Appointment rescheduled successfully.");
+                      setShowRescheduleForm(false);
+                    }}
+                    className="rounded-full border border-line"
+                  >
+                    {booking.scheduledDate ? "Update Schedule" : "Confirm Appointment & Schedule"}
+                  </Button>
+                </div>
               </div>
-            </div>
+            )
           ) : null}
 
           {/* Pro & Customer Action Buttons */}
@@ -1440,7 +1477,7 @@ export function RequestDetail({
                     Awaiting Homeowner Review
                   </h3>
                   <p className="text-xs text-muted mt-0.5">
-                    You have marked work complete and settled payment off-platform ($0 fee). Once {job.homeownerName} submits their review, it will be posted here and on your public profile.
+                    You have marked work complete and settled payment off-platform. Once {job.homeownerName} submits their review, it will be posted here and on your public profile.
                   </p>
                 </div>
               </div>
@@ -1464,7 +1501,7 @@ export function RequestDetail({
       {/* MODAL 2: HOMEOWNER DIRECT SETTLEMENT MODAL */}
       {showSettleModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-lg rounded-[24px] border border-line bg-white p-6 sm:p-7 shadow-2xl">
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-[24px] border border-line bg-white p-6 sm:p-7 shadow-2xl">
             <button
               type="button"
               onClick={() => setShowSettleModal(false)}
@@ -1586,7 +1623,7 @@ export function RequestDetail({
       {/* MODAL 3: PRO COMPLETION SUMMARY MODAL */}
       {showProCompleteModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-lg rounded-[24px] border border-line bg-white p-6 sm:p-7 shadow-2xl">
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-[24px] border border-line bg-white p-6 sm:p-7 shadow-2xl">
             <button
               type="button"
               onClick={() => setShowProCompleteModal(false)}
@@ -1664,7 +1701,7 @@ export function RequestDetail({
       {/* MODAL 4: COMPACT STANDARD REVIEW MODAL */}
       {showReviewModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="relative w-full max-w-md rounded-2xl border border-line bg-white shadow-2xl p-5 space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-white shadow-2xl p-5 space-y-4 animate-in zoom-in-95 duration-150">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-line/60 pb-3">
               <div>
@@ -1790,7 +1827,7 @@ export function RequestDetail({
           onClick={() => setShowCancelModal(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-xl animate-in zoom-in-95 duration-150"
+            className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-white p-6 shadow-xl animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between">

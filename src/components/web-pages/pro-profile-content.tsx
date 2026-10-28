@@ -422,7 +422,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
         </div>
 
         {/* 4. SUB-NAVIGATION TAB RIBBON */}
-        <div className="sticky top-[74px] z-30 border-t border-line/70 bg-white/95 backdrop-blur-md shadow-xs">
+        <div className="relative sm:sticky sm:top-[74px] z-30 border-t border-line/70 bg-white/95 backdrop-blur-md shadow-xs">
           <div className="container-site flex items-center justify-between gap-4">
             <div className="flex gap-2 sm:gap-6 overflow-x-auto py-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {[

@@ -16,7 +16,7 @@ export interface AppNotification {
   href: string;
   createdAt: string;
   read: boolean;
-  role: "homeowner" | "pro" | "admin" | "all";
+  role: "homeowner" | "pro" | "all";
 }
 
 export interface SavedAddress {
@@ -82,9 +82,9 @@ interface FeaturesState {
 export interface ProServiceItem {
   id: string;
   name: string;
-  price: number;
-  unit: string;
   description: string;
+  price?: number;
+  unit?: string;
 }
 
 export interface ProSpecialOffer {
@@ -345,7 +345,7 @@ const initialState: FeaturesState = {
       "1-Year workmanship & leak warranty",
       "Floor protection & clean boot covers",
       "OEM certified plumbing parts",
-      "Direct payment on 100% completion ($0 platform fee)",
+      "Direct payment upon 100% completion",
     ],
     licenseNumber: "TX-M-42981",
     licenseState: "TX",
@@ -384,6 +384,13 @@ function persistFeatures(state: FeaturesState) {
         reviews: state.reviews,
         membershipCancelled: state.membershipCancelled,
         membershipPaused: state.membershipPaused,
+        twoFactorOn: state.twoFactorOn,
+        emailVerified: state.emailVerified,
+        phoneVerified: state.phoneVerified,
+        proProfile: state.proProfile,
+        applicationStatus: state.applicationStatus,
+        applicationDraft: state.applicationDraft,
+        addresses: state.addresses,
       }),
     );
   } catch {
@@ -416,6 +423,27 @@ const featuresSlice = createSlice({
           if (saved.membershipPaused !== undefined) {
             state.membershipPaused = saved.membershipPaused;
           }
+          if (saved.twoFactorOn !== undefined) {
+            state.twoFactorOn = saved.twoFactorOn;
+          }
+          if (saved.emailVerified !== undefined) {
+            state.emailVerified = saved.emailVerified;
+          }
+          if (saved.phoneVerified !== undefined) {
+            state.phoneVerified = saved.phoneVerified;
+          }
+          if (saved.proProfile) {
+            state.proProfile = { ...state.proProfile, ...saved.proProfile };
+          }
+          if (saved.applicationStatus) {
+            state.applicationStatus = saved.applicationStatus;
+          }
+          if (saved.applicationDraft) {
+            state.applicationDraft = { ...state.applicationDraft, ...saved.applicationDraft };
+          }
+          if (saved.addresses) {
+            state.addresses = saved.addresses;
+          }
         }
       } catch {
         /* ignore */
@@ -432,7 +460,7 @@ const featuresSlice = createSlice({
       if (note) note.read = true;
       persistFeatures(state);
     },
-    markAllNotificationsRead(state, action: PayloadAction<"homeowner" | "pro" | "admin">) {
+    markAllNotificationsRead(state, action: PayloadAction<"homeowner" | "pro">) {
       state.notifications.forEach((item) => {
         if (item.role === action.payload || item.role === "all") item.read = true;
       });
@@ -448,13 +476,16 @@ const featuresSlice = createSlice({
     },
     addAddress(state, action: PayloadAction<Omit<SavedAddress, "id">>) {
       state.addresses.push({ ...action.payload, id: `addr-${Date.now()}` });
+      persistFeatures(state);
     },
     updateAddress(state, action: PayloadAction<SavedAddress>) {
       const index = state.addresses.findIndex((item) => item.id === action.payload.id);
       if (index >= 0) state.addresses[index] = action.payload;
+      persistFeatures(state);
     },
     removeAddress(state, action: PayloadAction<string>) {
       state.addresses = state.addresses.filter((item) => item.id !== action.payload);
+      persistFeatures(state);
     },
     setLeadAction(state, action: PayloadAction<{ jobId: string; action: LeadAction }>) {
       state.leadActions[action.payload.jobId] = action.payload.action;
@@ -474,6 +505,7 @@ const featuresSlice = createSlice({
     },
     addReview(state, action: PayloadAction<Omit<ReviewItem, "id">>) {
       state.reviews.unshift({ ...action.payload, id: `rev-${Date.now()}` });
+      persistFeatures(state);
     },
     updateReview(
       state,
@@ -484,19 +516,24 @@ const featuresSlice = createSlice({
         review.rating = action.payload.rating;
         review.body = action.payload.body;
       }
+      persistFeatures(state);
     },
     replyToReview(state, action: PayloadAction<{ id: string; reply: string }>) {
       const review = state.reviews.find((item) => item.id === action.payload.id);
       if (review) review.reply = action.payload.reply;
+      persistFeatures(state);
     },
     setTwoFactor(state, action: PayloadAction<boolean>) {
       state.twoFactorOn = action.payload;
+      persistFeatures(state);
     },
     setEmailVerified(state, action: PayloadAction<boolean>) {
       state.emailVerified = action.payload;
+      persistFeatures(state);
     },
     setPhoneVerified(state, action: PayloadAction<boolean>) {
       state.phoneVerified = action.payload;
+      persistFeatures(state);
     },
     setMembershipPaused(state, action: PayloadAction<boolean>) {
       state.membershipPaused = action.payload;
@@ -504,6 +541,7 @@ const featuresSlice = createSlice({
         state.membershipCancelled = false;
         state.contactUnlocked = false;
       }
+      persistFeatures(state);
     },
     setMembershipCancelled(state, action: PayloadAction<boolean>) {
       state.membershipCancelled = action.payload;
@@ -511,29 +549,35 @@ const featuresSlice = createSlice({
         state.membershipPaused = false;
         state.contactUnlocked = false;
       }
+      persistFeatures(state);
     },
     saveApplicationDraft(state, action: PayloadAction<Record<string, string>>) {
       state.applicationDraft = { ...state.applicationDraft, ...action.payload };
       state.applicationStatus = "draft";
+      persistFeatures(state);
     },
     submitApplication(state) {
       state.applicationStatus = "submitted";
       state.rejectionReason = "";
       state.contactUnlocked = false;
+      persistFeatures(state);
     },
     setApplicationNeedsInfo(state, action: PayloadAction<string>) {
       state.applicationStatus = "needs_info";
       state.rejectionReason = action.payload;
       state.contactUnlocked = false;
+      persistFeatures(state);
     },
     setApplicationCleared(state) {
       state.applicationStatus = "cleared";
       state.rejectionReason = "";
+      persistFeatures(state);
     },
     setApplicationRejected(state, action: PayloadAction<string>) {
       state.applicationStatus = "rejected";
       state.rejectionReason = action.payload;
       state.contactUnlocked = false;
+      persistFeatures(state);
     },
     unlockContact(state) {
       state.contactUnlocked = true;
@@ -587,6 +631,7 @@ const featuresSlice = createSlice({
           ...(action.payload.specialOffer ?? {}),
         },
       };
+      persistFeatures(state);
     },
   },
 });

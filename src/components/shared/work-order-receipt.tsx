@@ -57,7 +57,7 @@ export function WorkOrderReceipt({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
-      <div className="relative w-full max-w-lg overflow-hidden rounded-[20px] border border-line/80 bg-white p-6 shadow-2xl">
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-[20px] border border-line/80 bg-white p-6 shadow-2xl">
         {/* 1. Clean Header */}
         <div className="flex items-start justify-between border-b border-line/70 pb-4">
           <div>

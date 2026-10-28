@@ -116,18 +116,6 @@ export const demoProUser: User = {
   avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=240&q=80",
 };
 
-export const demoAdminUser: User = {
-  id: "user-admin-1",
-  name: "Avery Cole",
-  email: "ops@localhomefix.com",
-  role: "admin",
-  phone: "(512) 555-0100",
-  city: "Austin",
-  state: "TX",
-  zip: "78701",
-  avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=240&q=80",
-};
-
 export const professionals: Professional[] = [
   {
     id: "pro-1",
@@ -1049,7 +1037,7 @@ export const quotes: Quote[] = [
     estimatedDuration: "2–3 hours",
     proposedSchedule: "Tomorrow 10:00 AM – 12:00 PM",
     expiresAt: "2026-11-01",
-    paymentTerms: "Direct payment upon 100% completion (Zelle, Cash, Card). $0 platform fee.",
+    paymentTerms: "Direct payment upon 100% completion (Zelle, Cash, Card).",
     status: "accepted",
   },
   {

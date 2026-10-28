@@ -1,4 +1,5 @@
-export type UserRole = "homeowner" | "pro" | "admin";
+export type UserRole = "homeowner" | "pro";
+export type ListingVisibility = "live" | "hidden" | "suspended";
 
 /** Job lifecycle — separate from per-offer status */
 export type JobStatus =

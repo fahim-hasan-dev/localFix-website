@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CalendarCheck,
   Clock,
@@ -35,12 +35,32 @@ export default function ProJobsPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { access } = useRoleAccess();
-  const myProId = "pro-1";
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab") as MainTab | null;
+  const user = useAppSelector((state) => state.auth.user);
+  const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
 
-  const [activeTab, setActiveTab] = useState<MainTab>("direct");
+  const [activeTab, setActiveTab] = useState<MainTab>(
+    tabParam && ["direct", "leads", "quoted"].includes(tabParam)
+      ? tabParam
+      : "direct",
+  );
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("newest");
+
+  function handleTabChange(tab: MainTab) {
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (tab === "direct") {
+        url.searchParams.delete("tab");
+      } else {
+        url.searchParams.set("tab", tab);
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  }
 
   const state = useAppSelector((state) => state);
   const grouped = useMemo(() => selectProJobsGrouped(state, myProId), [state, myProId]);
@@ -119,7 +139,7 @@ export default function ProJobsPage() {
       </div>
 
       {/* 2. Primary Segmented Pill Tab Switcher */}
-      <div className="flex items-center overflow-x-auto no-scrollbar py-1">
+      <div className="flex items-center overflow-x-auto no-scrollbar py-1 px-0.5">
         <div className="inline-flex items-center gap-1 rounded-2xl bg-stone-100/90 p-1 border border-line/60">
           {(
             [
@@ -134,7 +154,7 @@ export default function ProJobsPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={cn(
                   "flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap",
                   active

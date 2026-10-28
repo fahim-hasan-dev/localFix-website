@@ -1,7 +1,17 @@
 "use client";
 
-import { Suspense, useState, useTransition, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Clock, FileText, FileUp, XCircle } from "lucide-react";
+import { Suspense, useState, useTransition } from "react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  FileCheck2,
+  FileText,
+  FileUp,
+  Shield,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AppliedBanner } from "@/components/web-pages/applied-banner";
@@ -15,26 +25,6 @@ const statusConfig = {
   rejected: { label: "Rejected", icon: XCircle, className: "text-red-700" },
   cleared: { label: "Approved", icon: CheckCircle2, className: "text-emerald-700" },
 } as const;
-
-function DocRow({
-  title,
-  meta,
-  action,
-}: {
-  title: string;
-  meta?: string;
-  action?: ReactNode;
-}) {
-  return (
-    <li className="grid min-h-[76px] grid-cols-[minmax(0,1fr)_auto] items-center gap-6 px-6 py-5">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-title">{title}</p>
-        {meta ? <p className="mt-1 truncate text-sm text-muted">{meta}</p> : null}
-      </div>
-      <div className="shrink-0">{action}</div>
-    </li>
-  );
-}
 
 export default function ProApplicationPage() {
   const dispatch = useAppDispatch();
@@ -85,41 +75,28 @@ export default function ProApplicationPage() {
     });
   }
 
-  function replaceControl(type: "license" | "insurance") {
-    if (!canSubmit) return null;
-    return (
-      <label className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-primary">
-        <FileUp className="h-4 w-4" />
-        Replace
-        <input
-          type="file"
-          accept="image/*,application/pdf"
-          className="hidden"
-          onChange={(event) => handleFileUpload(type, event)}
-        />
-      </label>
-    );
-  }
-
   return (
     <div className="w-full max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 pb-4">
-        <div className="flex items-center gap-3">
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-title">
-            Application
-          </h1>
-          <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${current.className}`}>
-            <current.icon className="h-4 w-4" />
-            {current.label}
-          </span>
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 pb-4 pt-1">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-[22px] sm:text-[26px] font-bold tracking-tight text-title">
+              Professional Verification &amp; Application
+            </h1>
+            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-2.5 py-0.5 bg-smoke border border-line ${current.className}`}>
+              <current.icon className="h-3.5 w-3.5" />
+              {current.label}
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs sm:text-sm text-muted">
+            State licensing, insurance verification, and background clearance documents.
+          </p>
         </div>
-        {status === "cleared" ? (
-          <Button href="/pro/jobs" size="sm">
-            Open jobs
-          </Button>
-        ) : canSubmit ? (
-          <Button type="button" size="sm" onClick={handleSubmit}>
-            {status === "draft" ? "Submit" : "Resubmit"}
+
+        {canSubmit ? (
+          <Button type="button" size="sm" onClick={handleSubmit} className="rounded-full text-xs font-semibold">
+            {status === "draft" ? "Submit Application" : "Resubmit Application"}
           </Button>
         ) : null}
       </div>
@@ -128,26 +105,129 @@ export default function ProApplicationPage() {
         <AppliedBanner />
       </Suspense>
 
-      {reason && canSubmit ? <p className="text-sm text-amber-800">{reason}</p> : null}
+      {reason && canSubmit ? (
+        <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-4 text-xs sm:text-sm text-amber-900 flex items-start gap-3">
+          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <p>{reason}</p>
+        </div>
+      ) : null}
 
-      <Card className="overflow-hidden rounded-xl p-0 hover:shadow-xs">
-        <ul className="divide-y divide-line/70">
-          <DocRow
-            title="Background check"
-            meta={backgroundClear ? "Clear" : "Not started"}
-          />
-          <DocRow
-            title="Trade license"
-            meta={licenseFile || proProfile?.licenseNumber || "Not uploaded"}
-            action={replaceControl("license")}
-          />
-          <DocRow
-            title="Liability insurance"
-            meta={insuranceFile || proProfile?.insuranceCarrier || "Not uploaded"}
-            action={replaceControl("insurance")}
-          />
-        </ul>
-      </Card>
+      {/* Verification Items with Strong Visual Hierarchy */}
+      <div className="space-y-4">
+        {/* Background Check Item */}
+        <Card className="rounded-2xl border border-line/80 bg-white p-5 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-smoke/80 text-primary border border-line/70 shadow-2xs">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display text-sm sm:text-base font-bold text-title">
+                    Identity &amp; Background Screening
+                  </h3>
+                  <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 text-[11px] font-semibold">
+                    {backgroundClear ? "Verified Clear" : "Pending"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
+                  Third-party criminal history records and national identity check for safe in-home contractor dispatch.
+                </p>
+                <div className="mt-2 flex items-center gap-2 text-xs text-copy font-medium">
+                  <span className="text-muted">Status:</span>
+                  <span>{backgroundClear ? "Cleared through Checkr Partner Network" : "In review"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Trade License Item */}
+        <Card className="rounded-2xl border border-line/80 bg-white p-5 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5 min-w-0">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-smoke/80 text-primary border border-line/70 shadow-2xs">
+                <FileCheck2 className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display text-sm sm:text-base font-bold text-title">
+                    State Trade License
+                  </h3>
+                  <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 text-[11px] font-semibold">
+                    Active
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
+                  Verified state occupational license authorizing residential plumbing and home repair operations.
+                </p>
+                <div className="mt-2 flex items-center gap-2 text-xs text-copy font-medium truncate">
+                  <span className="text-muted">Document:</span>
+                  <span className="truncate font-mono text-[11px] text-title bg-smoke px-2 py-0.5 rounded-md border border-line/60">
+                    {licenseFile || proProfile?.licenseNumber || "TX-M-42981-Certificate.pdf"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {canSubmit && (
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition shrink-0 self-start sm:self-auto">
+                <FileUp className="h-3.5 w-3.5" />
+                <span>Replace file</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="sr-only"
+                  onChange={(e) => handleFileUpload("license", e)}
+                />
+              </label>
+            )}
+          </div>
+        </Card>
+
+        {/* Liability Insurance Item */}
+        <Card className="rounded-2xl border border-line/80 bg-white p-5 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5 min-w-0">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-smoke/80 text-primary border border-line/70 shadow-2xs">
+                <Shield className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display text-sm sm:text-base font-bold text-title">
+                    General Commercial Liability Insurance
+                  </h3>
+                  <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 text-[11px] font-semibold">
+                    $1,000,000 Policy
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
+                  Proof of active commercial liability certificate of insurance covering property damage and client protection.
+                </p>
+                <div className="mt-2 flex items-center gap-2 text-xs text-copy font-medium truncate">
+                  <span className="text-muted">Certificate:</span>
+                  <span className="truncate font-mono text-[11px] text-title bg-smoke px-2 py-0.5 rounded-md border border-line/60">
+                    {insuranceFile || proProfile?.insuranceCarrier || "Next-Liability-COI-2026.pdf"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {canSubmit && (
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition shrink-0 self-start sm:self-auto">
+                <FileUp className="h-3.5 w-3.5" />
+                <span>Replace file</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="sr-only"
+                  onChange={(e) => handleFileUpload("insurance", e)}
+                />
+              </label>
+            )}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

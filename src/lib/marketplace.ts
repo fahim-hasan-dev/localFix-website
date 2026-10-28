@@ -72,7 +72,7 @@ export function selectJobsForHomeowner(state: RootState, name: string) {
     );
   }
   return selectAllJobs(state).filter(
-    (job) => job.homeownerName === name || job.homeownerName === "Maya Chen"
+    (job) => job.homeownerName === name
   );
 }
 

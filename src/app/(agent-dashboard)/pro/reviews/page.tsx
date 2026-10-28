@@ -268,16 +268,6 @@ export default function ProReviewsPage() {
             { key: "replied", label: "Replied", count: stats.repliedCount },
           ]}
         />
-
-        <Tabs
-          value={selectedFilter}
-          onChange={(key) => setSelectedFilter(key === selectedFilter ? "all" : key)}
-          items={([5, 4, 3, 2, 1] as const).map((star) => ({
-            key: `${star}-star` as FilterType,
-            label: `${star}`,
-            icon: Star,
-          }))}
-        />
       </div>
 
       {/* 4. Review Cards List */}

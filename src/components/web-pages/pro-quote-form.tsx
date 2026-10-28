@@ -38,8 +38,10 @@ export function ProQuoteForm({
   const job = useAppSelector((state) => selectJob(state, jobId));
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[jobId]);
   const quotes = useAppSelector((state) => selectQuotesForJob(state, jobId));
-  const myQuote = quotes.find((q) => q.proId === "pro-1");
-  const myCounters = quotes.filter((q) => q.proId === "pro-1" && q.status === "countered");
+  const user = useAppSelector((state) => state.auth.user);
+  const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
+  const myQuote = quotes.find((q) => q.proId === myProId);
+  const myCounters = quotes.filter((q) => q.proId === myProId && q.status === "countered");
   const jobClosed = Boolean(hiredQuoteId) || ["hired", "scheduled", "cancelled", "completed", "disputed"].includes(job?.status ?? "");
 
   const [saved, setSaved] = useState(false);
@@ -86,7 +88,7 @@ export function ProQuoteForm({
     dispatch(
       addQuote({
         jobId,
-        proId: "pro-1",
+        proId: myProId,
         priceType,
         amount,
         scope,

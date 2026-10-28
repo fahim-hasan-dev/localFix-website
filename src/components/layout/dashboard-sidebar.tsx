@@ -108,19 +108,10 @@ export function DashboardSidebar({
       >
         {resolvedSections.map((section, sIndex) => (
           <div
-            key={section.title || sIndex}
+            key={sIndex}
             className="flex shrink-0 items-center gap-1.5 md:flex-col md:items-stretch md:gap-1"
           >
-            {section.title && (
-              <div
-                className={cn(
-                  "hidden md:block px-3.5 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-muted/70 select-none",
-                  sIndex === 0 ? "pt-1" : "mt-3.5 pt-1",
-                )}
-              >
-                {section.title}
-              </div>
-            )}
+            {sIndex > 0 && <div className="hidden md:block my-2 border-t border-line/60" />}
 
             {section.items.map((item) => {
               const active = isRouteActive(item.href, pathname);

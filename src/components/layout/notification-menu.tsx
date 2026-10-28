@@ -91,7 +91,7 @@ export function NotificationMenu({ user }: { user: User }) {
         <div
           role="dialog"
           aria-label="Notifications"
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-80 sm:w-96 overflow-hidden rounded-2xl border border-line bg-white shadow-xl animate-in fade-in zoom-in-95 duration-150"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(340px,calc(100vw-24px))] sm:w-96 overflow-hidden rounded-2xl border border-line bg-white shadow-xl animate-in fade-in zoom-in-95 duration-150"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-line/70 bg-surface/40 px-4 py-3">
