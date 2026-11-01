@@ -140,10 +140,7 @@ export default function ProApplicationPage() {
                     {backgroundClear ? "Verified Clear" : "Pending"}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
-                  Third-party criminal history records and national identity check for safe in-home contractor dispatch.
-                </p>
-                <div className="mt-2 flex items-center gap-2 text-xs text-copy font-medium">
+                <div className="mt-1.5 flex items-center gap-2 text-xs text-copy font-medium">
                   <span className="text-muted">Status:</span>
                   <span>{backgroundClear ? "Cleared through Checkr Partner Network" : "In review"}</span>
                 </div>
@@ -168,10 +165,7 @@ export default function ProApplicationPage() {
                     Active · #{proProfile?.licenseNumber || draft.licenseNumber || "TX-M-42981"} ({proProfile?.licenseState || draft.licenseState || "TX"})
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
-                  Verified state occupational license authorizing residential plumbing and home repair operations.
-                </p>
-                <div className="mt-2 flex items-center gap-2 text-xs text-copy font-medium truncate">
+                <div className="mt-1.5 flex items-center gap-2 text-xs text-copy font-medium truncate">
                   <span className="text-muted">Document:</span>
                   <span className="truncate font-mono text-[11px] text-title bg-smoke px-2 py-0.5 rounded-md border border-line/60">
                     {licenseFile || proProfile?.licenseNumber || "TX-M-42981-Certificate.pdf"}
@@ -211,10 +205,7 @@ export default function ProApplicationPage() {
                     Identity Verified
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
-                  Driver&apos;s License or Government ID scanned for identity verification and background matching.
-                </p>
-                <div className="mt-2 flex items-center gap-2 text-xs text-copy font-medium truncate">
+                <div className="mt-1.5 flex items-center gap-2 text-xs text-copy font-medium truncate">
                   <span className="text-muted">Document:</span>
                   <span className="truncate font-mono text-[11px] text-title bg-smoke px-2 py-0.5 rounded-md border border-line/60">
                     {idFile || "TX-DL-Luis-Ortega-Front.jpg"}
@@ -254,10 +245,7 @@ export default function ProApplicationPage() {
                     {proProfile?.insuranceCarrier || draft.insuranceCarrier || "Commercial Policy"} · {proProfile?.insuranceCoverage || draft.insuranceCoverage || "$1,000,000"} Policy
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
-                  Proof of active commercial liability certificate of insurance covering property damage and client protection.
-                </p>
-                <div className="mt-2 flex items-center gap-2 text-xs text-copy font-medium truncate">
+                <div className="mt-1.5 flex items-center gap-2 text-xs text-copy font-medium truncate">
                   <span className="text-muted">Certificate:</span>
                   <span className="truncate font-mono text-[11px] text-title bg-smoke px-2 py-0.5 rounded-md border border-line/60">
                     {insuranceFile || proProfile?.insuranceCarrier || "Next-Liability-COI-2026.pdf"}

@@ -109,29 +109,6 @@ export default function ProServicesPage() {
     showToast("Service removed from storefront.");
   }
 
-  const commonPresets = [
-    {
-      name: "Emergency Pipe Leak Repair",
-      desc: "Non-invasive electronic leak detection and immediate pipe reseal.",
-    },
-    {
-      name: "Water Heater Flush, Repair & Replacement",
-      desc: "Standard tank & tankless servicing, element replacement, and anode rods.",
-    },
-    {
-      name: "Drain Clearing & Hydro-Jetting",
-      desc: "Kitchen sinks, bathroom lines, and main sewer branch snake clearing.",
-    },
-    {
-      name: "Fixture, Toilet & Faucet Installation",
-      desc: "OEM fixture mounting, supply hookups, and leak-tested seal guarantee.",
-    },
-    {
-      name: "Garbage Disposal Repair & Replacement",
-      desc: "Humming or jammed disposals, seal gaskets, and new unit installs.",
-    },
-  ];
-
   return (
     <div className="w-full max-w-5xl space-y-6">
       {/* Toast Notification */}
@@ -287,33 +264,6 @@ export default function ProServicesPage() {
                   placeholder="Briefly state what is included in this repair or installation."
                 />
               </Field>
-
-              {/* Quick Preset Selector */}
-              {!editingServiceId && (
-                <div>
-                  <p className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">
-                    Or select a common trade preset:
-                  </p>
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                    {commonPresets.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() =>
-                          setServiceForm({
-                            name: preset.name,
-                            description: preset.desc,
-                          })
-                        }
-                        className="w-full text-left rounded-xl border border-line/80 p-2.5 hover:border-primary hover:bg-stone-50 transition text-xs"
-                      >
-                        <span className="font-semibold text-title block">{preset.name}</span>
-                        <span className="text-[11px] text-muted block mt-0.5 truncate">{preset.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-line/60">

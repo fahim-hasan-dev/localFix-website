@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Clock,
   Image as ImageIcon,
-  Plus,
   ShieldCheck,
   Trash2,
   Upload,
@@ -170,19 +169,6 @@ export function ProProfileForm() {
         cloneDay(formData.businessHours.monday),
       );
     }
-  }
-
-  function addBreak(day: Weekday) {
-    const current = formData.businessHours[day];
-    if (current.slots.length >= 2) return;
-    const first = current.slots[0] ?? { open: "8:00 AM", close: "6:00 PM" };
-    updateDayHours(day, {
-      ...current,
-      slots: [
-        { open: first.open, close: "12:00 PM" },
-        { open: "1:00 PM", close: first.close },
-      ],
-    });
   }
 
   function removeSlot(day: Weekday, index: number) {
@@ -539,18 +525,6 @@ export function ProProfileForm() {
                             ) : null}
                           </div>
                         ))}
-                        {hours.slots.length < 2 ? (
-                          <button
-                            type="button"
-                            onClick={() => addBreak(day.key)}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                            Add break
-                          </button>
-                        ) : (
-                          <p className="text-[11px] text-muted">Closed between these hours.</p>
-                        )}
                       </div>
                     ) : null}
                   </div>

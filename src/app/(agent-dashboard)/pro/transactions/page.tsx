@@ -6,8 +6,6 @@ import {
   ArrowLeft,
   Calendar,
   CheckCircle2,
-  Clock,
-  CreditCard,
   Download,
   FileText,
   Percent,
@@ -150,68 +148,50 @@ export default function TransactionsPage() {
               return (
                 <div
                   key={item.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 sm:p-5 hover:bg-stone-50/60 transition-colors"
+                  className="flex items-center justify-between gap-4 p-4 sm:px-5 hover:bg-stone-50/50 transition-colors"
                 >
-                  <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-                    <div
-                      className={cn(
-                        "grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-semibold shadow-2xs",
-                        isPaid
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : "bg-blue-50 text-blue-700 border border-blue-200",
-                      )}
-                    >
-                      <FileText className="h-5 w-5" />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-stone-100 text-muted">
+                      <FileText className="h-4 w-4" />
                     </div>
 
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-display text-sm font-bold text-title">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-title truncate">
                           {isTrial ? "Pro Membership — 30-Day Free Trial" : "Pro Monthly Membership"}
                         </span>
                         <span
                           className={cn(
-                            "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                            "rounded-md px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
                             isPaid
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : "bg-blue-50 text-blue-700 border border-blue-200",
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-blue-50 text-blue-700",
                           )}
                         >
                           {isPaid ? "Paid" : "Scheduled"}
                         </span>
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
-                        <span className="font-mono text-[11px] text-muted">{invoiceNum}</span>
+                      <div className="mt-0.5 flex items-center gap-2 text-xs text-muted">
+                        <span className="font-mono text-[11px]">{invoiceNum}</span>
                         <span>·</span>
                         <span>{item.date}</span>
-                        <span>·</span>
-                        <span className="inline-flex items-center gap-1">
-                          <CreditCard className="h-3 w-3" /> Visa ending in 4242
-                        </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-line/40">
-                    <div className="text-left sm:text-right">
-                      <p className="font-display text-base font-bold text-title">{item.amount}</p>
-                      <p className="text-[11px] text-muted">
-                        {isPaid ? "Charged to card" : "Pending renewal"}
-                      </p>
-                    </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span className="text-sm font-semibold text-title">{item.amount}</span>
 
                     {isPaid ? (
-                      <Button
+                      <button
                         type="button"
-                        size="sm"
-                        variant="ghost"
                         onClick={() => handleDownload(item.id)}
-                        className="rounded-full text-xs font-semibold gap-1.5 border border-line/70 bg-white hover:bg-stone-100"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-line/70 px-2.5 py-1 text-xs font-medium text-copy hover:bg-stone-50 hover:text-title transition cursor-pointer"
                       >
                         {downloadingId === item.id ? (
                           <>
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 animate-in zoom-in" />
-                            <span>Downloaded</span>
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>Saved</span>
                           </>
                         ) : (
                           <>
@@ -219,11 +199,9 @@ export default function TransactionsPage() {
                             <span>Receipt</span>
                           </>
                         )}
-                      </Button>
+                      </button>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs text-muted px-3 py-1 bg-stone-100 rounded-full">
-                        <Clock className="h-3 w-3" /> Next cycle
-                      </span>
+                      <span className="text-xs text-muted font-medium">Upcoming</span>
                     )}
                   </div>
                 </div>
@@ -232,21 +210,6 @@ export default function TransactionsPage() {
           </div>
         )}
       </Card>
-
-      {/* 4. Educational Zero-Commission Guarantee Banner */}
-      <div className="rounded-2xl border border-line/80 bg-stone-50/70 p-4 sm:p-5 flex items-start gap-3.5">
-        <ShieldCheck className="h-5 w-5 text-title shrink-0 mt-0.5" />
-        <div className="text-xs text-muted space-y-1">
-          <p className="font-semibold text-title text-[13px]">
-            Zero Transaction Fees on Client Repair Earnings
-          </p>
-          <p className="leading-relaxed">
-            This billing history exclusively tracks your LocalHomeFix Pro software subscription ($19.99/mo).
-            When Austin homeowners hire you and pay for repair work, 100% of the funds are paid directly to you.
-            LocalHomeFix takes zero transaction cuts, per-job commissions, or deduction percentages.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }
