@@ -1,6 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { defaultWeeklyHours, type WeeklyHours } from "@/lib/business-hours";
 import {
+  defaultIdDoc,
   defaultInsuranceDoc,
   defaultLicenseDoc,
   type CredentialFile,
@@ -124,6 +125,7 @@ export interface ProProfileData {
   insuranceCoverage: string;
   insuranceExpires: string;
   insuranceDoc: CredentialFile | null;
+  idDoc?: CredentialFile | null;
   portfolio: { title: string; image: string }[];
 }
 
@@ -354,6 +356,7 @@ const initialState: FeaturesState = {
     insuranceCoverage: "$1,000,000",
     insuranceExpires: "2027-09",
     insuranceDoc: defaultInsuranceDoc(),
+    idDoc: defaultIdDoc(),
     portfolio: [
       {
         title: "Kitchen supply line repair",

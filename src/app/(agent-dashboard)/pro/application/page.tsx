@@ -10,6 +10,7 @@ import {
   FileUp,
   Shield,
   ShieldCheck,
+  UserCheck,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,9 @@ export default function ProApplicationPage() {
   const [insuranceFile, setInsuranceFile] = useState(
     draft.insuranceFile || "Next-General-Liability-COI-2026.pdf",
   );
+  const [idFile, setIdFile] = useState(
+    draft.idFile || "TX-DL-Luis-Ortega-Front.jpg",
+  );
   const [, startTransition] = useTransition();
 
   const current = statusConfig[status] || statusConfig.draft;
@@ -52,24 +56,30 @@ export default function ProApplicationPage() {
         savedAt: new Date().toISOString(),
         licenseFile,
         insuranceFile,
+        idFile,
       }),
     );
     dispatch(submitApplication());
   }
 
   function handleFileUpload(
-    type: "license" | "insurance",
+    type: "license" | "insurance" | "id",
     event: React.ChangeEvent<HTMLInputElement>,
   ) {
     const file = event.target.files?.[0];
     if (!file) return;
     startTransition(() => {
       if (type === "license") setLicenseFile(file.name);
-      else setInsuranceFile(file.name);
+      else if (type === "insurance") setInsuranceFile(file.name);
+      else setIdFile(file.name);
       dispatch(
         saveApplicationDraft({
           savedAt: new Date().toISOString(),
-          [type === "license" ? "licenseFile" : "insuranceFile"]: file.name,
+          [type === "license"
+            ? "licenseFile"
+            : type === "insurance"
+              ? "insuranceFile"
+              : "idFile"]: file.name,
         }),
       );
     });
@@ -179,6 +189,49 @@ export default function ProApplicationPage() {
                   accept="image/*,application/pdf"
                   className="sr-only"
                   onChange={(e) => handleFileUpload("license", e)}
+                />
+              </label>
+            )}
+          </div>
+        </Card>
+
+        {/* Government Photo ID Item */}
+        <Card className="rounded-2xl border border-line/80 bg-white p-5 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5 min-w-0">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-smoke/80 text-primary border border-line/70 shadow-2xs">
+                <UserCheck className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display text-sm sm:text-base font-bold text-title">
+                    Government Photo ID
+                  </h3>
+                  <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 text-[11px] font-semibold">
+                    Identity Verified
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
+                  Driver&apos;s License or Government ID scanned for identity verification and background matching.
+                </p>
+                <div className="mt-2 flex items-center gap-2 text-xs text-copy font-medium truncate">
+                  <span className="text-muted">Document:</span>
+                  <span className="truncate font-mono text-[11px] text-title bg-smoke px-2 py-0.5 rounded-md border border-line/60">
+                    {idFile || "TX-DL-Luis-Ortega-Front.jpg"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {canSubmit && (
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition shrink-0 self-start sm:self-auto">
+                <FileUp className="h-3.5 w-3.5" />
+                <span>Replace file</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="sr-only"
+                  onChange={(e) => handleFileUpload("id", e)}
                 />
               </label>
             )}

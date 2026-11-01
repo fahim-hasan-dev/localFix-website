@@ -58,3 +58,13 @@ export function defaultInsuranceDoc(): CredentialFile {
     status: "verified",
   };
 }
+
+export function defaultIdDoc(): CredentialFile {
+  return {
+    name: "TX-DL-Luis-Ortega-Front.jpg",
+    sizeLabel: "2.4 MB",
+    kind: "image",
+    uploadedAt: "Sep 29, 2026",
+    status: "verified",
+  };
+}

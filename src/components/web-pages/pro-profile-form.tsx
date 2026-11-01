@@ -34,6 +34,7 @@ import {
 } from "@/lib/business-hours";
 import { CredentialAttachment } from "@/components/shared/credential-attachment";
 import {
+  defaultIdDoc,
   defaultInsuranceDoc,
   defaultLicenseDoc,
   fileFromUpload,
@@ -85,6 +86,7 @@ export function ProProfileForm() {
     ...proProfile,
     businessHours: normalizeWeeklyHours(proProfile.businessHours),
     licenseDoc: proProfile.licenseDoc ?? defaultLicenseDoc(),
+    idDoc: proProfile.idDoc ?? defaultIdDoc(),
     insuranceDoc: proProfile.insuranceDoc ?? defaultInsuranceDoc(),
     insuranceExpires: proProfile.insuranceExpires ?? "2027-09",
     insuranceCoverage: ["$500,000", "$1,000,000", "$2,000,000"].includes(proProfile.insuranceCoverage)
@@ -92,7 +94,7 @@ export function ProProfileForm() {
       : "$1,000,000",
     acceptedPayments: normalizeAcceptedPayments(proProfile.acceptedPayments),
   });
-  const [docErrors, setDocErrors] = useState<{ license?: string; insurance?: string }>({});
+  const [docErrors, setDocErrors] = useState<{ license?: string; insurance?: string; id?: string }>({});
   const [hoursMode, setHoursMode] = useState<"all" | "custom">(() =>
     allDaysMatch(normalizeWeeklyHours(proProfile.businessHours)) ? "all" : "custom",
   );
@@ -202,19 +204,25 @@ export function ProProfileForm() {
     });
   }
 
-  function handleCredentialUpload(kind: "license" | "insurance", file: File) {
+  function handleCredentialUpload(kind: "license" | "insurance" | "id", file: File) {
     const message = validateCredentialFile(file);
     setDocErrors((prev) => ({ ...prev, [kind]: message ?? undefined }));
     if (message) return;
 
     const next = fileFromUpload(file);
     setFormData((prev) => {
-      const key = kind === "license" ? "licenseDoc" : "insuranceDoc";
+      const key = kind === "license" ? "licenseDoc" : kind === "insurance" ? "insuranceDoc" : "idDoc";
       const current = prev[key];
       if (current?.previewUrl) URL.revokeObjectURL(current.previewUrl);
       return { ...prev, [key]: next };
     });
-    showToast(kind === "license" ? "License file sent for review" : "Insurance file sent for review");
+    showToast(
+      kind === "license"
+        ? "License file sent for review"
+        : kind === "insurance"
+          ? "Insurance file sent for review"
+          : "Photo ID sent for review",
+    );
   }
 
 
@@ -685,6 +693,19 @@ export function ProProfileForm() {
               file={formData.insuranceDoc}
               error={docErrors.insurance}
               onUpload={(file) => handleCredentialUpload("insurance", file)}
+            />
+          </Card>
+
+          <Card className="space-y-4 rounded-2xl border border-line/80 bg-white p-6 shadow-2xs">
+            <div>
+              <h3 className="font-display text-base font-bold text-title">Government photo ID</h3>
+              <p className="text-xs text-muted">Driver&apos;s license or passport used for identity verification.</p>
+            </div>
+            <CredentialAttachment
+              label="Photo ID document"
+              file={formData.idDoc ?? null}
+              error={docErrors.id}
+              onUpload={(file) => handleCredentialUpload("id", file)}
             />
           </Card>
 
