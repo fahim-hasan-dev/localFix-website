@@ -1,21 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   AlertCircle,
-  Building2,
+  Check,
   CheckCircle2,
-  FileCheck2,
   FileText,
   FileUp,
   Image as ImageIcon,
   Loader2,
-  MapPin,
-  Shield,
   ShieldCheck,
+  Sparkles,
   Trash2,
-  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -31,27 +28,40 @@ import {
 } from "@/redux/slices/featuresSlice";
 import { useAppDispatch } from "@/redux/hooks";
 import {
-  formatFileSize,
+  defaultIdDoc,
+  defaultInsuranceDoc,
+  defaultLicenseDoc,
+  fileFromUpload,
   validateCredentialFile,
   type CredentialFile,
 } from "@/lib/credential-file";
 
-const steps = ["Account", "Trade & Area", "Documents & ID", "Verification"];
+const steps = ["Account", "Trade & Area", "Credentials & ID", "Verification"];
 type CheckStatus = "idle" | "running" | "clear";
 
 type FormState = {
+  // Step 0: Account
   name: string;
   email: string;
   phone: string;
   password: string;
+
+  // Step 1: Trade & Territory
   businessName: string;
   trade: string;
   serviceZip: string;
   radius: string;
-  // Attachments
+
+  // Step 2: Credentials & Attachments (Identical to Profile Edit)
+  licenseNumber: string;
+  licenseState: string;
   licenseDoc: CredentialFile | null;
-  idDoc: CredentialFile | null;
+
+  insuranceCarrier: string;
+  insuranceCoverage: string;
   insuranceDoc: CredentialFile | null;
+
+  idDoc: CredentialFile | null;
 };
 
 const empty: FormState = {
@@ -63,15 +73,103 @@ const empty: FormState = {
   trade: "",
   serviceZip: "",
   radius: "25",
+  licenseNumber: "",
+  licenseState: "TX",
   licenseDoc: null,
-  idDoc: null,
+  insuranceCarrier: "",
+  insuranceCoverage: "$1,000,000",
   insuranceDoc: null,
+  idDoc: null,
 };
+
+function CompactAttachment({
+  file,
+  label,
+  error,
+  onUpload,
+  onRemove,
+}: {
+  file: CredentialFile | null;
+  label: string;
+  error?: string;
+  onUpload: (file: File) => void;
+  onRemove: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="space-y-1">
+      {file ? (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            {file.kind === "pdf" ? (
+              <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+            ) : (
+              <ImageIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+            )}
+            <span className="truncate font-medium text-title text-[11px] sm:text-xs">
+              {file.name}
+            </span>
+            <span className="text-[10px] text-muted shrink-0">
+              ({file.sizeLabel})
+            </span>
+            <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
+              <CheckCircle2 className="h-2.5 w-2.5" /> Ready
+            </span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="text-[10px] font-semibold text-primary hover:underline px-1"
+            >
+              Replace
+            </button>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="text-muted hover:text-red-600 p-0.5"
+              title="Remove"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-line bg-smoke/40 hover:bg-smoke hover:border-primary/50 px-2.5 py-2 text-xs font-medium text-copy transition"
+        >
+          <FileUp className="h-3.5 w-3.5 text-primary" />
+          <span>{label}</span>
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".pdf,image/png,image/jpeg,image/webp"
+        className="sr-only"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onUpload(f);
+          if (inputRef.current) inputRef.current.value = "";
+        }}
+      />
+      {error && <p className="text-[10px] text-error">{error}</p>}
+    </div>
+  );
+}
 
 export default function ProRegisterPage() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(empty);
   const [error, setError] = useState("");
+  const [docErrors, setDocErrors] = useState<{
+    license?: string;
+    insurance?: string;
+    id?: string;
+  }>({});
   const [consent, setConsent] = useState(false);
   const [checkStatus, setCheckStatus] = useState<CheckStatus>("idle");
   const [screeningStage, setScreeningStage] = useState<string>("");
@@ -82,77 +180,36 @@ export default function ProRegisterPage() {
     setForm((prev) => ({ ...prev, ...partial }));
   }
 
-  function handleFileUpload(
-    kind: "licenseDoc" | "idDoc" | "insuranceDoc",
-    file: File | null,
+  function handleCredentialUpload(
+    kind: "license" | "insurance" | "id",
+    file: File,
   ) {
-    if (!file) return;
-    const validationError = validateCredentialFile(file);
-    if (validationError) {
-      setError(validationError);
-      return;
+    const message = validateCredentialFile(file);
+    setDocErrors((prev) => ({ ...prev, [kind]: message ?? undefined }));
+    if (message) return;
+
+    const next = fileFromUpload(file);
+    if (kind === "license") {
+      patch({ licenseDoc: next });
+    } else if (kind === "insurance") {
+      patch({ insuranceDoc: next });
+    } else {
+      patch({ idDoc: next });
     }
-    setError("");
-    const cred: CredentialFile = {
-      name: file.name,
-      sizeLabel: formatFileSize(file.size),
-      kind: file.type.includes("pdf") ? "pdf" : "image",
-      uploadedAt: new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
-      status: "review",
-      previewUrl: URL.createObjectURL(file),
-    };
-    patch({ [kind]: cred });
   }
 
-  function handleAttachSample(kind: "licenseDoc" | "idDoc" | "insuranceDoc") {
+  function handleAutofillDemo() {
     setError("");
-    const samples: Record<string, CredentialFile> = {
-      licenseDoc: {
-        name: "TX-M-42981-Master-Plumber-Certificate.pdf",
-        sizeLabel: "1.2 MB",
-        kind: "pdf",
-        uploadedAt: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        status: "verified",
-      },
-      idDoc: {
-        name: "TX-DL-Luis-Ortega-Front.jpg",
-        sizeLabel: "2.4 MB",
-        kind: "image",
-        uploadedAt: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        status: "verified",
-      },
-      insuranceDoc: {
-        name: "Next-General-Liability-COI-2026.pdf",
-        sizeLabel: "840 KB",
-        kind: "pdf",
-        uploadedAt: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        status: "verified",
-      },
-    };
-    patch({ [kind]: samples[kind] });
-  }
-
-  function handleAttachAllSamples() {
-    setError("");
-    handleAttachSample("licenseDoc");
-    handleAttachSample("idDoc");
-    handleAttachSample("insuranceDoc");
+    setDocErrors({});
+    patch({
+      licenseNumber: "TX-M-42981",
+      licenseState: "TX",
+      licenseDoc: defaultLicenseDoc(),
+      insuranceCarrier: "Next Insurance",
+      insuranceCoverage: "$1,000,000",
+      insuranceDoc: defaultInsuranceDoc(),
+      idDoc: defaultIdDoc(),
+    });
   }
 
   function runBackgroundCheck() {
@@ -162,10 +219,12 @@ export default function ProRegisterPage() {
       return;
     }
     setCheckStatus("running");
-    setScreeningStage("1/3 Verifying Government Photo ID & face match…");
+    setScreeningStage("1/3 Verifying Government Photo ID & facial match…");
 
     window.setTimeout(() => {
-      setScreeningStage("2/3 Validating Trade License with state registrar…");
+      setScreeningStage(
+        `2/3 Validating Trade License #${form.licenseNumber || "TX-M-42981"} with state registrar…`,
+      );
     }, 800);
 
     window.setTimeout(() => {
@@ -191,7 +250,7 @@ export default function ProRegisterPage() {
       return;
     }
 
-    // Step 1 validation: Business Trade & Service Area
+    // Step 1 validation: Trade & Service Area
     if (step === 1) {
       if (!form.businessName.trim()) {
         setError("Please enter your business or trading name.");
@@ -209,15 +268,23 @@ export default function ProRegisterPage() {
       return;
     }
 
-    // Step 2 validation: Documents & ID Upload
+    // Step 2 validation: Credentials (same as profile edit)
     if (step === 2) {
+      if (!form.licenseNumber.trim()) {
+        setError("Please enter your state trade license number.");
+        return;
+      }
+      if (!form.licenseState.trim()) {
+        setError("Please enter the issuing state for your trade license.");
+        return;
+      }
       if (!form.licenseDoc) {
-        setError("Please upload your Trade License or Certification document.");
+        setError("Please attach your Trade License certificate document.");
         return;
       }
       if (!form.idDoc) {
         setError(
-          "Please upload your Government-issued Photo ID for identity verification.",
+          "Please attach your Government Photo ID document for identity verification.",
         );
         return;
       }
@@ -225,7 +292,7 @@ export default function ProRegisterPage() {
       return;
     }
 
-    // Step 3: Verification
+    // Step 3: Verification Check
     if (checkStatus !== "clear") {
       setError(
         "Please authorize and run the identity screening to complete your registration.",
@@ -236,6 +303,7 @@ export default function ProRegisterPage() {
     const tradeObj = categories.find((c) => c.slug === form.trade);
     const tradeTitle = tradeObj ? tradeObj.name : form.trade || "Plumbing";
 
+    // 1. Save to application draft
     dispatch(
       saveApplicationDraft({
         name: form.name.trim(),
@@ -245,16 +313,22 @@ export default function ProRegisterPage() {
         trade: form.trade,
         serviceZip: form.serviceZip.trim(),
         radius: form.radius,
+        licenseNumber: form.licenseNumber.trim(),
+        licenseState: form.licenseState.trim(),
         licenseFile: form.licenseDoc?.name || "Trade-License.pdf",
-        idFile: form.idDoc?.name || "Gov-Photo-ID.jpg",
+        insuranceCarrier: form.insuranceCarrier.trim(),
+        insuranceCoverage: form.insuranceCoverage,
+        insuranceExpires: "2027-09",
         insuranceFile:
           form.insuranceDoc?.name || "Liability-Insurance-COI.pdf",
+        idFile: form.idDoc?.name || "Gov-Photo-ID.jpg",
         savedAt: new Date().toISOString(),
         backgroundCheck: "clear",
         idVerification: "verified",
       }),
     );
 
+    // 2. Update Pro Profile (exact 1:1 match with profile edit fields)
     dispatch(
       updateProProfile({
         businessName: form.businessName.trim() || "Pro Services",
@@ -265,9 +339,14 @@ export default function ProRegisterPage() {
         phone: form.phone.trim(),
         zip: form.serviceZip.trim() || "78701",
         radiusMiles: Number(form.radius) || 25,
+        licenseNumber: form.licenseNumber.trim() || "TX-M-42981",
+        licenseState: form.licenseState.trim().toUpperCase() || "TX",
         licenseDoc: form.licenseDoc,
-        idDoc: form.idDoc,
+        insuranceCarrier: form.insuranceCarrier.trim() || "Next Insurance",
+        insuranceCoverage: form.insuranceCoverage || "$1,000,000",
+        insuranceExpires: "2027-09",
         insuranceDoc: form.insuranceDoc,
+        idDoc: form.idDoc,
       }),
     );
 
@@ -290,24 +369,24 @@ export default function ProRegisterPage() {
 
   return (
     <div>
-      <h1 className="font-display text-[22px] sm:text-[24px] font-semibold leading-snug tracking-tight text-title">
+      <h1 className="font-display text-[20px] sm:text-[22px] font-semibold leading-snug tracking-tight text-title">
         Join as a professional
       </h1>
-      <p className="mt-1.5 font-sans text-sm leading-relaxed text-[#666]">
+      <p className="mt-1 font-sans text-xs sm:text-sm text-[#666]">
         {step === 0 &&
           "Create your professional account to connect directly with Austin homeowners."}
         {step === 1 &&
           "Set your primary trade specialty and local service territory radius."}
         {step === 2 &&
-          "Upload your trade license and government photo ID for identity verification."}
+          "Provide trade credentials and government photo ID for identity screening."}
         {step === 3 &&
           "Authorize automated identity and safety screening before going live."}
       </p>
 
-      {/* Stepper */}
-      <ol className="relative mt-6 grid grid-cols-4">
+      {/* Stepper with centered ticks and numbers */}
+      <ol className="relative mt-4 mb-5 grid grid-cols-4">
         <span
-          className="absolute top-3 right-[12.5%] left-[12.5%] h-px bg-line"
+          className="absolute top-3 -translate-y-1/2 right-[12.5%] left-[12.5%] h-px bg-line"
           aria-hidden
         />
         {steps.map((title, index) => {
@@ -320,17 +399,21 @@ export default function ProRegisterPage() {
             >
               <span
                 className={cn(
-                  "relative z-10 grid h-6 w-6 place-items-center rounded-full text-[11px] font-bold transition-colors",
+                  "relative z-10 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-colors select-none",
                   done || current
                     ? "bg-primary text-white"
                     : "bg-white text-muted ring-1 ring-line",
                 )}
               >
-                {done ? "✓" : index + 1}
+                {done ? (
+                  <Check className="h-3.5 w-3.5 text-white stroke-[2.5]" />
+                ) : (
+                  <span className="leading-none">{index + 1}</span>
+                )}
               </span>
               <span
                 className={cn(
-                  "whitespace-nowrap text-center font-display text-[11px] sm:text-[12px] font-semibold",
+                  "whitespace-nowrap text-center font-display text-[11px] font-semibold leading-none",
                   current ? "text-title" : "text-muted",
                 )}
               >
@@ -341,7 +424,7 @@ export default function ProRegisterPage() {
         })}
       </ol>
 
-      <div className="mt-7 space-y-5">
+      <div className="mt-4 space-y-3.5">
         {/* Step 0: Account */}
         {step === 0 ? (
           <>
@@ -378,7 +461,7 @@ export default function ProRegisterPage() {
           </>
         ) : null}
 
-        {/* Step 1: Trade & Service Area combined */}
+        {/* Step 1: Trade & Service Area */}
         {step === 1 ? (
           <>
             <Field label="Business name *">
@@ -405,7 +488,7 @@ export default function ProRegisterPage() {
               </NativeSelect>
             </Field>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <Field label="Primary service ZIP *">
                 <TextField
                   value={form.serviceZip}
@@ -427,327 +510,159 @@ export default function ProRegisterPage() {
                 </NativeSelect>
               </Field>
             </div>
-
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex items-start gap-2.5">
-              <Building2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-              <p className="text-xs text-[#555] leading-relaxed">
-                <strong className="text-title font-medium">Quick Note:</strong>{" "}
-                Detailed company bio, work portfolio photos, and customized
-                service pricing can be added anytime in your{" "}
-                <span className="font-semibold text-primary">Edit Profile</span>{" "}
-                dashboard after registration.
-              </p>
-            </div>
           </>
         ) : null}
 
-        {/* Step 2: Credential Attachments & ID Upload */}
+        {/* Step 2: Compact Credentials & Attachments */}
         {step === 2 ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2 border-b border-line/60 pb-2">
-              <div>
-                <h3 className="font-display text-sm font-bold text-title">
-                  Upload Required Credentials
-                </h3>
-                <p className="text-xs text-muted">
-                  Required to verify your trade license and photo ID.
-                </p>
-              </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2 pb-0.5">
+              <span className="text-xs font-bold text-title">
+                Required Credentials
+              </span>
               <button
                 type="button"
-                onClick={handleAttachAllSamples}
-                className="text-xs font-semibold text-primary hover:underline hover:text-primary/80"
+                onClick={handleAutofillDemo}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline hover:text-primary/80"
               >
-                + Attach Demo Documents
+                <Sparkles className="h-3 w-3 text-primary" />
+                Autofill Demo
               </button>
             </div>
 
-            {/* Document 1: Trade License */}
-            <div className="rounded-xl border border-line bg-surface/50 p-3.5 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary">
-                    <FileCheck2 className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-title">
-                      State Trade License / Certification *
-                    </h4>
-                    <p className="text-[11px] text-muted">
-                      Master, Journeyman, or Contractor certificate (PDF or image).
-                    </p>
-                  </div>
-                </div>
-                {form.licenseDoc ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
-                    <CheckCircle2 className="h-3 w-3" /> Attached
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-semibold text-red-600">
-                    Required
-                  </span>
-                )}
+            {/* 1. Trade license card (compact, no bloated height) */}
+            <div className="rounded-xl border border-line bg-smoke/30 p-3 space-y-2.5">
+              <h3 className="text-xs font-bold text-title">
+                Trade License *
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <Field label="License number *">
+                  <TextField
+                    value={form.licenseNumber}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      patch({ licenseNumber: e.target.value })
+                    }
+                    placeholder="TX-M-42981"
+                  />
+                </Field>
+                <Field label="State *">
+                  <TextField
+                    value={form.licenseState}
+                    maxLength={2}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      patch({ licenseState: e.target.value.toUpperCase() })
+                    }
+                    placeholder="TX"
+                  />
+                </Field>
               </div>
-
-              {form.licenseDoc ? (
-                <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-white px-3 py-2 text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <FileText className="h-4 w-4 text-primary shrink-0" />
-                    <span className="truncate font-medium text-title">
-                      {form.licenseDoc.name}
-                    </span>
-                    <span className="text-muted text-[10px] shrink-0">
-                      ({form.licenseDoc.sizeLabel})
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => patch({ licenseDoc: null })}
-                    className="text-red-500 hover:text-red-700 p-1"
-                    title="Remove"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <label className="flex-1 cursor-pointer flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-line bg-white px-3 py-2.5 text-xs font-medium text-copy hover:border-primary/50 hover:bg-smoke transition">
-                    <FileUp className="h-3.5 w-3.5 text-primary" />
-                    <span>Upload License (PDF / Image)</span>
-                    <input
-                      type="file"
-                      accept=".pdf,image/*"
-                      className="sr-only"
-                      onChange={(e) =>
-                        handleFileUpload("licenseDoc", e.target.files?.[0] ?? null)
-                      }
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleAttachSample("licenseDoc")}
-                    className="rounded-lg border border-line bg-smoke px-2.5 py-2.5 text-[11px] font-medium text-title hover:bg-slate-200 transition"
-                  >
-                    Sample
-                  </button>
-                </div>
-              )}
+              <CompactAttachment
+                label="Upload License Certificate (PDF or photo)"
+                file={form.licenseDoc}
+                error={docErrors.license}
+                onUpload={(file) => handleCredentialUpload("license", file)}
+                onRemove={() => patch({ licenseDoc: null })}
+              />
             </div>
 
-            {/* Document 2: Government-issued Photo ID */}
-            <div className="rounded-xl border border-line bg-surface/50 p-3.5 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary">
-                    <UserCheck className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-title">
-                      Government-Issued Photo ID *
-                    </h4>
-                    <p className="text-[11px] text-muted">
-                      Driver&apos;s License, State ID, or Passport for identity screening.
-                    </p>
-                  </div>
-                </div>
-                {form.idDoc ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
-                    <CheckCircle2 className="h-3 w-3" /> Attached
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-semibold text-red-600">
-                    Required for ID check
-                  </span>
-                )}
-              </div>
-
-              {form.idDoc ? (
-                <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-white px-3 py-2 text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <ImageIcon className="h-4 w-4 text-primary shrink-0" />
-                    <span className="truncate font-medium text-title">
-                      {form.idDoc.name}
-                    </span>
-                    <span className="text-muted text-[10px] shrink-0">
-                      ({form.idDoc.sizeLabel})
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => patch({ idDoc: null })}
-                    className="text-red-500 hover:text-red-700 p-1"
-                    title="Remove"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <label className="flex-1 cursor-pointer flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-line bg-white px-3 py-2.5 text-xs font-medium text-copy hover:border-primary/50 hover:bg-smoke transition">
-                    <FileUp className="h-3.5 w-3.5 text-primary" />
-                    <span>Upload Photo ID (JPG / PNG / PDF)</span>
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="sr-only"
-                      onChange={(e) =>
-                        handleFileUpload("idDoc", e.target.files?.[0] ?? null)
-                      }
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleAttachSample("idDoc")}
-                    className="rounded-lg border border-line bg-smoke px-2.5 py-2.5 text-[11px] font-medium text-title hover:bg-slate-200 transition"
-                  >
-                    Sample
-                  </button>
-                </div>
-              )}
+            {/* 2. Government photo ID card (compact) */}
+            <div className="rounded-xl border border-line bg-smoke/30 p-3 space-y-2">
+              <h3 className="text-xs font-bold text-title">
+                Government Photo ID *
+              </h3>
+              <CompactAttachment
+                label="Upload Driver's License or Passport (Photo/PDF)"
+                file={form.idDoc}
+                error={docErrors.id}
+                onUpload={(file) => handleCredentialUpload("id", file)}
+                onRemove={() => patch({ idDoc: null })}
+              />
             </div>
 
-            {/* Document 3: General Liability Insurance (Optional) */}
-            <div className="rounded-xl border border-line bg-surface/50 p-3.5 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary">
-                    <Shield className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-title">
-                      Commercial Liability Insurance (COI)
-                    </h4>
-                    <p className="text-[11px] text-muted">
-                      Optional during signup — can also be uploaded later in profile.
-                    </p>
-                  </div>
-                </div>
-                {form.insuranceDoc ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
-                    <CheckCircle2 className="h-3 w-3" /> Attached
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-medium text-muted">
-                    Optional
-                  </span>
-                )}
+            {/* 3. Liability insurance card (2 columns, NO overlapping!) */}
+            <div className="rounded-xl border border-line bg-smoke/30 p-3 space-y-2.5">
+              <h3 className="text-xs font-bold text-title">
+                Liability Insurance <span className="font-normal text-muted text-[11px]">(Optional)</span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <Field label="Carrier">
+                  <TextField
+                    value={form.insuranceCarrier}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      patch({ insuranceCarrier: e.target.value })
+                    }
+                    placeholder="Next Insurance"
+                  />
+                </Field>
+                <Field label="Coverage">
+                  <NativeSelect
+                    value={form.insuranceCoverage}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                      patch({ insuranceCoverage: e.target.value })
+                    }
+                  >
+                    <option value="$500,000">$500,000</option>
+                    <option value="$1,000,000">$1,000,000</option>
+                    <option value="$2,000,000">$2,000,000</option>
+                  </NativeSelect>
+                </Field>
               </div>
-
-              {form.insuranceDoc ? (
-                <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-white px-3 py-2 text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <FileText className="h-4 w-4 text-primary shrink-0" />
-                    <span className="truncate font-medium text-title">
-                      {form.insuranceDoc.name}
-                    </span>
-                    <span className="text-muted text-[10px] shrink-0">
-                      ({form.insuranceDoc.sizeLabel})
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => patch({ insuranceDoc: null })}
-                    className="text-red-500 hover:text-red-700 p-1"
-                    title="Remove"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <label className="flex-1 cursor-pointer flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-line bg-white px-3 py-2.5 text-xs font-medium text-copy hover:border-primary/50 hover:bg-smoke transition">
-                    <FileUp className="h-3.5 w-3.5 text-primary" />
-                    <span>Upload Insurance COI (PDF / Image)</span>
-                    <input
-                      type="file"
-                      accept=".pdf,image/*"
-                      className="sr-only"
-                      onChange={(e) =>
-                        handleFileUpload("insuranceDoc", e.target.files?.[0] ?? null)
-                      }
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleAttachSample("insuranceDoc")}
-                    className="rounded-lg border border-line bg-smoke px-2.5 py-2.5 text-[11px] font-medium text-title hover:bg-slate-200 transition"
-                  >
-                    Sample
-                  </button>
-                </div>
-              )}
+              <CompactAttachment
+                label="Upload Certificate of Insurance (COI)"
+                file={form.insuranceDoc}
+                error={docErrors.insurance}
+                onUpload={(file) => handleCredentialUpload("insurance", file)}
+                onRemove={() => patch({ insuranceDoc: null })}
+              />
             </div>
           </div>
         ) : null}
 
         {/* Step 3: Identity Verification & Background Check */}
         {step === 3 ? (
-          <div className="rounded-2xl border border-line bg-surface/50 p-4 space-y-4">
-            <div className="flex items-start gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                <ShieldCheck className="h-5 w-5" />
+          <div className="rounded-xl border border-line bg-surface/50 p-3.5 space-y-3">
+            <div className="flex items-start gap-2.5">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                <ShieldCheck className="h-4 w-4" />
               </span>
               <div className="min-w-0">
-                <h2 className="font-display text-base font-semibold text-title">
+                <h2 className="font-display text-sm sm:text-base font-semibold text-title">
                   Identity &amp; Background Screening
                 </h2>
-                <p className="mt-1 text-xs text-copy leading-relaxed">
-                  Screening is conducted using your uploaded Government Photo ID,
-                  Trade License, and personal details before your profile goes live.
+                <p className="mt-0.5 text-xs text-copy">
+                  Verification runs against your uploaded Government ID and License #{form.licenseNumber || "TX-M-42981"}.
                 </p>
               </div>
             </div>
 
-            {/* Attached Verification Documents Pill Summary */}
-            <div className="rounded-xl border border-line/80 bg-white p-3 space-y-2">
-              <p className="text-[11px] font-bold text-muted uppercase tracking-wider">
-                Submitted Documents for Screening:
+            {/* Attached Verification Documents Summary */}
+            <div className="rounded-lg border border-line/80 bg-white p-2.5 space-y-1.5">
+              <p className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                Submitted Credentials for Screening:
               </p>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 font-medium text-emerald-800 border border-emerald-200">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  Photo ID: {form.idDoc?.name || "Verified ID"}
+              <div className="flex flex-wrap gap-1.5 text-xs">
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 border border-emerald-200">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  ID: {form.idDoc?.name || "Verified ID"}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 font-medium text-emerald-800 border border-emerald-200">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  License: {form.licenseDoc?.name || "Verified License"}
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 border border-emerald-200">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  License #{form.licenseNumber || "TX-M-42981"} ({form.licenseState || "TX"})
                 </span>
                 {form.insuranceDoc && (
-                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 font-medium text-blue-800 border border-blue-200">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" />
-                    Insurance: {form.insuranceDoc.name}
+                  <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-800 border border-blue-200">
+                    <CheckCircle2 className="h-3 w-3 text-blue-600" />
+                    Insurance: {form.insuranceCarrier || "Commercial"} ({form.insuranceCoverage})
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Screening Steps Description */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-copy">
-              <div className="rounded-lg border border-line bg-white p-2.5">
-                <p className="font-semibold text-title">1. ID Match</p>
-                <p className="text-[11px] text-muted mt-0.5">
-                  Facial &amp; data match with uploaded government ID.
-                </p>
-              </div>
-              <div className="rounded-lg border border-line bg-white p-2.5">
-                <p className="font-semibold text-title">2. Trade Registry</p>
-                <p className="text-[11px] text-muted mt-0.5">
-                  State licensing board status validation.
-                </p>
-              </div>
-              <div className="rounded-lg border border-line bg-white p-2.5">
-                <p className="font-semibold text-title">3. Safety Check</p>
-                <p className="text-[11px] text-muted mt-0.5">
-                  Checkr national criminal &amp; sex offender search.
-                </p>
-              </div>
-            </div>
-
             {/* Consent Checkbox */}
-            <label className="flex items-start gap-2.5 text-xs sm:text-sm text-copy cursor-pointer pt-1">
+            <label className="flex items-start gap-2 text-xs text-copy cursor-pointer pt-0.5">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-line"
+                className="mt-0.5 h-3.5 w-3.5 rounded border-line"
                 checked={consent}
                 onChange={(e) => setConsent(e.target.checked)}
                 disabled={checkStatus === "running"}
@@ -765,7 +680,7 @@ export default function ProRegisterPage() {
                   type="button"
                   variant="ghost"
                   onClick={runBackgroundCheck}
-                  className="text-xs sm:text-sm"
+                  className="text-xs h-9 px-3"
                 >
                   Run identity &amp; background check
                 </Button>
@@ -773,22 +688,22 @@ export default function ProRegisterPage() {
 
               {checkStatus === "running" ? (
                 <div className="space-y-1">
-                  <p className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-primary">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                  <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     Running screening…
                   </p>
-                  <p className="text-xs text-muted font-medium pl-6">
+                  <p className="text-[11px] text-muted font-medium pl-5">
                     {screeningStage}
                   </p>
                 </div>
               ) : null}
 
               {checkStatus === "clear" ? (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-emerald-800">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 p-2.5 flex items-center gap-2 text-xs font-semibold text-emerald-800">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                   <div>
                     <p>Screening Cleared — Identity &amp; License Verified</p>
-                    <p className="text-xs font-normal text-emerald-700 mt-0.5">
+                    <p className="text-[11px] font-normal text-emerald-700">
                       Your documents match records. You are eligible to submit your application.
                     </p>
                   </div>
@@ -800,13 +715,13 @@ export default function ProRegisterPage() {
       </div>
 
       {error ? (
-        <div className="mt-4 flex items-center gap-2 text-xs sm:text-sm text-error bg-red-50 border border-red-200 p-2.5 rounded-xl">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <div className="mt-3 flex items-center gap-2 text-xs text-error bg-red-50 border border-red-200 p-2 rounded-lg">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           <span>{error}</span>
         </div>
       ) : null}
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {step > 0 ? (
           <Button
             type="button"

@@ -165,7 +165,7 @@ export default function ProApplicationPage() {
                     State Trade License
                   </h3>
                   <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 text-[11px] font-semibold">
-                    Active
+                    Active · #{proProfile?.licenseNumber || draft.licenseNumber || "TX-M-42981"} ({proProfile?.licenseState || draft.licenseState || "TX"})
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
@@ -251,7 +251,7 @@ export default function ProApplicationPage() {
                     General Commercial Liability Insurance
                   </h3>
                   <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 text-[11px] font-semibold">
-                    $1,000,000 Policy
+                    {proProfile?.insuranceCarrier || draft.insuranceCarrier || "Commercial Policy"} · {proProfile?.insuranceCoverage || draft.insuranceCoverage || "$1,000,000"} Policy
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
