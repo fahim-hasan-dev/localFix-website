@@ -15,6 +15,7 @@ export default function FaqPage() {
         title="Common questions"
         description="See how to post a request, compare quotes, and pay your pro. Ask us if something is still unclear."
         className="bg-white"
+        showViewAll={false}
       />
     </>
   );

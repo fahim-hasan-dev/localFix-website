@@ -12,12 +12,14 @@ export function FaqSection({
   description,
   items = defaultFaqs,
   className,
+  showViewAll = true,
 }: {
   eyebrow?: string;
   title?: string;
   description?: string;
   items?: { q: string; a: string }[];
   className?: string;
+  showViewAll?: boolean;
 }) {
   const [tab, setTab] = useState<"homeowner" | "pro">("homeowner");
   const [open, setOpen] = useState(0);
@@ -166,6 +168,21 @@ export function FaqSection({
               );
             })}
           </div>
+
+          {/* View All FAQs Link (redirects to /faq) */}
+          {showViewAll && (
+            <div className="pt-2 sm:pt-3 flex items-center justify-start">
+              <Link
+                href="/faq"
+                className="group inline-flex items-center gap-3 rounded-full border border-line/90 bg-white pl-5 pr-2.5 py-2 text-xs sm:text-sm font-semibold text-title shadow-2xs transition-all duration-200 hover:border-primary hover:text-primary hover:shadow-xs"
+              >
+                <span>View All FAQs</span>
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-slate-700 transition-colors duration-200 group-hover:bg-primary group-hover:text-white">
+                  <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </span>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </section>
