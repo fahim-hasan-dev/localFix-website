@@ -12,8 +12,9 @@ export default function FaqPage() {
         image={photos.banners.how}
       />
       <FaqSection
-        title="Common questions"
-        description="See how to post a request, compare quotes, and pay your pro. Ask us if something is still unclear."
+        eyebrow="Help Center"
+        title="Everything you need to know"
+        description="Clear, transparent answers about posting repairs, comparing contractor quotes, direct payments, and quality guarantees."
         className="bg-white"
         showViewAll={false}
       />
