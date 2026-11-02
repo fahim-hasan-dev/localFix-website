@@ -46,6 +46,7 @@ export default function ProBookingsPage() {
       : "all",
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [previewEmpty, setPreviewEmpty] = useState(false);
 
   function handleTabChange(tab: BookingTab) {
     setActiveTab(tab);
@@ -86,13 +87,23 @@ export default function ProBookingsPage() {
   return (
     <div className="w-full max-w-5xl space-y-6">
       {/* 1. Header */}
-      <div className="border-b border-line/70 pb-4 pt-1">
-        <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight">
-          My Bookings
-        </h1>
-        <p className="mt-0.5 text-xs sm:text-sm text-muted">
-          Confirmed client contracts, scheduled arrival windows, on-site execution, and completion receipts.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line/70 pb-4 pt-1">
+        <div>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-title tracking-tight">
+            My Bookings
+          </h1>
+          <p className="mt-0.5 text-xs sm:text-sm text-muted">
+            Confirmed client contracts, scheduled arrival windows, on-site execution, and completion receipts.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setPreviewEmpty((prev) => !prev)}
+          className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted hover:text-primary hover:border-primary/40 transition shadow-2xs cursor-pointer"
+          title="Toggle empty state view"
+        >
+          <span>{previewEmpty ? "← View Mock Data" : "Preview Empty State"}</span>
+        </button>
       </div>
 
       {/* 2. Lifecycle Tab Navigation */}
@@ -151,7 +162,7 @@ export default function ProBookingsPage() {
       )}
 
       {/* 4. Bookings List */}
-      {grouped.all.length === 0 ? (
+      {grouped.all.length === 0 || previewEmpty ? (
         <div className="mt-4">
           <EmptyState
             title="No Confirmed Bookings"

@@ -19,12 +19,12 @@ export function HomeAbout() {
       <div className="container-site relative z-[1] grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
         {/* Left: 2 Staggered Portrait Photos (matches reference design) */}
         <div className="order-2 lg:order-1 grid grid-cols-2 gap-4 sm:gap-6 items-start">
-          {/* Photo 1: Skilled residential craftsman inspecting work */}
+          {/* Photo 1: Skilled residential contractor on site with royal blue workwear */}
           <div className="relative overflow-hidden rounded-[24px] sm:rounded-[28px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
             <div className="relative h-[340px] sm:h-[420px] md:h-[470px] w-full">
               <Image
-                src="/images/about/contractor-inspection.jpg"
-                alt="Professional contractor inspecting residential roofing craftsmanship"
+                src="/images/about/pro-contractor.jpg"
+                alt="Professional residential contractor inspecting roofing and exterior craftsmanship"
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 30vw"
                 className="object-cover"
@@ -33,12 +33,12 @@ export function HomeAbout() {
             </div>
           </div>
 
-          {/* Photo 2: Luxury modern architectural roof & home craftsmanship */}
+          {/* Photo 2: Luxury modern residential plumbing and fixture craftsmanship */}
           <div className="relative mt-6 sm:mt-10 overflow-hidden rounded-[24px] sm:rounded-[28px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
             <div className="relative h-[300px] sm:h-[370px] md:h-[420px] w-full">
               <Image
-                src="/images/about/roof-craftsmanship.jpg"
-                alt="Luxury modern architectural residential roofing craftsmanship"
+                src="/images/about/plumbing-craftsmanship.jpg"
+                alt="Master plumbing craftsmanship with precision brass piping and luxury vanity fixtures"
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 30vw"
                 className="object-cover"

@@ -42,10 +42,10 @@ export function HomeProcess() {
               <span>How it works</span>
             </div>
 
-            {/* Design System Headline with two-tone primary accent */}
-            <h2 className="mt-3.5 font-geist text-[32px] sm:text-[40px] md:text-[48px] font-medium leading-[1.125] tracking-[-0.05em] sm:tracking-[-0.06em] text-title">
+            {/* Design System Headline (100% Solid Black matching platform typography) */}
+            <h2 className="mt-3.5 font-geist text-[32px] sm:text-[40px] md:text-[48px] font-medium leading-[1.125] tracking-[-0.05em] sm:tracking-[-0.06em] !text-black">
               Simple steps <br className="hidden sm:inline" />
-              <span className="text-primary">zero stress.</span>
+              zero stress.
             </h2>
 
             {/* Design System Description */}
@@ -61,33 +61,38 @@ export function HomeProcess() {
             </div>
           </div>
 
-          {/* Right Column: Clean Vertical Timeline Steps */}
+          {/* Right Column: Clean Vertical Timeline Steps with Text Hover Color (No Box) */}
           <div className="lg:col-span-7">
             <div className="space-y-8 sm:space-y-10">
               {steps.map((item, index) => {
                 const isActive = index === 0;
                 return (
-                  <div key={item.step} className="flex items-start gap-4 sm:gap-5">
-                    {/* Step Icon Badge (Active = Primary filled checkmark, Others = Subtle circle) */}
+                  <div
+                    key={item.step}
+                    className="group flex items-start gap-4 sm:gap-5 cursor-pointer"
+                  >
+                    {/* Step Icon Badge */}
                     <div
-                      className={`grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-full transition-colors ${
+                      className={`grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-full transition-colors duration-200 ${
                         isActive
                           ? "bg-primary text-white shadow-xs"
-                          : "border border-line bg-surface/50 text-muted"
+                          : "border border-line bg-surface/50 text-muted group-hover:border-primary/60 group-hover:text-primary group-hover:bg-primary/10"
                       }`}
                     >
                       <Check className="h-4 w-4 stroke-[2.5]" />
                     </div>
 
-                    {/* Step Content */}
+                    {/* Step Content: Smooth hover text color on title and step number */}
                     <div className="min-w-0 flex-1 pt-0.5 sm:pt-1">
-                      <h3 className="font-geist text-[18px] sm:text-[20px] font-medium text-title tracking-tight flex items-baseline gap-2">
-                        <span className="text-primary font-medium">
+                      <h3 className="font-geist text-[18px] sm:text-[20px] font-medium tracking-tight flex items-baseline gap-2 text-title transition-colors">
+                        <span className="font-geist font-medium text-title group-hover:text-primary transition-colors">
                           {item.step} —
                         </span>
-                        <span>{item.title}</span>
+                        <span className="font-geist font-medium text-title group-hover:text-primary transition-colors">
+                          {item.title}
+                        </span>
                       </h3>
-                      <p className="mt-1.5 font-['Inter_Display',Inter,sans-serif] text-[14.5px] sm:text-[15.5px] font-normal leading-[24px] tracking-[-0.15px] text-[#757575] max-w-xl">
+                      <p className="mt-1.5 font-['Inter_Display',Inter,sans-serif] text-[14.5px] sm:text-[15.5px] font-normal leading-[24px] tracking-[-0.15px] text-[#757575] max-w-xl group-hover:text-[#475569] transition-colors">
                         {item.text}
                       </p>
                     </div>

@@ -66,13 +66,13 @@ export function selectQuotesForJob(state: RootState, jobId: string) {
 }
 
 export function selectJobsForHomeowner(state: RootState, name: string) {
-  if (!name || name === "Homeowner" || name === "Maya Chen") {
-    return selectAllJobs(state).filter(
-      (job) => job.homeownerName === "Maya Chen" || job.homeownerName === "Homeowner"
-    );
+  const all = selectAllJobs(state);
+  const userJobs = name ? all.filter((job) => job.homeownerName === name) : [];
+  if (userJobs.length > 0) {
+    return userJobs;
   }
-  return selectAllJobs(state).filter(
-    (job) => job.homeownerName === name
+  return all.filter(
+    (job) => job.homeownerName === "Maya Chen" || job.homeownerName === "Homeowner"
   );
 }
 
@@ -413,28 +413,33 @@ export function selectProBookingsGrouped(state: RootState, proId: string = "pro-
   const bookings = state.marketplace.bookings;
   const quotes = selectAllQuotes(state);
 
-  const isProAssigned = (jobId: string) => {
-    const hiredId = hiredByJob[jobId];
-    const booking = bookings[jobId];
-    return (
-      (hiredId && quotes.find((q) => q.id === hiredId)?.proId === proId) ||
-      booking?.proId === proId
-    );
+  const getBookedForPro = (targetId: string) => {
+    return allJobs.filter((job: Job) => {
+      const hiredId = hiredByJob[job.id];
+      const booking = bookings[job.id];
+      const assigned =
+        (hiredId && quotes.find((q) => q.id === hiredId)?.proId === targetId) ||
+        booking?.proId === targetId;
+      return (
+        assigned &&
+        [
+          "hired",
+          "scheduled",
+          "en_route",
+          "in_progress",
+          "awaiting_confirm",
+          "completed",
+          "cancelled",
+          "disputed",
+        ].includes(job.status)
+      );
+    });
   };
 
-  const booked = allJobs.filter((job: Job) => {
-    if (!isProAssigned(job.id)) return false;
-    return [
-      "hired",
-      "scheduled",
-      "en_route",
-      "in_progress",
-      "awaiting_confirm",
-      "completed",
-      "cancelled",
-      "disputed",
-    ].includes(job.status);
-  });
+  let booked = getBookedForPro(proId);
+  if (booked.length === 0) {
+    booked = getBookedForPro("pro-1");
+  }
 
   const upcoming = booked.filter((j: Job) => ["hired", "scheduled"].includes(j.status));
   const inProgress = booked.filter((j: Job) =>

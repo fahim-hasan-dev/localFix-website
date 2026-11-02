@@ -155,10 +155,10 @@ export default function PricingPage() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-amber-950">
-                Background Clearance Required Before Membership Activation
+                Background Verification Required
               </h3>
               <p className="mt-1 text-xs text-amber-800/90 leading-relaxed max-w-xl">
-                Even for our complimentary 30-Day Free Trial, background check clearance is strictly required before your profile can be published to Austin homeowners.
+                Complete your background screening to activate your profile and start connecting with local homeowners.
               </p>
             </div>
           </div>
