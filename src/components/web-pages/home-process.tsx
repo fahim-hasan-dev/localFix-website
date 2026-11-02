@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { Check, ArrowUpRight } from "lucide-react";
+import { Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const steps = [
   {
@@ -31,35 +31,33 @@ export function HomeProcess() {
     <section className="bg-white py-[var(--section-sm)] md:py-[var(--section)] border-t border-line/60">
       <div className="container-site">
         <div className="grid gap-12 lg:grid-cols-12 lg:gap-16 items-start">
-          {/* Left Column: Eyebrow, Two-Tone Heading, Subtitle & CTA (matches reference) */}
+          {/* Left Column: Eyebrow, Heading, Description & Primary CTA */}
           <div className="lg:col-span-5 lg:sticky lg:top-28">
-            {/* Eyebrow */}
-            <div className="inline-flex items-center gap-2 font-geist text-[13px] sm:text-[13.5px] font-medium tracking-tight text-title">
-              <span className="text-primary font-bold text-xs">◆</span>
-              <span className="capitalize">How it works</span>
+            {/* Design System Eyebrow with blue ring indicator */}
+            <div className="inline-flex items-center gap-2 font-geist text-[13.5px] sm:text-[14px] font-medium tracking-tight text-title">
+              <span
+                aria-hidden="true"
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border-[1.75px] border-primary"
+              />
+              <span>How it works</span>
             </div>
 
-            {/* Headline with primary accent */}
-            <h2 className="mt-4 font-geist text-[34px] sm:text-[42px] lg:text-[46px] font-semibold leading-[1.12] tracking-[-1.5px] sm:tracking-[-2px] text-title">
-              Simple steps <span className="text-primary">zero stress.</span>
+            {/* Design System Headline with two-tone primary accent */}
+            <h2 className="mt-3.5 font-geist text-[32px] sm:text-[40px] md:text-[48px] font-medium leading-[1.125] tracking-[-0.05em] sm:tracking-[-0.06em] text-title">
+              Simple steps <br className="hidden sm:inline" />
+              <span className="text-primary">zero stress.</span>
             </h2>
 
-            {/* Description */}
-            <p className="mt-4 font-sans text-[15px] sm:text-[16px] leading-relaxed text-[#666] max-w-md">
+            {/* Design System Description */}
+            <p className="mt-3.5 sm:mt-4 max-w-md font-['Inter_Display',Inter,sans-serif] text-[16px] sm:text-[18px] font-normal leading-[26px] tracking-[-0.18px] text-[#757575]">
               From posting your repair request to final in-person inspection, we keep the entire process transparent, fast, and 100% fee-free.
             </p>
 
-            {/* CTA Button matching reference pill button with round circle arrow */}
+            {/* Design System Standard Button */}
             <div className="mt-8 sm:mt-9">
-              <Link
-                href="/post-job"
-                className="group inline-flex items-center gap-3 rounded-full border border-line bg-white px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-title shadow-2xs hover:border-primary/40 hover:bg-smoke/70 transition-all duration-200"
-              >
-                <span>GET STARTED TODAY</span>
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-white transition-transform duration-200 group-hover:scale-110">
-                  <ArrowUpRight className="h-4 w-4" />
-                </span>
-              </Link>
+              <Button href="/post-job" size="lg">
+                Get started today ↗
+              </Button>
             </div>
           </div>
 
@@ -69,21 +67,13 @@ export function HomeProcess() {
               {steps.map((item, index) => {
                 const isActive = index === 0;
                 return (
-                  <div key={item.step} className="relative flex items-start gap-4 sm:gap-5">
-                    {/* Vertical Connector Line */}
-                    {index < steps.length - 1 && (
-                      <span
-                        aria-hidden="true"
-                        className="absolute left-[15px] sm:left-[17px] top-9 sm:top-10 bottom-[-24px] sm:bottom-[-28px] w-[2px] bg-line/80"
-                      />
-                    )}
-
-                    {/* Step Icon Badge (Active = Primary filled checkmark, Others = Soft subtle checkmark) */}
+                  <div key={item.step} className="flex items-start gap-4 sm:gap-5">
+                    {/* Step Icon Badge (Active = Primary filled checkmark, Others = Subtle circle) */}
                     <div
-                      className={`relative z-10 grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-full transition-colors ${
+                      className={`grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-full transition-colors ${
                         isActive
                           ? "bg-primary text-white shadow-xs"
-                          : "border border-line/90 bg-smoke/80 text-muted-foreground/60"
+                          : "border border-line bg-surface/50 text-muted"
                       }`}
                     >
                       <Check className="h-4 w-4 stroke-[2.5]" />
@@ -91,13 +81,13 @@ export function HomeProcess() {
 
                     {/* Step Content */}
                     <div className="min-w-0 flex-1 pt-0.5 sm:pt-1">
-                      <h3 className="font-geist text-[18px] sm:text-[20px] font-semibold text-title tracking-tight flex items-baseline gap-2">
-                        <span className={isActive ? "text-primary" : "text-title"}>
+                      <h3 className="font-geist text-[18px] sm:text-[20px] font-medium text-title tracking-tight flex items-baseline gap-2">
+                        <span className="text-primary font-medium">
                           {item.step} —
                         </span>
                         <span>{item.title}</span>
                       </h3>
-                      <p className="mt-2 font-sans text-[14.5px] sm:text-[15.5px] leading-relaxed text-[#666] max-w-xl">
+                      <p className="mt-1.5 font-['Inter_Display',Inter,sans-serif] text-[14.5px] sm:text-[15.5px] font-normal leading-[24px] tracking-[-0.15px] text-[#757575] max-w-xl">
                         {item.text}
                       </p>
                     </div>
