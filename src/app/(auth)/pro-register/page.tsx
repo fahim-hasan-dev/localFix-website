@@ -96,35 +96,36 @@ function CompactAttachment({
   return (
     <div className="space-y-1">
       {file ? (
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs">
-          <div className="flex items-center gap-2 min-w-0">
-            {file.kind === "pdf" ? (
-              <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-            ) : (
-              <ImageIcon className="h-3.5 w-3.5 text-primary shrink-0" />
-            )}
-            <span className="truncate font-medium text-title text-[11px] sm:text-xs">
-              {file.name}
-            </span>
-            <span className="text-[10px] text-muted shrink-0">
-              ({file.sizeLabel})
-            </span>
-            <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
-              <CheckCircle2 className="h-2.5 w-2.5" /> Attached
-            </span>
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white min-h-[46px] sm:min-h-[48px] px-3 py-2 text-xs sm:text-sm shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              {file.kind === "pdf" ? (
+                <FileText className="h-3.5 w-3.5" />
+              ) : (
+                <ImageIcon className="h-3.5 w-3.5" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate font-medium text-title text-xs sm:text-[13px] leading-tight">
+                {file.name}
+              </p>
+              <p className="text-[10px] text-muted leading-tight mt-0.5">
+                {file.sizeLabel} · <span className="text-emerald-700 font-medium">Attached</span>
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="text-[10px] font-semibold text-primary hover:underline px-1"
+              className="rounded-md px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition"
             >
               Replace
             </button>
             <button
               type="button"
               onClick={onRemove}
-              className="text-muted hover:text-red-600 p-0.5"
+              className="rounded-md p-1 text-muted hover:text-red-600 hover:bg-red-50 transition"
               title="Remove"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -135,9 +136,11 @@ function CompactAttachment({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-line bg-smoke/40 hover:bg-smoke hover:border-primary/50 px-2.5 py-2 text-xs font-medium text-copy transition"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong/70 bg-white hover:bg-smoke/60 hover:border-primary/60 min-h-[46px] sm:min-h-[48px] px-3 py-2.5 text-xs sm:text-sm font-medium text-title transition-all duration-200 shadow-2xs group"
         >
-          <FileUp className="h-3.5 w-3.5 text-primary" />
+          <div className="grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+            <FileUp className="h-3.5 w-3.5" />
+          </div>
           <span>{label}</span>
         </button>
       )}
