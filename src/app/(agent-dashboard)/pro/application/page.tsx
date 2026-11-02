@@ -135,8 +135,8 @@ export default function ProApplicationPage() {
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
-                  Screening is handled directly by Checkr. LocalHomeFix does not store your Social Security Number or personal ID.
-                  Upon submission, Checkr dispatches confirmation emails to both you and LocalHomeFix admin.
+                  Screening is handled directly by Checkr. Local Fix does not store your Social Security Number or personal ID.
+                  Upon submission, Checkr dispatches confirmation emails to both you and Local Fix admin.
                 </p>
                 <div className="mt-2 flex items-center gap-2 text-xs text-copy font-medium">
                   <span className="text-muted">Partner:</span>

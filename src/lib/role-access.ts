@@ -96,7 +96,7 @@ export function resolveRoleAccess(user: User | null, pro?: Partial<ProGate>): Ro
       canSeeContact: false,
       canProMessage: false,
       canManageMembership: false,
-      notice: "Homeowner plan is free. No LocalHomeFix project fee or membership.",
+      notice: "Homeowner plan is free. No Local Fix project fee or membership.",
       blockedReason: null,
     };
   }

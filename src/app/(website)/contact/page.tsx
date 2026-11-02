@@ -15,7 +15,7 @@ import { photos } from "@/lib/media";
 
 const socialLinks = [
   {
-    href: "https://www.facebook.com/localhomefix",
+    href: "https://www.facebook.com/localfix",
     label: "Facebook",
     icon: (
       <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
@@ -24,7 +24,7 @@ const socialLinks = [
     ),
   },
   {
-    href: "https://www.instagram.com/localhomefix",
+    href: "https://www.instagram.com/localfix",
     label: "Instagram",
     icon: (
       <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current stroke-2" aria-hidden="true">
@@ -35,7 +35,7 @@ const socialLinks = [
     ),
   },
   {
-    href: "https://www.linkedin.com/company/localhomefix",
+    href: "https://www.linkedin.com/company/localfix",
     label: "LinkedIn",
     icon: (
       <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
@@ -44,7 +44,7 @@ const socialLinks = [
     ),
   },
   {
-    href: "https://x.com/localhomefix",
+    href: "https://x.com/localfix",
     label: "X",
     icon: (
       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
@@ -93,7 +93,7 @@ export default function ContactPage() {
 
               <div className="space-y-2.5">
                 <a
-                  href="mailto:admin@localhomefix.com"
+                  href="mailto:admin@localfix.com"
                   className="group flex items-center justify-between gap-4 rounded-2xl border border-line/70 bg-white p-3.5 transition-all duration-200 hover:border-primary/60 hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3.5">
@@ -105,7 +105,7 @@ export default function ContactPage() {
                         Email
                       </h3>
                       <p className="text-sm font-semibold text-title group-hover:text-primary transition-colors">
-                        admin@localhomefix.com
+                        admin@localfix.com
                       </p>
                     </div>
                   </div>

@@ -10,7 +10,6 @@ import {
   FileText,
   FileUp,
   Image as ImageIcon,
-  Mail,
   ShieldCheck,
   Sparkles,
   Trash2,
@@ -563,51 +562,31 @@ export default function ProRegisterPage() {
 
         {/* Step 3: Third-Party Screening (Checkr Network) */}
         {step === 3 ? (
-          <div className="rounded-xl border border-line bg-surface/50 p-4 space-y-3.5">
+          <div className="rounded-xl border border-line bg-smoke/30 p-3.5 sm:p-4 space-y-3">
             <div className="flex items-start gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                <ShieldCheck className="h-5 w-5" />
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                <ShieldCheck className="h-4.5 w-4.5" />
               </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-display text-sm sm:text-base font-bold text-title">
-                    Confidential Screening via Checkr
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-xs font-bold text-title">
+                    Checkr Background Screening
                   </h2>
                   <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 text-[10px] font-semibold">
-                    Third-Party Partner
+                    Third-Party
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-[#555] leading-relaxed">
-                  LocalHomeFix <strong>does not collect or store</strong> your Social Security Number, photo ID, or personal background records.
-                  All screenings are processed confidentially through Checkr.
+                <p className="mt-1 text-xs text-muted leading-relaxed">
+                  Local Fix never collects or stores your SSN or personal ID. Screenings are handled confidentially via Checkr, with instant dual-email confirmation sent to you and Local Fix admin.
                 </p>
               </div>
             </div>
 
-            {/* How It Works & Dual-Email Confirmation Notice */}
-            <div className="rounded-xl border border-line/80 bg-white p-3 space-y-2 text-xs">
-              <div className="flex items-center gap-2 font-semibold text-title pb-1 border-b border-line/60">
-                <Mail className="h-4 w-4 text-primary" />
-                <span>Dual-Email Confirmation &amp; 30-Day Free Trial</span>
-              </div>
-              <ul className="space-y-1.5 text-copy text-[11px] leading-relaxed list-disc list-inside">
-                <li>
-                  <strong>Direct Link:</strong> Click the secure link below to submit your screening directly on Checkr.
-                </li>
-                <li>
-                  <strong>Dual Email:</strong> Upon submission, Checkr sends an instant confirmation receipt to your email (<span className="font-medium text-title">{form.email || "your email"}</span>) and notifies LocalHomeFix Administration.
-                </li>
-                <li>
-                  <strong>30-Day Free Trial:</strong> Once Checkr reports your screening clear, your profile goes live and your <strong>30-Day Free Pro Trial</strong> is automatically activated!
-                </li>
-              </ul>
-            </div>
-
-            {/* External Screening Link Button */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
-              <div>
-                <p className="text-xs font-bold text-title">Checkr Candidate Screening</p>
-                <p className="text-[11px] text-muted">Estimated completion: 2–3 minutes on Checkr portal.</p>
+            {/* Clean Checkr Portal Action Row */}
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white p-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-title">Start Screening Portal</p>
+                <p className="text-[11px] text-muted">2–3 min on Checkr · Unlocks 30-Day Free Trial</p>
               </div>
               <a
                 href="https://checkr.com"
@@ -616,7 +595,7 @@ export default function ProRegisterPage() {
                 onClick={() => setCheckrOpened(true)}
                 className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-white hover:bg-primary/90 transition shadow-2xs shrink-0"
               >
-                <span>Start on Checkr</span>
+                <span>Open Checkr</span>
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </div>
@@ -624,20 +603,20 @@ export default function ProRegisterPage() {
             {checkrOpened && (
               <div className="flex items-center gap-2 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/70 p-2.5 rounded-lg">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>Checkr portal opened. Confirmation email will arrive from Checkr once submitted.</span>
+                <span>Checkr portal opened. Check your email for confirmation.</span>
               </div>
             )}
 
             {/* Acknowledgment Consent Checkbox */}
-            <label className="flex items-start gap-2.5 text-xs text-copy cursor-pointer pt-1">
+            <label className="flex items-start gap-2.5 text-xs text-copy cursor-pointer pt-0.5">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-line"
+                className="mt-0.5 h-4 w-4 rounded border-line text-primary focus:ring-primary"
                 checked={consent}
                 onChange={(e) => setConsent(e.target.checked)}
               />
-              <span>
-                I confirm that I will complete my confidential background check via Checkr and acknowledge that my <strong>30-Day Free Pro Trial</strong> will activate immediately upon clearance.
+              <span className="leading-snug">
+                I agree to complete my background check via Checkr to activate my <strong>30-day free trial</strong> upon clearance.
               </span>
             </label>
           </div>

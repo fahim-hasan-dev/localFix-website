@@ -128,7 +128,7 @@ export default function ProReviewsPage() {
 
   function handleCopyReviewLink() {
     if (typeof window !== "undefined") {
-      navigator.clipboard.writeText("https://localhomefix.com/review/ortega-plumbing");
+      navigator.clipboard.writeText("https://localfix.com/review/ortega-plumbing");
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2500);
       showToast("Direct review invite link copied to clipboard!");
@@ -465,7 +465,7 @@ export default function ProReviewsPage() {
                 <div className="flex items-center gap-2">
                   <TextField
                     readOnly
-                    value="https://localhomefix.com/review/ortega-plumbing"
+                    value="https://localfix.com/review/ortega-plumbing"
                     className="font-mono text-xs bg-smoke"
                   />
                   <Button
@@ -486,7 +486,7 @@ export default function ProReviewsPage() {
                   Recommended SMS &amp; Email message:
                 </p>
                 <p className="text-xs text-muted italic bg-white p-3 rounded-lg border border-line/60 leading-relaxed">
-                  &ldquo;Hi! Thanks for choosing Ortega Plumbing for your repair. If you have 30 seconds, sharing your review on LocalHomeFix helps our family business tremendously: https://localhomefix.com/review/ortega-plumbing&rdquo;
+                  &ldquo;Hi! Thanks for choosing Ortega Plumbing for your repair. If you have 30 seconds, sharing your review on Local Fix helps our family business tremendously: https://localfix.com/review/ortega-plumbing&rdquo;
                 </p>
               </div>
 

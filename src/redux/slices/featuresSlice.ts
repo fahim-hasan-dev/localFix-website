@@ -294,7 +294,7 @@ const initialState: FeaturesState = {
       active: true,
       title: "$25 Off First Diagnostic Call",
       discount: "$25 OFF",
-      terms: "Valid for all first-time residential homeowners across Travis & Williamson counties. Mention LocalHomeFix on booking.",
+      terms: "Valid for all first-time residential homeowners across Travis & Williamson counties. Mention Local Fix on booking.",
     },
     services: [
       {

@@ -1001,7 +1001,7 @@ export function RequestDetail({
                         dispatch(
                           addNotification({
                             title: "Booking confirmed",
-                            body: `${rescheduleDate} · pay the professional directly. HomeFix does not collect this.`,
+                            body: `${rescheduleDate} · pay the professional directly. Local Fix does not collect this.`,
                             href: `/account/jobs/${id}`,
                             createdAt: "Just now",
                             role: "homeowner",
@@ -1517,7 +1517,7 @@ export function RequestDetail({
               </span>
               <div>
                 <h2 className="font-display text-lg font-bold text-title">Confirm Work Completion</h2>
-                <p className="text-xs text-muted">Confirm the work. HomeFix does not collect or refund the repair payment.</p>
+                <p className="text-xs text-muted">Confirm the work. Local Fix does not collect or refund the repair payment.</p>
               </div>
             </div>
 
@@ -1571,7 +1571,7 @@ export function RequestDetail({
                   className="mt-0.5 rounded border-line text-primary focus:ring-primary"
                 />
                 <span>
-                  I have inspected the finished work, tested all repaired fixtures, and confirm 100% satisfaction under the LocalHomeFix Workmanship Guarantee.
+                  I have inspected the finished work, tested all repaired fixtures, and confirm 100% satisfaction under the Local Fix Workmanship Guarantee.
                 </span>
               </label>
             </div>
@@ -1601,7 +1601,7 @@ export function RequestDetail({
                   dispatch(
                     addNotification({
                       title: "Job completed & settled",
-                      body: `${job.homeownerName} confirmed the work${settlePaid ? ` and recorded a direct ${settlePaymentMethod.replace("_", " ")} payment` : ""}. HomeFix did not collect funds.`,
+                      body: `${job.homeownerName} confirmed the work${settlePaid ? ` and recorded a direct ${settlePaymentMethod.replace("_", " ")} payment` : ""}. Local Fix did not collect funds.`,
                       href: `/pro/jobs/${id}`,
                       createdAt: "Just now",
                       role: "pro",

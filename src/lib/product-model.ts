@@ -1,5 +1,5 @@
 /**
- * Single product model for LocalHomeFix role journeys.
+ * Single product model for Local Fix role journeys.
  * Keep UI copy and gates aligned with this file.
  */
 
@@ -60,7 +60,7 @@ export const roleFeatures: Record<
       "Manage profile, addresses, security",
     ],
     cannot: [
-      "Pay LocalHomeFix a project fee (there is none)",
+      "Pay Local Fix a project fee (there is none)",
       "See the pro job board",
       "Start pro membership",
       "Quote other homeowners' jobs",
@@ -93,7 +93,7 @@ export const roleFeatures: Record<
 export const implementationGaps = {
   persistence: "Browser localStorage only — not a multi-user production database.",
   notifications: "In-app notification records only. No real email/SMS/push.",
-  payments: "HomeFix never charges homeowners or invoices repair work. Pros pay a subscription in the demo membership UI.",
+  payments: "Local Fix never charges homeowners or invoices repair work. Pros pay a subscription in the demo membership UI.",
   identity: "The signed-in demo pro is always pro-1. Other directory pros cannot log in.",
 } as const;
 

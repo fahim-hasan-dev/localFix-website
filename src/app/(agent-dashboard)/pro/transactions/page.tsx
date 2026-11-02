@@ -50,7 +50,7 @@ export default function TransactionsPage() {
               Subscription Billing History
             </h1>
             <p className="mt-0.5 text-xs sm:text-sm text-muted">
-              Official statement records and invoices for your LocalHomeFix Pro membership subscription.
+              Official statement records and invoices for your Local Fix Pro membership subscription.
             </p>
           </div>
           <Button

@@ -43,7 +43,7 @@ export type ChangeRequestStatus = "pending" | "approved" | "rejected";
 
 export type BookingStatus = "pending_schedule" | "confirmed" | "reschedule_requested";
 
-/** How the homeowner will pay the pro — never collected by HomeFix */
+/** How the homeowner will pay the pro — never collected by Local Fix */
 export type DirectPaymentMethod =
   | "cash"
   | "bank_transfer"

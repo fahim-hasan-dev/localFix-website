@@ -62,7 +62,7 @@ const defaultAboutData: AboutContentData = {
   heroImage: "/images/about/hero.jpg",
   approachEyebrow: "Our Approach",
   solutionHeading: "Trusted Home Service Solutions for Every Home",
-  solutionDescription: "At LocalHomeFix, our mission is to eliminate predatory middleman fees and restore direct, transparent relationships between homeowners and vetted local trade pros. We provide a protected, commission-free platform where quality work and fair compensation thrive together.",
+  solutionDescription: "At Local Fix, our mission is to eliminate predatory middleman fees and restore direct, transparent relationships between homeowners and vetted local trade pros. We provide a protected, commission-free platform where quality work and fair compensation thrive together.",
   visionDescription: "To build the nation's most trusted and transparent neighborhood home services ecosystem—where every homeowner enjoys complete pricing clarity, independent trade contractors keep 100% of their earnings, and every repair is backed by genuine accountability.",
   checklist: [
     "Fast & reliable service",
@@ -71,9 +71,9 @@ const defaultAboutData: AboutContentData = {
     "100% workmanship guarantee",
   ],
   storyImage: "/images/about/solutions.jpg",
-  whyChooseEyebrow: "Why Choose LocalHomeFix",
-  whyChooseHeading: "Why Choose LocalHomeFix for Your Home Repairs",
-  whyChooseSubtitle: "Traditional lead generation directories sell your private phone number to dozens of contractors who spam you for weeks. LocalHomeFix restores honesty with private, direct connections and fair pricing.",
+  whyChooseEyebrow: "Why Choose Local Fix",
+  whyChooseHeading: "Why Choose Local Fix for Your Home Repairs",
+  whyChooseSubtitle: "Traditional lead generation directories sell your private phone number to dozens of contractors who spam you for weeks. Local Fix restores honesty with private, direct connections and fair pricing.",
   craftsmanImage: "/images/about/craftsman.jpg",
   pillars: [
     {
@@ -210,7 +210,7 @@ export function AboutContent() {
           <div className="mt-8 sm:mt-12 relative h-[280px] sm:h-[420px] md:h-[500px] w-full overflow-hidden rounded-[24px] sm:rounded-[32px] border border-line/70 shadow-sm group">
             <Image
               src={data.heroImage || "/images/about/hero.jpg"}
-              alt="LocalHomeFix verified trade technicians collaborating on a residential service project"
+              alt="Local Fix verified trade technicians collaborating on a residential service project"
               fill
               priority
               sizes="(max-width: 1280px) 100vw, 1280px"
@@ -355,10 +355,10 @@ export function AboutContent() {
                   aria-hidden="true"
                   className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border-[1.75px] border-primary"
                 />
-                <span>{data.whyChooseEyebrow || "Why Choose LocalHomeFix"}</span>
+                <span>{data.whyChooseEyebrow || "Why Choose Local Fix"}</span>
               </div>
               <h2 className="mt-3.5 font-geist text-[30px] sm:text-[38px] md:text-[42px] font-medium leading-[1.14] tracking-[-1.5px] sm:tracking-[-2px] !text-black">
-                {data.whyChooseHeading || "Why Choose LocalHomeFix for Your Home Repairs"}
+                {data.whyChooseHeading || "Why Choose Local Fix for Your Home Repairs"}
               </h2>
             </div>
             <div className="md:col-span-5 md:pb-1">

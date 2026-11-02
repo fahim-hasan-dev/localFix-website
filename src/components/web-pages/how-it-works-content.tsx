@@ -65,7 +65,7 @@ const journeys: Record<
       {
         n: "04",
         title: "Hire & pay when done",
-        text: "Accept one quotation to confirm the booking. Pay the professional directly — HomeFix never takes a repair fee.",
+        text: "Accept one quotation to confirm the booking. Pay the professional directly — Local Fix never takes a repair fee.",
         icon: Wallet,
       },
     ],

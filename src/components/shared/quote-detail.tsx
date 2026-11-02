@@ -169,7 +169,7 @@ export function QuoteDetail({
     dispatch(
       addNotification({
         title: "Booking confirmed",
-        body: `${bookDate} · $${quote.amount}. Pay the professional directly — HomeFix does not collect this.`,
+        body: `${bookDate} · $${quote.amount}. Pay the professional directly — Local Fix does not collect this.`,
         href: `/account/jobs/${jobId}`,
         createdAt: "Just now",
         role: "homeowner",

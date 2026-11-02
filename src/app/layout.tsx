@@ -17,8 +17,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "LocalHomeFix — Find reviewed local home service pros",
-    template: "%s · LocalHomeFix",
+    default: "Local Fix — Find reviewed local home service pros",
+    template: "%s · Local Fix",
   },
   description:
     "Browse reviewed local pros free, post a home repair request, compare quotes in one place, and pay the professional directly.",

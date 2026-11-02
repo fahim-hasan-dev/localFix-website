@@ -66,7 +66,7 @@ export function LoginForm() {
   return (
     <div>
       <h1 className="font-display text-[22px] sm:text-[26px] font-semibold leading-snug tracking-tight text-title">
-        {isPostJob ? "Sign in to post your request" : "Sign in to LocalHomeFix"}
+        {isPostJob ? "Sign in to post your request" : "Sign in to Local Fix"}
       </h1>
       <p className="mt-2 font-sans text-sm leading-relaxed text-[#757575]">
         {isPostJob ? (

@@ -673,7 +673,7 @@ export function ProProfileForm() {
               <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
               <div>
                 <p className="text-sm font-semibold text-title">Background check</p>
-                <p className="text-xs text-muted">Processed confidentially via Checkr. No PII stored on LocalHomeFix.</p>
+                <p className="text-xs text-muted">Processed confidentially via Checkr. No PII stored on Local Fix.</p>
               </div>
             </div>
             <Link href="/pro/application" className="text-xs font-semibold text-primary hover:underline">

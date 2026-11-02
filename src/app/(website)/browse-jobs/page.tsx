@@ -136,7 +136,7 @@ export default function BrowseJobsPage() {
                   Are you a licensed contractor or handyman in Austin?
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
-                  Join LocalHomeFix to receive real-time repair requests in your trade territory. Communicate directly with homeowners, set your own prices, and keep 100% of your earnings.
+                  Join Local Fix to receive real-time repair requests in your trade territory. Communicate directly with homeowners, set your own prices, and keep 100% of your earnings.
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">

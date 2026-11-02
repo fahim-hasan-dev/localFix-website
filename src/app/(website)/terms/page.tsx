@@ -4,29 +4,29 @@ import { LegalSections, type LegalSection } from "@/components/web-pages/legal-s
 import { photos } from "@/lib/media";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions — LocalHomeFix",
+  title: "Terms & Conditions — Local Fix",
   description: "Review our Terms of Service governing homeowner requests, contractor agreements, and marketplace policies.",
 };
 
 const sections: LegalSection[] = [
   {
     title: "Marketplace role",
-    body: "LocalHomeFix provides a marketplace where homeowners describe projects and independent professionals offer services. It is not the employer, contractor, agent, or insurer of either party.",
-    note: "LocalHomeFix is an independent marketplace connecting homeowners with local pros. Contracts and warranties are agreed upon directly between homeowner and contractor.",
+    body: "Local Fix provides a marketplace where homeowners describe projects and independent professionals offer services. It is not the employer, contractor, agent, or insurer of either party.",
+    note: "Local Fix is an independent marketplace connecting homeowners with local pros. Contracts and warranties are agreed upon directly between homeowner and contractor.",
   },
   {
     title: "Accounts",
-    body: "Provide accurate information and use the service only for lawful purposes. Provider claims are not verified until LocalHomeFix confirms them.",
+    body: "Provide accurate information and use the service only for lawful purposes. Provider claims are not verified until Local Fix confirms them.",
     note: "All users must provide genuine contact details. Misrepresentation or fraudulent claims will result in immediate account suspension.",
   },
   {
     title: "Projects, quotes, and payment",
-    body: "Homeowners review terms and select a provider. Professionals own their quotes, permits, taxes, and workmanship. LocalHomeFix does not process project payments.",
-    note: "Zero Middleman Markup: Homeowners pay contractors directly via cash, card, or check. LocalHomeFix never holds customer funds or adds payment processing surcharges.",
+    body: "Homeowners review terms and select a provider. Professionals own their quotes, permits, taxes, and workmanship. Local Fix does not process project payments.",
+    note: "Zero Middleman Markup: Homeowners pay contractors directly via cash, card, or check. Local Fix never holds customer funds or adds payment processing surcharges.",
   },
   {
     title: "Background screening",
-    body: "Provider participation may require a Checkr hosted screening. Do not send SSN, date of birth, government ID, or report contents to LocalHomeFix.",
+    body: "Provider participation may require a Checkr hosted screening. Do not send SSN, date of birth, government ID, or report contents to Local Fix.",
     note: "Screening Security: All identity and background screening records are encrypted and hosted directly by Checkr. Never send sensitive identity numbers via message.",
   },
   {

@@ -4,8 +4,8 @@ import { LegalSections, type LegalSection } from "@/components/web-pages/legal-s
 import { photos } from "@/lib/media";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — LocalHomeFix",
-  description: "Learn how LocalHomeFix protects and handles user data, screening records, and marketplace activity.",
+  title: "Privacy Policy — Local Fix",
+  description: "Learn how Local Fix protects and handles user data, screening records, and marketplace activity.",
 };
 
 const sections: LegalSection[] = [
@@ -21,7 +21,7 @@ const sections: LegalSection[] = [
   },
   {
     title: "Screening",
-    body: "Checkr collects screening identifiers on its own site. LocalHomeFix keeps normalized state and audit records, not report contents.",
+    body: "Checkr collects screening identifiers on its own site. Local Fix keeps normalized state and audit records, not report contents.",
     note: "Screening Isolation: Checkr processes sensitive identifiers (SSN, government ID) on their own certified, encrypted infrastructure.",
   },
   {
@@ -37,7 +37,7 @@ const sections: LegalSection[] = [
   {
     title: "Children",
     body: "The service is not directed to children under 18.",
-    note: "LocalHomeFix is restricted to homeowners, property managers, and independent trade contractors age 18 and older.",
+    note: "Local Fix is restricted to homeowners, property managers, and independent trade contractors age 18 and older.",
   },
 ];
 
@@ -46,7 +46,7 @@ export default function PrivacyPage() {
     <>
       <PageBanner
         title="Privacy Policy"
-        description="How LocalHomeFix protects and manages your personal data and privacy."
+        description="How Local Fix protects and manages your personal data and privacy."
         image={photos.banners.legal}
         breadcrumbs={[
           { label: "Home", href: "/" },

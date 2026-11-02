@@ -36,7 +36,7 @@ export function HomeWhyChoose() {
                   aria-hidden="true"
                   className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border-[1.75px] border-primary"
                 />
-                <span>Why Choose LocalHomeFix</span>
+                <span>Why Choose Local Fix</span>
               </div>
 
               {/* Headline */}
