@@ -12,7 +12,22 @@ export const selectAllJobs = createSelector(
     (state: RootState) => state.marketplace.bookings,
   ],
   (extraJobs, hired, overrides, completions, bookings): Job[] => {
-    return [...extraJobs, ...seedJobs].map((job) => {
+    const seenJobIds = new Set<string>();
+    const uniqueJobs: Job[] = [];
+    for (const j of extraJobs) {
+      if (!seenJobIds.has(j.id)) {
+        seenJobIds.add(j.id);
+        uniqueJobs.push(j);
+      }
+    }
+    for (const j of seedJobs) {
+      if (!seenJobIds.has(j.id)) {
+        seenJobIds.add(j.id);
+        uniqueJobs.push(j);
+      }
+    }
+
+    return uniqueJobs.map((job) => {
       let status: JobStatus = overrides[job.id] ?? job.status;
 
       if (status === "cancelled" || status === "disputed" || status === "completed") {
@@ -57,12 +72,42 @@ export const selectAllQuotes = createSelector(
         status: patch.status ?? quote.status ?? "pending",
       };
     };
-    return [...extraQuotes.map(merge), ...seedQuotes.map(merge)];
+
+    const seenQuoteIds = new Set<string>();
+    const seenProJob = new Set<string>();
+    const result: Quote[] = [];
+
+    // Prioritize extraQuotes, then seedQuotes
+    for (const q of extraQuotes.map(merge)) {
+      const proJobKey = `${q.jobId}-${q.proId}`;
+      if (seenQuoteIds.has(q.id) || seenProJob.has(proJobKey)) continue;
+      seenQuoteIds.add(q.id);
+      seenProJob.add(proJobKey);
+      result.push(q);
+    }
+
+    for (const q of seedQuotes.map(merge)) {
+      const proJobKey = `${q.jobId}-${q.proId}`;
+      if (seenQuoteIds.has(q.id) || seenProJob.has(proJobKey)) continue;
+      seenQuoteIds.add(q.id);
+      seenProJob.add(proJobKey);
+      result.push(q);
+    }
+
+    return result;
   },
 );
 
 export function selectQuotesForJob(state: RootState, jobId: string) {
-  return selectAllQuotes(state).filter((quote) => quote.jobId === jobId);
+  const job = selectJob(state, jobId);
+  const allForJob = selectAllQuotes(state).filter((quote) => quote.jobId === jobId);
+  if (job?.requestedProId || job?.visibility === "direct") {
+    const targetProId = job.requestedProId;
+    if (targetProId) {
+      return allForJob.filter((q) => q.proId === targetProId);
+    }
+  }
+  return allForJob;
 }
 
 export function selectJobsForHomeowner(state: RootState, name: string) {

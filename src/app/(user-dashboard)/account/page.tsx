@@ -115,12 +115,22 @@ export default function AccountPage() {
       ) : (
         <div className="space-y-4">
           {filteredJobs.map((job) => {
-            const jobQuotes = quotes.filter((q) => q.jobId === job.id);
-            const booking = bookings[job.id];
-            const hiredPro = booking?.proId ? getPro(booking.proId) : null;
             const isDirect = job.visibility === "direct" || Boolean(job.requestedProId);
             const requestedPro = job.requestedProId ? getPro(job.requestedProId) : null;
+            const rawQuotes = isDirect && requestedPro
+              ? quotes.filter((q) => q.jobId === job.id && q.proId === requestedPro.id)
+              : quotes.filter((q) => q.jobId === job.id);
+            const jobQuotes = Array.from(
+              new Map(rawQuotes.map((q) => [q.proId || q.id, q])).values(),
+            );
+            const booking = bookings[job.id];
+            const hiredPro = booking?.proId ? getPro(booking.proId) : null;
             const isHired = job.status === "hired" || job.status === "scheduled" || Boolean(booking?.agreedPrice);
+            const categoryName = getCategory(job.categorySlug)?.name;
+            const displayTitle =
+              categoryName && job.title.toLowerCase().startsWith(categoryName.toLowerCase())
+                ? job.title.slice(categoryName.length).replace(/^[\s·•-]+/, "")
+                : job.title;
 
             return (
               <Card
@@ -172,7 +182,7 @@ export default function AccountPage() {
 
                     {/* Title */}
                     <span className="block mt-1.5 font-display text-base sm:text-lg font-bold text-title group-hover:text-primary transition-colors">
-                      {job.title}
+                      {displayTitle || job.title}
                     </span>
 
                     {/* Clean Meta Details */}
