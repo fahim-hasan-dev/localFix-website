@@ -52,10 +52,9 @@ import {
   selectQuotesForJob,
   splitJobDescription,
 } from "@/lib/marketplace";
-import {
-  getPro,
-} from "@/Mockdata";
+import { getPro } from "@/Mockdata";
 import { getAvatar } from "@/lib/avatars";
+import { cn } from "@/lib/cn";
 import {
   addQuote,
   confirmBooking,
@@ -156,7 +155,8 @@ export function RequestDetail({
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[id]);
   const hiredQuote = quotes.find((quote) => quote.id === hiredQuoteId);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewRating, setReviewRating] = useState<number>(0);
+  const [isEditingReview, setIsEditingReview] = useState(false);
 
   const isJobBooked = Boolean(
     job && ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm"].includes(job.status)
@@ -254,16 +254,22 @@ export function RequestDetail({
           badgeClass: "bg-orange-50 text-orange-800 border-orange-300",
         };
       case 1:
-      default:
         return {
           title: "★☆☆☆☆ 1.0 — Poor Experience",
           desc: "Unsatisfactory experience or unresolved issue.",
           badgeClass: "bg-rose-50 text-rose-800 border-rose-300",
         };
+      default:
+        return {
+          title: "Select your rating (1–5 stars)",
+          desc: "Click a star above to rate your experience",
+          badgeClass: "bg-slate-50 text-slate-700 border-slate-200",
+        };
     }
   }, [currentDisplayRating]);
 
   function handleSaveReview() {
+    if (reviewRating === 0) return;
     const cleanBody =
       reviewBody.trim() ||
       (selectedReviewTags.length
@@ -303,6 +309,7 @@ export function RequestDetail({
     }
 
     setShowReviewModal(false);
+    setIsEditingReview(false);
   }
 
   const sortedQuotes = useMemo(
@@ -848,7 +855,14 @@ export function RequestDetail({
                   <Button
                     type="button"
                     size="sm"
-                    onClick={() => setShowReviewModal(true)}
+                    onClick={() => {
+                      const el = document.getElementById("rate-and-review");
+                      if (el) {
+                        el.scrollIntoView({ behavior: "smooth" });
+                      } else {
+                        setShowReviewModal(true);
+                      }
+                    }}
                     className="rounded-full text-xs font-semibold"
                   >
                     Rate &amp; Review Pro
@@ -1253,7 +1267,7 @@ export function RequestDetail({
       {/* COMPLETED STATUS: HOMEOWNER & PRO VERIFIED REVIEW REFLECTION */}
       {job.status === "completed" ? (
         canHire ? (
-          existingReview ? (
+          existingReview && !isEditingReview ? (
             <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3.5">
                 <div>
@@ -1287,7 +1301,7 @@ export function RequestDetail({
                     onClick={() => {
                       setReviewRating(existingReview.rating);
                       setReviewBody(existingReview.body);
-                      setShowReviewModal(true);
+                      setIsEditingReview(true);
                     }}
                     className="rounded-full text-xs font-semibold border border-line hover:border-primary/40 hover:text-primary"
                   >
@@ -1317,14 +1331,14 @@ export function RequestDetail({
               </div>
             </Card>
           ) : (
-            <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
+            <Card id="rate-and-review" className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3.5">
                 <div>
                   <h2 className="font-display text-base sm:text-lg font-bold text-title">
-                    Rate &amp; Review {hiredPro?.name ?? "Your Contractor"}
+                    {existingReview ? `Edit Review for ${hiredPro?.name ?? "Your Contractor"}` : `Rate & Review ${hiredPro?.name ?? "Your Contractor"}`}
                   </h2>
                   <p className="text-xs text-muted mt-0.5">
-                    Share your experience to help local homeowners and update public scores.
+                    Share your experience to help local homeowners and update public ratings.
                   </p>
                 </div>
                 <span className="text-xs text-muted font-medium flex items-center gap-1">
@@ -1333,36 +1347,114 @@ export function RequestDetail({
                 </span>
               </div>
 
-              <div className="mt-5 py-4 text-center space-y-3">
-                <div className="flex items-center justify-center gap-2 sm:gap-3">
+              {/* Standard Star Rating Section */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-title">
+                  Your Overall Rating <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   {[1, 2, 3, 4, 5].map((starVal) => {
                     const isLit = currentDisplayRating >= starVal;
                     return (
                       <button
                         key={starVal}
                         type="button"
-                        onClick={() => {
-                          setReviewRating(starVal);
-                          setShowReviewModal(true);
-                        }}
+                        onClick={() => setReviewRating(starVal)}
                         onMouseEnter={() => setHoverRating(starVal)}
                         onMouseLeave={() => setHoverRating(0)}
-                        className="p-1 transition-transform duration-150 hover:scale-125 active:scale-95 cursor-pointer focus:outline-none"
+                        className="p-1 transition-transform duration-150 hover:scale-115 active:scale-95 cursor-pointer focus:outline-none"
                         title={`Rate ${starVal} Star${starVal > 1 ? "s" : ""}`}
+                        aria-label={`Rate ${starVal} Star${starVal > 1 ? "s" : ""}`}
                       >
                         <Star
-                          className={`h-8 w-8 sm:h-9 sm:w-9 transition-colors ${
-                            isLit ? "fill-amber-400 text-amber-500" : "fill-gray-100 text-gray-300"
-                          }`}
+                          className={cn(
+                            "h-7 w-7 sm:h-8 sm:w-8 transition-colors",
+                            isLit
+                              ? "fill-amber-400 text-amber-500"
+                              : "fill-transparent text-slate-300 hover:text-amber-300",
+                          )}
                         />
                       </button>
                     );
                   })}
+                  <span className="ml-2 text-xs sm:text-sm font-semibold text-title">
+                    {activeSentiment.title}
+                  </span>
                 </div>
+              </div>
 
-                <p className="text-xs text-muted font-medium">
-                  {activeSentiment.title} · Click a star to leave feedback
+              {/* Review Textarea */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-title">
+                  Your Review (optional)
+                </label>
+                <TextArea
+                  value={reviewBody}
+                  onChange={(e) => setReviewBody(e.target.value)}
+                  placeholder={`Describe your experience with ${hiredPro?.name ?? "this contractor"} (work quality, punctuality, pricing, communication)...`}
+                  rows={3}
+                  className="rounded-xl border-line/80 text-xs sm:text-sm focus:border-primary"
+                />
+              </div>
+
+              {/* Standout Tags */}
+              <div className="space-y-1.5">
+                <span className="block text-[11px] font-semibold text-muted uppercase tracking-wider">
+                  What stood out? (optional)
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {["Punctual", "Clean Work", "Fair Price", "Great Quality", "Friendly"].map((tag) => {
+                    const active = selectedReviewTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() =>
+                          setSelectedReviewTags((prev) =>
+                            active ? prev.filter((t) => t !== tag) : [...prev, tag],
+                          )
+                        }
+                        className={cn(
+                          "rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer border",
+                          active
+                            ? "bg-primary text-white border-primary shadow-2xs"
+                            : "bg-white text-muted border-line/80 hover:border-slate-300 hover:text-title",
+                        )}
+                      >
+                        {active ? "✓ " : ""}{tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Submit / Cancel Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-line/60">
+                <p className="text-xs text-muted">
+                  {reviewRating === 0 ? "Select a star rating (1–5) to submit." : "Your review will be verified and published."}
                 </p>
+                <div className="flex items-center gap-2">
+                  {existingReview && isEditingReview && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditingReview(false)}
+                      className="rounded-full text-xs font-semibold"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={reviewRating === 0}
+                    onClick={handleSaveReview}
+                    className="rounded-full px-5 text-xs font-semibold"
+                  >
+                    {existingReview ? "Update Review" : "Submit Review"}
+                  </Button>
+                </div>
               </div>
             </Card>
           )
@@ -1726,9 +1818,12 @@ export function RequestDetail({
                       aria-label={`Rate ${starVal} Star${starVal > 1 ? "s" : ""}`}
                     >
                       <Star
-                        className={`h-8 w-8 transition-colors ${
-                          isLit ? "fill-amber-400 text-amber-500" : "fill-gray-100 text-gray-300"
-                        }`}
+                        className={cn(
+                          "h-8 w-8 transition-colors",
+                          isLit
+                            ? "fill-amber-400 text-amber-500"
+                            : "fill-transparent text-slate-300 hover:text-amber-300",
+                        )}
                       />
                     </button>
                   );
@@ -1798,6 +1893,7 @@ export function RequestDetail({
               <Button
                 type="button"
                 size="sm"
+                disabled={reviewRating === 0}
                 onClick={handleSaveReview}
                 className="rounded-full text-xs font-semibold"
               >
