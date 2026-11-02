@@ -24,8 +24,9 @@ export function FaqSection({
   const [tab, setTab] = useState<"homeowner" | "pro">("homeowner");
   const [open, setOpen] = useState(0);
 
-  const displayItems =
+  const allItems =
     items !== defaultFaqs ? items : tab === "homeowner" ? homeownerFaqs : proFaqs;
+  const displayItems = showViewAll ? allItems.slice(0, 5) : allItems;
 
   const dynamicDescription =
     description ||
@@ -38,10 +39,10 @@ export function FaqSection({
       <div className="container-site grid items-start gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
         {/* Left Column: Editorial Sticky Heading & Contextual Actions */}
         <div className="lg:sticky lg:top-28">
-          <div className="inline-flex items-center gap-2 font-geist text-[13px] sm:text-[13.5px] font-semibold uppercase tracking-wider text-primary">
+          <div className="inline-flex items-center gap-2 font-geist text-[13.5px] sm:text-[14px] font-medium tracking-tight text-title">
             <span
               aria-hidden="true"
-              className="inline-block h-2 w-2 shrink-0 rounded-full bg-primary"
+              className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border-[1.75px] border-primary"
             />
             <span>{eyebrow}</span>
           </div>
@@ -171,15 +172,13 @@ export function FaqSection({
 
           {/* View All FAQs Link (redirects to /faq) */}
           {showViewAll && (
-            <div className="pt-2 sm:pt-3 flex items-center justify-start">
+            <div className="pt-2 flex items-center justify-start">
               <Link
                 href="/faq"
-                className="group inline-flex items-center gap-3 rounded-full border border-line/90 bg-white pl-5 pr-2.5 py-2 text-xs sm:text-sm font-semibold text-title shadow-2xs transition-all duration-200 hover:border-primary hover:text-primary hover:shadow-xs"
+                className="group inline-flex items-center gap-1.5 font-display text-sm font-semibold text-primary hover:text-primary-hover hover:underline transition-colors"
               >
-                <span>View All FAQs</span>
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-slate-700 transition-colors duration-200 group-hover:bg-primary group-hover:text-white">
-                  <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </span>
+                <span>View all questions</span>
+                <ArrowUpRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </Link>
             </div>
           )}

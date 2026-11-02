@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { getCategory } from "@/Mockdata";
+import { getAvatar } from "@/lib/avatars";
 import {
   selectAllQuotes,
   selectProBookingsGrouped,
@@ -198,8 +199,13 @@ export default function ProBookingsPage() {
                 {/* Header: Client Info + Status Badge (matches homeowner pro visual) */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-title text-sm font-semibold text-white">
-                      {job.homeownerName.charAt(0)}
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-line/80 bg-slate-100 shadow-2xs">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={getAvatar(job.homeownerName)}
+                        alt={job.homeownerName}
+                        className="h-full w-full object-cover"
+                      />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">

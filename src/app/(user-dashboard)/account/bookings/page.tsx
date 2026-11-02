@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { getCategory, getPro } from "@/Mockdata";
+import { getAvatar } from "@/lib/avatars";
 import {
   selectAllQuotes,
   selectHomeownerBookingsGrouped,
@@ -251,13 +252,23 @@ export default function MyBookingsPage() {
                         href={`/browse-pros/${pro.id}`}
                         onClick={(e) => e.stopPropagation()}
                         title={`View ${pro.name}'s profile`}
-                        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-title text-sm font-semibold text-white transition hover:ring-2 hover:ring-primary/40 cursor-pointer"
+                        className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-line/80 bg-slate-100 transition hover:ring-2 hover:ring-primary/40 cursor-pointer shadow-2xs"
                       >
-                        {pro.name.charAt(0)}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={pro.avatar || getAvatar(pro.name, pro.id)}
+                          alt={pro.name}
+                          className="h-full w-full object-cover"
+                        />
                       </Link>
                     ) : (
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-title text-sm font-semibold text-white">
-                        P
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-line/80 bg-slate-100 shadow-2xs">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={getAvatar("Contractor")}
+                          alt="Contractor Assigned"
+                          className="h-full w-full object-cover"
+                        />
                       </div>
                     )}
                     <div className="min-w-0">

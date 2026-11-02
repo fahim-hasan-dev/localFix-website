@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, NativeSelect, TextField } from "@/components/ui/field";
 import { getPro, offerStatusLabels } from "@/Mockdata";
+import { getAvatar } from "@/lib/avatars";
 import { paymentMethodLabels, selectJob, selectQuotesForJob } from "@/lib/marketplace";
 import {
   confirmBooking,
@@ -204,14 +205,24 @@ export function QuoteDetail({
               <Link
                 href={`/browse-pros/${pro.id}`}
                 title={`View ${pro.name}'s profile`}
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-title text-base font-semibold text-white transition hover:ring-2 hover:ring-primary/40 cursor-pointer"
+                className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-line/80 bg-slate-100 transition hover:ring-2 hover:ring-primary/40 cursor-pointer shadow-2xs"
               >
-                {pro.name.charAt(0)}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={pro.avatar || getAvatar(pro.name, pro.id)}
+                  alt={pro.name}
+                  className="h-full w-full object-cover"
+                />
               </Link>
             ) : (
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-title text-base font-semibold text-white">
-                P
-              </span>
+              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-line/80 bg-slate-100 shadow-2xs">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={getAvatar("Contractor")}
+                  alt="Contractor Assigned"
+                  className="h-full w-full object-cover"
+                />
+              </div>
             )}
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
