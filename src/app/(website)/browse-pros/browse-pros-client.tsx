@@ -2,8 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Briefcase, ChevronLeft, ChevronRight, Repeat, ShieldCheck } from "lucide-react";
+import { Briefcase, ChevronLeft, ChevronRight, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, NativeSelect, TextField } from "@/components/ui/field";
@@ -113,7 +112,7 @@ export function BrowseProsClient() {
       }
       return b.pro.rating - a.pro.rating;
     });
-  }, [category, filters, location, user]);
+  }, [category, filters, location, user, isDemoProLive]);
 
   // Reset to page 1 whenever search filters change without cascading effect
   const filterKey = `${category}|${location}|${filters.query}|${filters.minPrice}|${filters.maxPrice}|${filters.minRating}|${filters.sort}`;

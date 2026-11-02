@@ -113,21 +113,14 @@ function CompactAttachment({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              className="rounded-md px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition"
-            >
-              Replace
-            </button>
+          <div className="flex items-center shrink-0">
             <button
               type="button"
               onClick={onRemove}
-              className="rounded-md p-1 text-muted hover:text-red-600 hover:bg-red-50 transition"
-              title="Remove"
+              className="rounded-lg p-1.5 text-muted hover:text-red-600 hover:bg-red-50 transition"
+              title="Delete file"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -329,14 +322,10 @@ export default function ProRegisterPage() {
         Join as a professional
       </h1>
       <p className="mt-1 font-sans text-xs sm:text-sm text-[#666]">
-        {step === 0 &&
-          "Create your professional account to connect directly with Austin homeowners."}
-        {step === 1 &&
-          "Set your primary trade specialty and local service territory radius."}
-        {step === 2 &&
-          "Provide your verified trade license and optional liability insurance."}
-        {step === 3 &&
-          "Complete confidential background screening through Checkr to verify your identity and account safety."}
+        {step === 0 && "Create your pro account to connect with local homeowners."}
+        {step === 1 && "Select your trade and service coverage area."}
+        {step === 2 && "Add your trade license and insurance details."}
+        {step === 3 && "Verify your background via Checkr to start receiving jobs."}
       </p>
 
       {/* Stepper with centered ticks and numbers */}
@@ -570,23 +559,23 @@ export default function ProRegisterPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-xs font-bold text-title">
-                    Checkr Background Screening
+                    Background Verification
                   </h2>
                   <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 text-[10px] font-semibold">
-                    Third-Party
+                    Via Checkr
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted leading-relaxed">
-                  Local Fix never collects or stores your SSN or personal ID. Screenings are handled confidentially via Checkr, with instant dual-email confirmation sent to you and Local Fix admin.
+                  All pros complete a quick check through Checkr. Your SSN and ID stay with Checkr—Local Fix never collects or stores them. Both you and Local Fix will receive confirmation once submitted.
                 </p>
               </div>
             </div>
 
-            {/* Clean Checkr Portal Action Row */}
+            {/* Checkr Portal Action Row */}
             <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white p-3">
               <div className="min-w-0">
-                <p className="text-xs font-bold text-title">Start Screening Portal</p>
-                <p className="text-[11px] text-muted">2–3 min on Checkr · Dual-email confirmation</p>
+                <p className="text-xs font-bold text-title">Checkr Portal</p>
+                <p className="text-[11px] text-muted">Takes ~2–3 minutes</p>
               </div>
               <a
                 href="https://checkr.com"
@@ -603,7 +592,7 @@ export default function ProRegisterPage() {
             {checkrOpened && (
               <div className="flex items-center gap-2 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/70 p-2.5 rounded-lg">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>Checkr portal opened. Check your email for confirmation.</span>
+                <span>Portal opened in a new tab. Check your inbox for confirmation.</span>
               </div>
             )}
 
@@ -616,7 +605,7 @@ export default function ProRegisterPage() {
                 onChange={(e) => setConsent(e.target.checked)}
               />
               <span className="leading-snug">
-                I agree to complete confidential background screening via Checkr and acknowledge that account clearance is required before offering services on Local Fix.
+                I agree to complete my background check on Checkr.
               </span>
             </label>
           </div>

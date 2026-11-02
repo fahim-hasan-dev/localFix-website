@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, ShieldCheck, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Field, NativeSelect, TextArea } from "@/components/ui/field";
+import { Field, TextArea } from "@/components/ui/field";
 import { categories, getPro, professionals } from "@/Mockdata";
 import { labelForAnswer, questionsForCategory } from "@/lib/intake-questions";
 import { matchEligiblePros } from "@/lib/matching";

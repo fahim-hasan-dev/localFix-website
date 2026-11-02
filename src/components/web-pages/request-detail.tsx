@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -27,7 +27,6 @@ import {
   PawPrint,
   ShieldCheck,
   Star,
-  Tag,
   Trash2,
   Truck,
   User,
@@ -43,7 +42,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import {
-  cleanFactLabel,
   cleanJobDescription,
   jobRequestFacts,
   paymentMethodLabels,
@@ -55,9 +53,7 @@ import {
   splitJobDescription,
 } from "@/lib/marketplace";
 import {
-  getCategory,
   getPro,
-  urgencyLabels,
 } from "@/Mockdata";
 import {
   addQuote,
@@ -208,21 +204,11 @@ export function RequestDetail({
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [reviewBody, setReviewBody] = useState("");
   const [savedMsg, setSavedMsg] = useState("");
-  const [rescheduleDate, setRescheduleDate] = useState("");
-  const [rescheduleWindow, setRescheduleWindow] = useState("10:00 AM – 12:00 PM (Late Morning)");
+  const [rescheduleDate, setRescheduleDate] = useState(() => booking?.scheduledDate ?? "");
+  const [rescheduleWindow, setRescheduleWindow] = useState(
+    () => booking?.arrivalWindow || booking?.scheduledTime || "10:00 AM – 12:00 PM (Late Morning)"
+  );
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
-
-  useEffect(() => {
-    if (booking?.scheduledDate) {
-      setRescheduleDate(booking.scheduledDate);
-    }
-    if (booking?.arrivalWindow || booking?.scheduledTime) {
-      setRescheduleWindow(booking.arrivalWindow || booking.scheduledTime || "10:00 AM – 12:00 PM (Late Morning)");
-    }
-    if (booking?.paymentArrangement) {
-      setArrangePay(booking.paymentArrangement);
-    }
-  }, [booking?.scheduledDate, booking?.arrivalWindow, booking?.scheduledTime, booking?.paymentArrangement]);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -231,7 +217,7 @@ export function RequestDetail({
   const [settlePaymentMethod, setSettlePaymentMethod] = useState<DirectPaymentMethod>("cash");
   const [settlePaid, setSettlePaid] = useState(false);
   const [settleInspected, setSettleInspected] = useState(true);
-  const [arrangePay, setArrangePay] = useState<DirectPaymentMethod>("cash");
+  const [arrangePay, setArrangePay] = useState<DirectPaymentMethod>(() => booking?.paymentArrangement ?? "cash");
   const [selectedReviewTags, setSelectedReviewTags] = useState<string[]>([]);
   const existingReview = useAppSelector((state) =>
     state.features.reviews.find((item) => item.jobId === id)
@@ -361,17 +347,7 @@ export function RequestDetail({
   }
 
   const photosForJob = storedPhotos.length ? storedPhotos : job.photos ?? [];
-  const category = getCategory(job.categorySlug);
   const hiredPro = hiredQuote ? getPro(hiredQuote.proId) : null;
-  const isTitleHavingCategory = Boolean(
-    category?.name && job.title.toLowerCase().includes(category.name.toLowerCase())
-  );
-  const meta = [
-    !isTitleHavingCategory ? category?.name : null,
-    `${job.city}, ${job.state} ${job.zip}`,
-    job.postedAt ? `Posted ${job.postedAt}` : null,
-    isProView ? `Client: ${job.homeownerName}` : null,
-  ].filter(Boolean);
 
   const workActive =
     job.status === "hired" ||
@@ -415,7 +391,7 @@ export function RequestDetail({
     event.target.value = "";
   }
 
-  const detailedWorkDescription = useMemo(() => {
+  const detailedWorkDescription = (() => {
     if (cleanDescription && cleanDescription.trim().length > 0) {
       return cleanDescription.trim();
     }
@@ -427,7 +403,7 @@ export function RequestDetail({
       return job.description.trim();
     }
     return `${job.title} service requested for property in ${job.city || "Austin"}, ${job.state || "TX"} (${job.zip}).`;
-  }, [cleanDescription, job]);
+  })();
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-4">

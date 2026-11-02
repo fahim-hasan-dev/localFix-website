@@ -2,26 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  ChevronDown,
-  LayoutDashboard,
-  LogOut,
-  Repeat,
-  ShieldCheck,
-  Store,
-  UserRound,
-} from "lucide-react";
+import { LogOut, Store, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { cn } from "@/lib/cn";
-import { loginAs, logout } from "@/redux/slices/authSlice";
+import { logout } from "@/redux/slices/authSlice";
 import { useAppDispatch } from "@/redux/hooks";
 import type { User } from "@/types";
-
-function roleLabel(role: User["role"]) {
-  if (role === "pro") return "Verified Pro";
-  return "Homeowner";
-}
 
 export function AccountMenu({ user }: { user: User }) {
   const pathname = usePathname();
@@ -53,44 +40,27 @@ export function AccountMenu({ user }: { user: User }) {
     };
   }, []);
 
-  function handleRoleSwitch(targetRole: User["role"]) {
-    dispatch(loginAs(targetRole));
-    setOpen(false);
-    router.push(targetRole === "pro" ? "/pro" : "/account");
-  }
-
   return (
     <div className="relative" ref={rootRef}>
-      {/* Minimal, Sleek Executive Profile Pill */}
+      {/* Avatar only button: no name, no pill border */}
       <button
         type="button"
         className={cn(
-          "group flex items-center gap-2 rounded-full border border-line/80 bg-white p-1 pr-3 text-left shadow-2xs transition-all duration-200 hover:border-primary/40 hover:bg-stone-50/70 hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 cursor-pointer select-none",
-          open && "border-primary/60 bg-stone-50/80 ring-2 ring-primary/15 shadow-xs",
+          "relative grid h-10 w-10 place-items-center rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer select-none",
+          open && "ring-2 ring-primary ring-offset-2",
         )}
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-label="Account menu"
         onClick={() => setOpen((value) => !value)}
       >
         <UserAvatar
           user={user}
-          size="sm"
-          className="ring-1 ring-black/5 group-hover:ring-primary/30 transition-all"
-        />
-
-        <span className="hidden sm:inline-block font-display text-[13px] font-semibold text-title group-hover:text-primary transition-colors max-w-[130px] truncate">
-          {user.name}
-        </span>
-
-        <ChevronDown
-          className={cn(
-            "h-3.5 w-3.5 text-stone-400 group-hover:text-stone-700 transition-all duration-200 shrink-0",
-            open && "rotate-180 text-primary",
-          )}
+          className="h-10 w-10 ring-0 shadow-none"
         />
       </button>
 
-      {/* Modern Clean Popover Dropdown Menu */}
+      {/* Popover Dropdown Menu */}
       {open ? (
         <div
           role="menu"
@@ -118,40 +88,6 @@ export function AccountMenu({ user }: { user: User }) {
               </div>
               <span>{isPro ? "Storefront Profile" : "Profile & Settings"}</span>
             </Link>
-          </div>
-
-          {/* Demo Role Switcher Slab */}
-          <div className="border-t border-line/70 bg-stone-50/70 p-2">
-            {user.role !== "homeowner" ? (
-              <button
-                type="button"
-                onClick={() => handleRoleSwitch("homeowner")}
-                className="flex w-full items-center justify-between rounded-xl border border-line/60 bg-white px-3 py-2 text-left font-display text-xs font-semibold text-primary hover:border-primary/40 hover:bg-white hover:shadow-xs transition cursor-pointer"
-              >
-                <span className="flex items-center gap-2">
-                  <Repeat className="h-3.5 w-3.5 text-primary" />
-                  Switch to Homeowner View
-                </span>
-                <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] text-muted font-normal">
-                  Demo
-                </span>
-              </button>
-            ) : null}
-            {user.role !== "pro" ? (
-              <button
-                type="button"
-                onClick={() => handleRoleSwitch("pro")}
-                className="flex w-full items-center justify-between rounded-xl border border-line/60 bg-white px-3 py-2 text-left font-display text-xs font-semibold text-primary hover:border-primary/40 hover:bg-white hover:shadow-xs transition cursor-pointer"
-              >
-                <span className="flex items-center gap-2">
-                  <Repeat className="h-3.5 w-3.5 text-primary" />
-                  Switch to Pro View
-                </span>
-                <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] text-muted font-normal">
-                  Demo
-                </span>
-              </button>
-            ) : null}
           </div>
 
           {/* Log Out */}

@@ -70,7 +70,7 @@ export default function AgentDashboardLayout({
         ],
       },
     ];
-  }, [state]);
+  }, [state, user?.id, user?.role]);
 
   if (!hydrated || !user || user.role !== "pro") return null;
 

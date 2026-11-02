@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock,
-  Home,
   ImagePlus,
   MapPin,
   Package,
@@ -36,7 +35,7 @@ import { questionsForCategory, type IntakeQuestion, type IntakeChoice } from "@/
 import { cleanFactLabel } from "@/lib/marketplace";
 import { loginAs } from "@/redux/slices/authSlice";
 import { clearDraft } from "@/redux/slices/intakeSlice";
-import { addJob, addQuote } from "@/redux/slices/marketplaceSlice";
+import { addJob } from "@/redux/slices/marketplaceSlice";
 import { addNotification, invitePro, setJobPhotos, setJobStatus } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import type { JobVisibility, PropertyType, Urgency } from "@/types";

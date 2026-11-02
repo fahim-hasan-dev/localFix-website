@@ -15,7 +15,6 @@ import {
   Package,
   ShieldCheck,
   CalendarDays,
-  AlertCircle,
   CreditCard,
   FileText,
 } from "lucide-react";
