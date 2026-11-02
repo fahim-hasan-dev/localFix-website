@@ -6,6 +6,7 @@ import { ArrowLeft, Check, ShieldCheck, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, TextArea } from "@/components/ui/field";
 import { categories, getPro, professionals } from "@/Mockdata";
+import { getAvatar } from "@/lib/avatars";
 import { labelForAnswer, questionsForCategory } from "@/lib/intake-questions";
 import { matchEligiblePros } from "@/lib/matching";
 import { loginAs } from "@/redux/slices/authSlice";
@@ -474,8 +475,19 @@ export function QuoteRequestFlow() {
             <div className="mt-5 space-y-2">
               {(invitedPro ? [invitedPro] : matches).map((pro) => (
                 <div key={pro.id} className="flex items-center gap-3 rounded-2xl border border-line/80 p-3.5">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-title text-sm font-semibold text-white">
-                    {initials(pro.name)}
+                  <span className="relative block h-11 w-11 shrink-0 overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-black/5">
+                    {pro.avatar || getAvatar(pro.name, pro.id) ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={pro.avatar || getAvatar(pro.name, pro.id)}
+                        alt={pro.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="grid h-full w-full place-items-center bg-title text-sm font-semibold text-white">
+                        {initials(pro.name)}
+                      </span>
+                    )}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-1 font-display text-sm font-semibold text-title">

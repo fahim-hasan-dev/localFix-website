@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import { categories, getPro, professionals } from "@/Mockdata";
+import { getAvatar } from "@/lib/avatars";
 import { matchEligiblePros } from "@/lib/matching";
 import { questionsForCategory, type IntakeQuestion, type IntakeChoice } from "@/lib/intake-questions";
 import { cleanFactLabel } from "@/lib/marketplace";
@@ -450,8 +451,19 @@ function BookingFlow() {
         <Card className="rounded-[20px] border border-primary/30 bg-gradient-to-r from-primary/5 via-blue-50/20 to-white p-4 sm:p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-blue-600 font-display text-lg font-bold text-white shadow-xs">
-                {initials(invitedPro.name)}
+              <span className="relative block h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-100 shadow-xs ring-1 ring-black/5">
+                {invitedPro.avatar || getAvatar(invitedPro.name, invitedPro.id) ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={invitedPro.avatar || getAvatar(invitedPro.name, invitedPro.id)}
+                    alt={invitedPro.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="grid h-full w-full place-items-center bg-gradient-to-br from-primary to-blue-600 font-display text-lg font-bold text-white">
+                    {initials(invitedPro.name)}
+                  </span>
+                )}
               </span>
               <div>
                 <div className="flex items-center gap-2">
@@ -944,8 +956,19 @@ function BookingFlow() {
                 {invitedPro && (
                   <div className="flex items-center justify-between gap-3.5 rounded-xl border border-line/80 bg-white p-3.5 shadow-xs">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-title text-white font-display text-sm font-bold shadow-xs">
-                        {initials(invitedPro.name)}
+                      <div className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-100 shadow-xs ring-1 ring-black/5">
+                        {invitedPro.avatar || getAvatar(invitedPro.name, invitedPro.id) ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={invitedPro.avatar || getAvatar(invitedPro.name, invitedPro.id)}
+                            alt={invitedPro.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="grid h-full w-full place-items-center bg-title text-white font-display text-sm font-bold">
+                            {initials(invitedPro.name)}
+                          </span>
+                        )}
                       </div>
                       <div className="min-w-0">
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted block">

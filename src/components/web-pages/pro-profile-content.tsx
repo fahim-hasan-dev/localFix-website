@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { photos } from "@/lib/media";
+import { getAvatar } from "@/lib/avatars";
 import {
   serviceLines,
   tradeDefaultServices,
@@ -219,6 +220,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
     type ReviewEntry = {
       id: string;
       author: string;
+      avatar?: string;
       location: string;
       date: string;
       rating: number;
@@ -231,6 +233,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
     const userMapped: ReviewEntry[] = seedReviews.map((r, i) => ({
       id: r.id,
       author: r.author,
+      avatar: r.avatar || getAvatar(r.author),
       location: `${pro.city}, ${pro.state}`,
       date: r.createdAt ? r.createdAt : `${i + 1} month ago`,
       rating: r.rating,
@@ -246,6 +249,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
       if (!combined.some((item) => item.text.trim() === def.text.trim() || item.id === def.id)) {
         combined.push({
           ...def,
+          avatar: def.avatar || getAvatar(def.author),
           location: def.location || `${pro.city}, ${pro.state}`,
         });
       }
@@ -379,12 +383,31 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
             {/* Avatar & Profile Meta */}
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-5">
               <div className="relative -mt-10 sm:-mt-12 shrink-0">
-                <span className="grid h-20 w-20 sm:h-24 sm:w-24 place-items-center rounded-2xl border-4 border-white bg-gradient-to-br from-primary to-blue-700 font-display text-2xl sm:text-3xl font-bold text-white shadow-md">
-                  {initials(effectiveBusinessName)}
-                </span>
+                {(() => {
+                  const storefrontAvatar =
+                    (isDemoPro && proProfile?.avatar) ||
+                    pro.avatar ||
+                    getAvatar(effectiveBusinessName, pro.id);
+                  return (
+                    <span className="relative block h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-2xl border-4 border-white bg-smoke shadow-md ring-1 ring-black/5">
+                      {storefrontAvatar ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={storefrontAvatar}
+                          alt={effectiveBusinessName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="grid h-full w-full place-items-center bg-gradient-to-br from-primary to-blue-700 font-display text-2xl sm:text-3xl font-bold text-white">
+                          {initials(effectiveBusinessName)}
+                        </span>
+                      )}
+                    </span>
+                  );
+                })()}
                 <span
                   title="Screened & Verified Professional"
-                  className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-emerald-600 text-white shadow-xs ring-2 ring-white"
+                  className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-emerald-600 text-white shadow-xs ring-2 ring-white z-10"
                 >
                   <ShieldCheck className="h-3.5 w-3.5" />
                 </span>
@@ -921,8 +944,19 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-smoke font-display text-xs font-bold text-title border border-line/60">
-                        {initials(rev.author)}
+                      <span className="relative block h-10 w-10 shrink-0 overflow-hidden rounded-full bg-smoke border border-line/60 shadow-2xs">
+                        {rev.avatar || getAvatar(rev.author) ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={rev.avatar || getAvatar(rev.author)}
+                            alt={rev.author}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="grid h-full w-full place-items-center font-display text-xs font-bold text-title">
+                            {initials(rev.author)}
+                          </span>
+                        )}
                       </span>
                       <div>
                         <h4 className="font-display text-sm font-semibold text-title">

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { getAvatar } from "@/lib/avatars";
 import type { User } from "@/types";
 
 function initials(name: string) {
@@ -25,7 +26,9 @@ export function UserAvatar({
     lg: "h-16 w-16 text-lg",
   };
 
-  if (user.avatar) {
+  const avatarUrl = user.avatar || (user.name ? getAvatar(user.name) : undefined);
+
+  if (avatarUrl) {
     return (
       <span
         className={cn(
@@ -35,7 +38,7 @@ export function UserAvatar({
         )}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+        <img src={avatarUrl} alt={user.name} className="h-full w-full object-cover" />
       </span>
     );
   }

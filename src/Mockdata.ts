@@ -1,3 +1,4 @@
+import { proAvatars } from "@/lib/avatars";
 import type {
   Category,
   Job,
@@ -116,7 +117,7 @@ export const demoProUser: User = {
   avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=240&q=80",
 };
 
-export const professionals: Professional[] = [
+const baseProfessionals: Professional[] = [
   {
     id: "pro-1",
     name: "Luis Ortega",
@@ -766,6 +767,11 @@ export const professionals: Professional[] = [
     availableThisWeek: true,
   },
 ];
+
+export const professionals: Professional[] = baseProfessionals.map((p) => ({
+  ...p,
+  avatar: proAvatars[p.id] || p.avatar,
+}));
 
 export const jobs: Job[] = [
   {

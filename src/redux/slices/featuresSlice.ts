@@ -33,6 +33,7 @@ export interface ReviewItem {
   jobId: string;
   proId: string;
   author: string;
+  avatar?: string;
   rating: number;
   body: string;
   createdAt: string;
@@ -97,6 +98,7 @@ export interface ProSpecialOffer {
 export interface ProProfileData {
   businessName: string;
   contactName: string;
+  avatar?: string;
   trade: string;
   categorySlug: string;
   tagline: string;
@@ -186,6 +188,7 @@ const initialState: FeaturesState = {
       jobId: "job-10",
       proId: "pro-1",
       author: "Maya Chen",
+      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&h=256&q=80",
       rating: 5,
       body: "Marcus replaced our failed pressure regulator within 2 hours. Main pressure dropped back to a safe 55 PSI immediately. Zero water left on floor.",
       createdAt: "Oct 18, 2026",
@@ -196,6 +199,7 @@ const initialState: FeaturesState = {
       jobId: "job-past-1",
       proId: "pro-1",
       author: "Maya Chen",
+      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&h=256&q=80",
       rating: 5,
       body: "Fixed the leak the same afternoon. Clean work and clear price.",
       createdAt: "Sep 2026",
@@ -206,6 +210,7 @@ const initialState: FeaturesState = {
       jobId: "job-past-2",
       proId: "pro-1",
       author: "Jordan Hale",
+      avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=256&h=256&q=80",
       rating: 4,
       body: "Showed up on time and explained the fittings before replacing them.",
       createdAt: "Aug 2026",
@@ -215,6 +220,7 @@ const initialState: FeaturesState = {
       jobId: "job-past-3",
       proId: "pro-2",
       author: "Elena Ruiz",
+      avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=256&h=256&q=80",
       rating: 5,
       body: "Diagnosed the dead outlets quickly and left the hallway tidy.",
       createdAt: "Sep 2026",

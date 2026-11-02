@@ -21,6 +21,7 @@ import { TextArea } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
 import { useRoleAccess } from "@/hooks/use-role-access";
 import { getPro, threads as seedThreads } from "@/Mockdata";
+import { getAvatar } from "@/lib/avatars";
 import type { ChatMessage, MessageThread, Professional } from "@/types";
 
 type PendingFile = {
@@ -304,12 +305,28 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                       )}
                     >
                       {/* Avatar */}
-                      <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-[#00a1de] font-display text-xs font-bold text-white shadow-xs">
-                        {initials(contactName)}
-                        {thread.unread > 0 && (
-                          <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-primary" />
-                        )}
-                      </span>
+                      {(() => {
+                        const avatarUrl = getAvatar(contactName, thread.proId);
+                        return (
+                          <span className="relative block h-11 w-11 shrink-0 overflow-hidden rounded-full bg-smoke shadow-xs ring-1 ring-black/5">
+                            {avatarUrl ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img
+                                src={avatarUrl}
+                                alt={contactName}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span className="grid h-full w-full place-items-center bg-gradient-to-br from-primary to-[#00a1de] font-display text-xs font-bold text-white">
+                                {initials(contactName)}
+                              </span>
+                            )}
+                            {thread.unread > 0 && (
+                              <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-primary z-10" />
+                            )}
+                          </span>
+                        );
+                      })()}
 
                       {/* Content block */}
                       <div className="min-w-0 flex-1">
@@ -372,14 +389,30 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                     </button>
 
                     {/* CLICKABLE PRO AVATAR */}
-                    <button
-                      type="button"
-                      onClick={() => setShowProDetails((prev) => !prev)}
-                      className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-[#00a1de] font-display text-xs font-bold text-white shadow-xs hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer"
-                      title="Click to view contractor details"
-                    >
-                      {initials(activeContactName)}
-                    </button>
+                    {(() => {
+                      const activeAvatar = getAvatar(activeContactName, active?.proId);
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setShowProDetails((prev) => !prev)}
+                          className="relative block h-10 w-10 shrink-0 overflow-hidden rounded-full bg-smoke shadow-xs ring-1 ring-black/5 hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer"
+                          title="Click to view details"
+                        >
+                          {activeAvatar ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={activeAvatar}
+                              alt={activeContactName}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="grid h-full w-full place-items-center bg-gradient-to-br from-primary to-[#00a1de] font-display text-xs font-bold text-white">
+                              {initials(activeContactName)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })()}
 
                     {/* CLICKABLE PRO NAME & JOB TITLE */}
                     <div className="min-w-0">
@@ -555,9 +588,25 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
 
                 {/* Profile Identity Card */}
                 <div className="text-center space-y-2">
-                  <div className="mx-auto grid h-16 w-16 place-items-center rounded-[20px] bg-gradient-to-br from-primary to-[#00a1de] font-display text-xl font-bold text-white shadow-md">
-                    {initials(activeContactName)}
-                  </div>
+                  {(() => {
+                    const activeAvatar = getAvatar(activeContactName, active?.proId);
+                    return (
+                      <div className="relative mx-auto h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-smoke shadow-md ring-1 ring-black/5">
+                        {activeAvatar ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={activeAvatar}
+                            alt={activeContactName}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="grid h-full w-full place-items-center bg-gradient-to-br from-primary to-[#00a1de] font-display text-xl font-bold text-white">
+                            {initials(activeContactName)}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div>
                     <h3 className="font-display text-[17px] font-semibold text-title">
                       {activeContactName}

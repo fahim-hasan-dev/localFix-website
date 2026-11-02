@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Calendar, ChevronRight, Clock, ShieldCheck, Star } from "lucide-react";
 import { getPro, offerStatusLabels } from "@/Mockdata";
+import { getAvatar } from "@/lib/avatars";
 import { useAppSelector } from "@/redux/hooks";
 import type { Quote } from "@/types";
 import { cn } from "@/lib/cn";
@@ -49,9 +50,20 @@ export function QuoteCard({
           href={proProfileHref}
           onClick={(e) => e.stopPropagation()}
           title={`View ${pro?.name ?? "pro"}'s public profile`}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-title text-sm font-semibold text-white transition hover:ring-2 hover:ring-primary/40"
+          className="relative block h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-black/5 transition hover:ring-2 hover:ring-primary/40"
         >
-          {(pro?.name ?? "P").charAt(0)}
+          {pro?.avatar || (pro?.name && getAvatar(pro.name, pro.id)) ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={pro?.avatar || getAvatar(pro?.name, pro?.id)}
+              alt={pro?.name || "Professional"}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="grid h-full w-full place-items-center bg-title text-sm font-semibold text-white">
+              {(pro?.name ?? "P").charAt(0)}
+            </span>
+          )}
         </Link>
 
         <div className="min-w-0 flex-1">

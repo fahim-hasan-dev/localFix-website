@@ -55,6 +55,7 @@ import {
 import {
   getPro,
 } from "@/Mockdata";
+import { getAvatar } from "@/lib/avatars";
 import {
   addQuote,
   confirmBooking,
@@ -1171,9 +1172,20 @@ export function RequestDetail({
                     <Link
                       href={`/browse-pros/${requestedPro.id}`}
                       title={`View ${requestedPro.name}'s profile`}
-                      className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-title text-sm font-semibold text-white transition hover:ring-2 hover:ring-primary/40"
+                      className="relative block h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-black/5 transition hover:ring-2 hover:ring-primary/40"
                     >
-                      {initials(requestedPro.name)}
+                      {requestedPro.avatar || getAvatar(requestedPro.name, requestedPro.id) ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={requestedPro.avatar || getAvatar(requestedPro.name, requestedPro.id)}
+                          alt={requestedPro.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="grid h-full w-full place-items-center bg-title text-sm font-semibold text-white">
+                          {initials(requestedPro.name)}
+                        </span>
+                      )}
                     </Link>
                     <div className="min-w-0 flex-1">
                       <Link

@@ -15,6 +15,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { TextArea, TextField } from "@/components/ui/field";
 import { replyToReview, addNotification } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { getAvatar } from "@/lib/avatars";
 import { cn } from "@/lib/cn";
 
 function initials(name: string) {
@@ -297,8 +298,19 @@ export default function ProReviewsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     {/* User Avatar */}
-                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-slate-100 font-display text-xs font-semibold text-slate-700 border border-slate-200/80">
-                      {initials(review.author)}
+                    <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-slate-100 border border-slate-200/80 shadow-2xs">
+                      {review.avatar || getAvatar(review.author) ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={review.avatar || getAvatar(review.author)}
+                          alt={review.author}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center font-display text-xs font-semibold text-slate-700">
+                          {initials(review.author)}
+                        </div>
+                      )}
                     </div>
 
                     <div>

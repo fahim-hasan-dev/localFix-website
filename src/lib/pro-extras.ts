@@ -744,6 +744,7 @@ export const tradeDefaultServices: Record<string, TradeServiceItem[]> = {
 export interface TradeReviewItem {
   id: string;
   author: string;
+  avatar?: string;
   location?: string;
   date: string;
   rating: number;

@@ -113,6 +113,7 @@ export interface Professional {
   availabilityNote: string;
   /** True if they can take work this week */
   availableThisWeek: boolean;
+  avatar?: string;
 }
 
 export interface IntakeAnswer {
