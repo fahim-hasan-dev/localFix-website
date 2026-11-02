@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Clock,
   Download,
-  Eye,
   FileCheck2,
   FileText,
   FileUp,
@@ -211,7 +210,7 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
         <Card className="rounded-2xl border border-line/80 bg-white p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-smoke/80 text-primary border border-line/70 shadow-2xs">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div className="min-w-0">
@@ -250,7 +249,7 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
         <Card className="rounded-2xl border border-line/80 bg-white p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5 min-w-0">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-smoke/80 text-primary border border-line/70 shadow-2xs">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <FileCheck2 className="h-5 w-5" />
               </div>
               <div className="min-w-0">
@@ -263,39 +262,26 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                   </span>
                 </div>
 
-                {/* Interactive Document Attachment with View & Download */}
-                <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-muted font-medium">Document:</span>
-                  <div className="inline-flex items-center gap-2 rounded-xl border border-line bg-smoke/60 px-2.5 py-1 text-xs shadow-2xs">
-                    <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPreview("license")}
-                      className="truncate max-w-[200px] sm:max-w-[280px] font-mono text-[11px] font-semibold text-title hover:text-primary hover:underline cursor-pointer transition"
-                      title="Click to preview certificate"
-                    >
-                      {licenseFile}
-                    </button>
-                    <div className="h-3 w-px bg-line/80 shrink-0" />
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPreview("license")}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline cursor-pointer transition shrink-0"
-                      title="Preview document"
-                    >
-                      <Eye className="h-3 w-3" />
-                      <span>View</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDownload("license")}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-600 hover:text-primary hover:underline cursor-pointer transition shrink-0"
-                      title="Download file"
-                    >
-                      <Download className="h-3 w-3" />
-                      <span>Download</span>
-                    </button>
-                  </div>
+                {/* Clean Standard Document Link (No nested boxes) */}
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-muted">Document:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPreview("license")}
+                    className="font-medium text-title hover:text-primary underline decoration-line-strong underline-offset-2 hover:decoration-primary cursor-pointer transition"
+                    title="Click to preview certificate"
+                  >
+                    {licenseFile}
+                  </button>
+                  <span className="text-stone-300">·</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDownload("license")}
+                    className="font-medium text-primary hover:underline cursor-pointer transition"
+                    title="Download document"
+                  >
+                    Download
+                  </button>
                 </div>
               </div>
             </div>
@@ -319,7 +305,7 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
         <Card className="rounded-2xl border border-line/80 bg-white p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5 min-w-0">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-smoke/80 text-primary border border-line/70 shadow-2xs">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <Shield className="h-5 w-5" />
               </div>
               <div className="min-w-0">
@@ -332,39 +318,26 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                   </span>
                 </div>
 
-                {/* Interactive Certificate Attachment with View & Download */}
-                <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-muted font-medium">Certificate:</span>
-                  <div className="inline-flex items-center gap-2 rounded-xl border border-line bg-smoke/60 px-2.5 py-1 text-xs shadow-2xs">
-                    <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPreview("insurance")}
-                      className="truncate max-w-[200px] sm:max-w-[280px] font-mono text-[11px] font-semibold text-title hover:text-primary hover:underline cursor-pointer transition"
-                      title="Click to preview certificate"
-                    >
-                      {insuranceFile}
-                    </button>
-                    <div className="h-3 w-px bg-line/80 shrink-0" />
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPreview("insurance")}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline cursor-pointer transition shrink-0"
-                      title="Preview certificate"
-                    >
-                      <Eye className="h-3 w-3" />
-                      <span>View</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDownload("insurance")}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-600 hover:text-primary hover:underline cursor-pointer transition shrink-0"
-                      title="Download file"
-                    >
-                      <Download className="h-3 w-3" />
-                      <span>Download</span>
-                    </button>
-                  </div>
+                {/* Clean Standard Certificate Link (No nested boxes) */}
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-muted">Certificate:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPreview("insurance")}
+                    className="font-medium text-title hover:text-primary underline decoration-line-strong underline-offset-2 hover:decoration-primary cursor-pointer transition"
+                    title="Click to preview certificate"
+                  >
+                    {insuranceFile}
+                  </button>
+                  <span className="text-stone-300">·</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDownload("insurance")}
+                    className="font-medium text-primary hover:underline cursor-pointer transition"
+                    title="Download certificate"
+                  >
+                    Download
+                  </button>
                 </div>
               </div>
             </div>
