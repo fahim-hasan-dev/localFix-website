@@ -170,3 +170,4 @@ export function getAvatar(name?: string, id?: string): string {
   }
   return fallbackPool[0];
 }
+

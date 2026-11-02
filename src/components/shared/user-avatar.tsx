@@ -31,6 +31,7 @@ export function UserAvatar({
   if (avatarUrl) {
     return (
       <span
+        suppressHydrationWarning
         className={cn(
           "relative block shrink-0 overflow-hidden rounded-full bg-smoke ring-1 ring-black/5",
           sizes[size],
@@ -45,6 +46,7 @@ export function UserAvatar({
 
   return (
     <span
+      suppressHydrationWarning
       className={cn(
         "grid shrink-0 place-items-center rounded-full bg-primary font-display font-bold text-white ring-1 ring-black/5",
         sizes[size],

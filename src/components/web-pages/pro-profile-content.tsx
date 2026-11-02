@@ -385,11 +385,14 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
               <div className="relative -mt-10 sm:-mt-12 shrink-0">
                 {(() => {
                   const storefrontAvatar =
-                    (isDemoPro && proProfile?.avatar) ||
                     pro.avatar ||
+                    (isDemoPro && proProfile?.avatar) ||
                     getAvatar(effectiveBusinessName, pro.id);
                   return (
-                    <span className="relative block h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-2xl border-4 border-white bg-smoke shadow-md ring-1 ring-black/5">
+                    <span
+                      suppressHydrationWarning
+                      className="relative block h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-2xl border-4 border-white bg-smoke shadow-md ring-1 ring-black/5"
+                    >
                       {storefrontAvatar ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img
@@ -944,7 +947,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="relative block h-10 w-10 shrink-0 overflow-hidden rounded-full bg-smoke border border-line/60 shadow-2xs">
+                      <span suppressHydrationWarning className="relative block h-10 w-10 shrink-0 overflow-hidden rounded-full bg-smoke border border-line/60 shadow-2xs">
                         {rev.avatar || getAvatar(rev.author) ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img
