@@ -10,11 +10,11 @@ import {
   Globe,
   Inbox,
   Search,
+  ShieldCheck,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { categories, getCategory, urgencyLabels } from "@/Mockdata";
 import {
@@ -217,15 +217,27 @@ export default function ProJobsPage() {
         </select>
       </div>
 
+      {/* Banner when screening is pending to submit quotes, but browsing leads is always open */}
+      {!access.canSubmitQuote && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-200/90 bg-amber-50/80 p-3.5 sm:p-4 text-xs shadow-2xs">
+          <div className="flex items-center gap-2.5 text-amber-900">
+            <ShieldCheck className="h-4 w-4 text-amber-700 shrink-0" />
+            <span>
+              <strong>Clearance in review:</strong> You can browse all {tabCounts.leads} marketplace leads below. Background check clearance is required before submitting quotations to homeowners.
+            </span>
+          </div>
+          <Button
+            href="/pro/application"
+            size="sm"
+            className="rounded-full bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold shrink-0"
+          >
+            Complete Screening ↗
+          </Button>
+        </div>
+      )}
+
       {/* 4. Main List Rendering */}
-      {!access.canSeeJobBoard ? (
-        <EmptyState
-          title="Clearance required"
-          description="Finish application review to see the job board."
-          actionLabel="Open application"
-          href="/pro/application"
-        />
-      ) : currentList.length === 0 ? (
+      {currentList.length === 0 ? (
         <Card className="rounded-[22px] border border-line/80 bg-white p-10 text-center">
           <Filter className="mx-auto mb-3 h-8 w-8 text-muted/60" />
           <p className="font-display text-base font-bold text-title">
@@ -364,7 +376,13 @@ export default function ProJobsPage() {
                           size="sm"
                           className="rounded-full text-xs font-semibold shadow-xs"
                         >
-                          {isDirect ? "Send Proposal ↗" : "Send Quote ↗"}
+                          {isDirect
+                            ? access.canSubmitQuote
+                              ? "Send Proposal ↗"
+                              : "View Request ↗"
+                            : access.canSubmitQuote
+                            ? "Send Quote ↗"
+                            : "View Lead ↗"}
                         </Button>
                         <Button
                           type="button"

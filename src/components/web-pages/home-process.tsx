@@ -1,7 +1,6 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const steps = [
   {
@@ -52,53 +51,37 @@ export function HomeProcess() {
             <p className="mt-3.5 sm:mt-4 max-w-md font-['Inter_Display',Inter,sans-serif] text-[16px] sm:text-[18px] font-normal leading-[26px] tracking-[-0.18px] text-[#757575]">
               From posting your repair request to final in-person inspection, we keep the entire process transparent, fast, and 100% fee-free.
             </p>
-
-            {/* Design System Standard Button */}
-            <div className="mt-8 sm:mt-9">
-              <Button href="/post-job" size="lg">
-                Get started today ↗
-              </Button>
-            </div>
           </div>
 
           {/* Right Column: Clean Vertical Timeline Steps with Text Hover Color (No Box) */}
           <div className="lg:col-span-7">
             <div className="space-y-8 sm:space-y-10">
-              {steps.map((item, index) => {
-                const isActive = index === 0;
-                return (
-                  <div
-                    key={item.step}
-                    className="group flex items-start gap-4 sm:gap-5 cursor-pointer"
-                  >
-                    {/* Step Icon Badge */}
-                    <div
-                      className={`grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-full transition-colors duration-200 ${
-                        isActive
-                          ? "bg-primary text-white shadow-xs"
-                          : "border border-line bg-surface/50 text-muted group-hover:border-primary/60 group-hover:text-primary group-hover:bg-primary/10"
-                      }`}
-                    >
-                      <Check className="h-4 w-4 stroke-[2.5]" />
-                    </div>
-
-                    {/* Step Content: Smooth hover text color on title and step number */}
-                    <div className="min-w-0 flex-1 pt-0.5 sm:pt-1">
-                      <h3 className="font-geist text-[18px] sm:text-[20px] font-medium tracking-tight flex items-baseline gap-2 text-title transition-colors">
-                        <span className="font-geist font-medium text-title group-hover:text-primary transition-colors">
-                          {item.step} —
-                        </span>
-                        <span className="font-geist font-medium text-title group-hover:text-primary transition-colors">
-                          {item.title}
-                        </span>
-                      </h3>
-                      <p className="mt-1.5 font-['Inter_Display',Inter,sans-serif] text-[14.5px] sm:text-[15.5px] font-normal leading-[24px] tracking-[-0.15px] text-[#757575] max-w-xl group-hover:text-[#475569] transition-colors">
-                        {item.text}
-                      </p>
-                    </div>
+              {steps.map((item) => (
+                <div
+                  key={item.step}
+                  className="group flex items-start gap-4 sm:gap-5 cursor-pointer"
+                >
+                  {/* Step Icon Badge - 100% consistent across all steps */}
+                  <div className="grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-full border border-line/80 bg-stone-50/80 text-muted group-hover:border-primary group-hover:bg-primary group-hover:text-white transition-all duration-200 shadow-2xs">
+                    <Check className="h-4 w-4 stroke-[2.5]" />
                   </div>
-                );
-              })}
+
+                  {/* Step Content: Smooth hover text color on title and step number */}
+                  <div className="min-w-0 flex-1 pt-0.5 sm:pt-1">
+                    <h3 className="font-geist text-[18px] sm:text-[20px] font-medium tracking-tight flex items-baseline gap-2 text-title transition-colors">
+                      <span className="font-geist font-medium text-title group-hover:text-primary transition-colors">
+                        {item.step} —
+                      </span>
+                      <span className="font-geist font-medium text-title group-hover:text-primary transition-colors">
+                        {item.title}
+                      </span>
+                    </h3>
+                    <p className="mt-1.5 font-['Inter_Display',Inter,sans-serif] text-[14.5px] sm:text-[15.5px] font-normal leading-[24px] tracking-[-0.15px] text-[#757575] max-w-xl group-hover:text-[#475569] transition-colors">
+                      {item.text}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

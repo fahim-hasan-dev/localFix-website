@@ -140,7 +140,7 @@ export function resolveRoleAccess(user: User | null, pro?: Partial<ProGate>): Ro
     canPostJob: false,
     canManageQuotes: false,
     canHomeownerMessage: false,
-    canSeeJobBoard: cleared,
+    canSeeJobBoard: true,
     canSubmitQuote: cleared && membershipOk,
     canSeeContact: contactOk,
     canProMessage: cleared && membershipOk,
