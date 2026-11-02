@@ -2,7 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Briefcase, ChevronLeft, ChevronRight, Repeat } from "lucide-react";
+import Link from "next/link";
+import { Briefcase, ChevronLeft, ChevronRight, Repeat, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, NativeSelect, TextField } from "@/components/ui/field";
@@ -28,6 +29,16 @@ export function BrowseProsClient() {
   const params = useSearchParams();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
+  const applicationStatus = useAppSelector((state) => state.features.applicationStatus ?? "cleared");
+  const membershipActive = useAppSelector((state) => state.marketplace.membershipActive);
+  const membershipCancelled = useAppSelector((state) => state.features.membershipCancelled);
+  const membershipPaused = useAppSelector((state) => state.features.membershipPaused);
+
+  const isDemoProLive =
+    applicationStatus === "cleared" &&
+    membershipActive &&
+    !membershipCancelled &&
+    !membershipPaused;
   const filters = useAppSelector((state) => state.filters);
   const category = filters.category || params.get("category") || "";
   const location = filters.zip || params.get("zip") || params.get("location") || "";
@@ -61,7 +72,8 @@ export function BrowseProsClient() {
         matchesQuery &&
         matchesPrice &&
         matchesRating &&
-        pro.clearance === "cleared"
+        pro.clearance === "cleared" &&
+        (pro.id !== "pro-1" || isDemoProLive)
       );
     });
 
@@ -142,13 +154,29 @@ export function BrowseProsClient() {
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
                       Pro Mode
                     </span>
+                    {!isDemoProLive && (
+                      <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-[10px] font-semibold border border-amber-200">
+                        Profile Unpublished
+                      </span>
+                    )}
                   </div>
                   <p className="mt-0.5 text-xs text-[#757575]">
-                    This directory is for homeowners to find pros. To quote on live customer jobs, visit the Jobs Board.
+                    {!isDemoProLive
+                      ? "Your profile is hidden from homeowners until background clearance and active membership (or 30-day trial)."
+                      : "This directory is for homeowners to find pros. To quote on live customer jobs, visit the Jobs Board."}
                   </p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {!isDemoProLive && (
+                  <Button
+                    href={applicationStatus !== "cleared" ? "/pro/application" : "/pro/pricing"}
+                    size="sm"
+                    className="font-semibold shadow-xs bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    {applicationStatus !== "cleared" ? "Complete Clearance ↗" : "Activate Trial / Plan ↗"}
+                  </Button>
+                )}
                 <Button href="/pro/jobs" size="sm" className="font-semibold shadow-xs">
                   Available Jobs Board ↗
                 </Button>

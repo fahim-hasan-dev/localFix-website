@@ -44,6 +44,7 @@ export default function PricingPage() {
   const isTrialActive = active && !cancelled && currentPlan === "trial";
   const isPaidActive = active && !cancelled && currentPlan !== "trial";
   const isCancelled = cancelled;
+  const isCleared = applicationStatus === "cleared";
 
   function showToast(msg: string) {
     setToastMessage(msg);
@@ -51,6 +52,10 @@ export default function PricingPage() {
   }
 
   function handleStartTrial() {
+    if (!isCleared) {
+      showToast("Background check clearance required before activating your 30-Day Free Trial.");
+      return;
+    }
     dispatch(startMembership());
     dispatch(setMembershipPaused(false));
     dispatch(setMembershipCancelled(false));
@@ -61,7 +66,7 @@ export default function PricingPage() {
         renewalDate: "Jan 10, 2027",
       })
     );
-    if (applicationStatus === "cleared") dispatch(unlockContact());
+    dispatch(unlockContact());
     showToast("30-Day Free Trial started successfully. Enjoy zero platform fees!");
   }
 
@@ -141,6 +146,32 @@ export default function PricingPage() {
         </div>
       )}
 
+      {/* Clearance Prerequisite Alert if not yet cleared */}
+      {!isCleared && (
+        <div className="rounded-2xl border border-amber-200/90 bg-amber-50/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-800">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-amber-950">
+                Background Clearance Required Before Membership Activation
+              </h3>
+              <p className="mt-1 text-xs text-amber-800/90 leading-relaxed max-w-xl">
+                Even for our complimentary 30-Day Free Trial, background check clearance is strictly required before your profile can be published to Austin homeowners.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/pro/application"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-700 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-800 transition shrink-0 shadow-2xs"
+          >
+            <span>Complete Screening</span>
+            <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
+
       {/* ============================================================ */}
       {/* 2. CURRENT ACTIVE PLAN OVERVIEW (Standard Card Size & Layout) */}
       {/* ============================================================ */}
@@ -171,9 +202,26 @@ export default function PricingPage() {
           {/* Quick Management Buttons */}
           <div className="flex items-center gap-2">
             {!active || cancelled ? (
-              <Button type="button" size="sm" onClick={handleStartTrial} className="h-8 font-semibold text-xs rounded-xl">
-                <Play className="h-3.5 w-3.5 mr-1.5" />
-                Start Free Trial
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleStartTrial}
+                className={cn(
+                  "h-8 font-semibold text-xs rounded-xl",
+                  !isCleared && "bg-smoke text-muted border border-line hover:bg-smoke/80",
+                )}
+              >
+                {!isCleared ? (
+                  <>
+                    <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-amber-600" />
+                    <span>Clearance Required</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-3.5 w-3.5 mr-1.5" />
+                    <span>Start Free Trial</span>
+                  </>
+                )}
               </Button>
             ) : (
               <Button

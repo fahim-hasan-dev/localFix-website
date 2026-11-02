@@ -56,7 +56,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
-  const { access } = useRoleAccess();
+  const { access, applicationStatus, membershipActive, membershipCancelled, membershipPaused, user } = useRoleAccess();
   const saved = useAppSelector((state) => state.features.favorites.includes(pro.id));
   const seedReviews = useAppSelector((state) =>
     state.features.reviews.filter((item) => item.proId === pro.id)
@@ -347,6 +347,27 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
       {/* 3. PROFILE IDENTITY HEADER */}
       <section className="border-b border-line/60 bg-white">
         <div className="container-site relative pb-6 pt-0">
+          {isDemoPro && user?.role === "pro" && (applicationStatus !== "cleared" || !membershipActive || membershipCancelled || membershipPaused) && (
+            <div className="mb-4 mt-3 rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-xs sm:text-sm text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Your Storefront is Currently Unpublished to Homeowners</p>
+                  <p className="text-xs text-amber-800 mt-0.5">
+                    {applicationStatus !== "cleared"
+                      ? "Pass Checkr background screening to clear your account and activate your 30-Day Free Trial."
+                      : "Activate your complimentary 30-Day Free Trial or Pro package to publish your profile and start receiving quotes."}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href={applicationStatus !== "cleared" ? "/pro/application" : "/pro/pricing"}
+                className="shrink-0 rounded-xl bg-amber-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-800 transition"
+              >
+                {applicationStatus !== "cleared" ? "View Clearance Status ↗" : "Activate 30-Day Trial ↗"}
+              </Link>
+            </div>
+          )}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-5">
             {/* Avatar & Profile Meta */}
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-5">

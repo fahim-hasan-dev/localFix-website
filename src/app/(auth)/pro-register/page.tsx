@@ -336,7 +336,7 @@ export default function ProRegisterPage() {
         {step === 2 &&
           "Provide your verified trade license and optional liability insurance."}
         {step === 3 &&
-          "Complete confidential background screening through Checkr to unlock your 30-day trial."}
+          "Complete confidential background screening through Checkr to verify your identity and account safety."}
       </p>
 
       {/* Stepper with centered ticks and numbers */}
@@ -586,7 +586,7 @@ export default function ProRegisterPage() {
             <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white p-3">
               <div className="min-w-0">
                 <p className="text-xs font-bold text-title">Start Screening Portal</p>
-                <p className="text-[11px] text-muted">2–3 min on Checkr · Unlocks 30-Day Free Trial</p>
+                <p className="text-[11px] text-muted">2–3 min on Checkr · Dual-email confirmation</p>
               </div>
               <a
                 href="https://checkr.com"
@@ -616,7 +616,7 @@ export default function ProRegisterPage() {
                 onChange={(e) => setConsent(e.target.checked)}
               />
               <span className="leading-snug">
-                I agree to complete my background check via Checkr to activate my <strong>30-day free trial</strong> upon clearance.
+                I agree to complete confidential background screening via Checkr and acknowledge that account clearance is required before offering services on Local Fix.
               </span>
             </label>
           </div>

@@ -118,7 +118,7 @@ export function resolveRoleAccess(user: User | null, pro?: Partial<ProGate>): Ro
           ? "Admin needs more info before clearance."
           : status === "draft"
             ? "Finish and submit your application."
-            : "Third-party background screening pending clearance. 30-day free trial unlocks upon clearance.";
+            : "Third-party background screening pending clearance. Account clearance is required before profile activation.";
     notice = blockedReason;
   } else if (!pro?.membershipActive) {
     blockedReason = "Background cleared! Start your 30-day free trial to quote and unlock contact.";

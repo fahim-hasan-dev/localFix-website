@@ -131,7 +131,7 @@ export default function ProApplicationPage() {
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200/60"
                       : "bg-amber-50 text-amber-700 border-amber-200/60"
                   }`}>
-                    {backgroundClear ? "Cleared · 30-Day Trial Active" : "Pending Checkr Screening"}
+                    {backgroundClear ? "Cleared" : "Pending Checkr Screening"}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
@@ -139,11 +139,8 @@ export default function ProApplicationPage() {
                   Upon submission, Checkr dispatches confirmation emails to both you and Local Fix admin.
                 </p>
                 <div className="mt-2 flex items-center gap-2 text-xs text-copy font-medium">
-                  <span className="text-muted">Partner:</span>
-                  <span className="font-semibold text-title">Checkr Candidate Network</span>
-                  <span className="text-muted/40">·</span>
-                  <span className="text-muted">Benefit:</span>
-                  <span className="text-emerald-700 font-medium">Unlocks 30-Day Free Trial upon clearance</span>
+                  <span className="text-muted">Requirement:</span>
+                  <span className="font-semibold text-title">Mandatory for Verified Pro status &amp; public directory profile</span>
                 </div>
               </div>
             </div>
@@ -238,6 +235,36 @@ export default function ProApplicationPage() {
             )}
           </div>
         </Card>
+      </div>
+
+      {/* Onboarding Lifecycle Roadmap & Membership Gating Notice */}
+      <div className="rounded-2xl border border-line/80 bg-smoke/40 p-4 sm:p-5 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h3 className="font-display text-xs font-bold uppercase tracking-wider text-muted">
+            Contractor Onboarding Roadmap
+          </h3>
+          <span className="text-[11px] text-muted">Step 1 clearance is required before Step 2 activation</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div className="rounded-xl border border-line bg-white p-3.5 space-y-1">
+            <div className="flex items-center gap-2 font-bold text-title">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px]">1</span>
+              <span>Credentials &amp; Safety Clearance</span>
+            </div>
+            <p className="text-muted text-[11px] leading-relaxed pl-7">
+              Active state trade license and Checkr background screening. (No SSN stored on Local Fix).
+            </p>
+          </div>
+          <div className="rounded-xl border border-line bg-white p-3.5 space-y-1">
+            <div className="flex items-center gap-2 font-bold text-title">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px]">2</span>
+              <span>Membership &amp; Directory Listing</span>
+            </div>
+            <p className="text-muted text-[11px] leading-relaxed pl-7">
+              Activate your 30-Day Free Trial (or Pro plan) after clearance to publish your profile and quote jobs.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
