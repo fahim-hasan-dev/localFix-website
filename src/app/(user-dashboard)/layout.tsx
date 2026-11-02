@@ -5,7 +5,7 @@ import { useEffect, useMemo } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { DashboardSidebar, type SidebarSection } from "@/components/layout/dashboard-sidebar";
 import { loginHref } from "@/lib/role-access";
-import { selectHomeownerBookingsGrouped, selectHomeownerRequests } from "@/lib/marketplace";
+import { selectHomeownerRequests } from "@/lib/marketplace";
 import { useAppSelector } from "@/redux/hooks";
 
 export default function UserDashboardLayout({
@@ -32,9 +32,7 @@ export default function UserDashboardLayout({
   const sections: SidebarSection[] = useMemo(() => {
     const homeownerName = user?.name || "Maya Chen";
     const requests = selectHomeownerRequests(state, homeownerName);
-    const bookings = selectHomeownerBookingsGrouped(state, homeownerName);
     const activeRequests = requests.length;
-    const activeBookings = bookings.upcoming.length + bookings.inProgress.length;
 
     return [
       {
@@ -48,7 +46,6 @@ export default function UserDashboardLayout({
           {
             href: "/account/bookings",
             label: "My Bookings",
-            badge: activeBookings > 0 ? activeBookings : undefined,
           },
           { href: "/account/messages", label: "Messages" },
           { href: "/account/post-job", label: "Post a Request" },
