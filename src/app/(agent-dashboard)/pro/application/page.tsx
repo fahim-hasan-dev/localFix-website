@@ -238,7 +238,7 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
               href="https://checkr.com"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition shrink-0 self-start sm:self-auto"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition shrink-0 self-start sm:self-auto cursor-pointer"
             >
               <span>{backgroundClear ? "View on Checkr ↗" : "Start on Checkr ↗"}</span>
             </a>
@@ -262,42 +262,47 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                   </span>
                 </div>
 
-                {/* Clean Standard Document Link (No nested boxes) */}
-                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="text-muted">Document:</span>
+                {/* Clean file link without "Document:" or "· Download" text */}
+                <div className="mt-1.5">
                   <button
                     type="button"
                     onClick={() => handleOpenPreview("license")}
-                    className="font-medium text-title hover:text-primary underline decoration-line-strong underline-offset-2 hover:decoration-primary cursor-pointer transition"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-muted hover:text-primary cursor-pointer transition group"
                     title="Click to preview certificate"
                   >
-                    {licenseFile}
-                  </button>
-                  <span className="text-stone-300">·</span>
-                  <button
-                    type="button"
-                    onClick={() => handleDownload("license")}
-                    className="font-medium text-primary hover:underline cursor-pointer transition"
-                    title="Download document"
-                  >
-                    Download
+                    <FileText className="h-3.5 w-3.5 text-muted group-hover:text-primary transition-colors shrink-0" />
+                    <span className="font-mono text-[11px] underline decoration-line-strong underline-offset-2 group-hover:decoration-primary">
+                      {licenseFile}
+                    </span>
                   </button>
                 </div>
               </div>
             </div>
 
-            {canSubmit && (
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition shrink-0 self-start sm:self-auto">
-                <FileUp className="h-3.5 w-3.5" />
-                <span>Replace file</span>
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  className="sr-only"
-                  onChange={(e) => handleFileUpload("license", e)}
-                />
-              </label>
-            )}
+            {/* Right side actions: Download button & optional Replace button */}
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => handleDownload("license")}
+                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition cursor-pointer"
+                title="Download document"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Download</span>
+              </button>
+              {canSubmit && (
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-title hover:bg-smoke shadow-2xs transition">
+                  <FileUp className="h-3.5 w-3.5" />
+                  <span>Replace</span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="sr-only"
+                    onChange={(e) => handleFileUpload("license", e)}
+                  />
+                </label>
+              )}
+            </div>
           </div>
         </Card>
 
@@ -318,42 +323,47 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                   </span>
                 </div>
 
-                {/* Clean Standard Certificate Link (No nested boxes) */}
-                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="text-muted">Certificate:</span>
+                {/* Clean file link without "Certificate:" or "· Download" text */}
+                <div className="mt-1.5">
                   <button
                     type="button"
                     onClick={() => handleOpenPreview("insurance")}
-                    className="font-medium text-title hover:text-primary underline decoration-line-strong underline-offset-2 hover:decoration-primary cursor-pointer transition"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-muted hover:text-primary cursor-pointer transition group"
                     title="Click to preview certificate"
                   >
-                    {insuranceFile}
-                  </button>
-                  <span className="text-stone-300">·</span>
-                  <button
-                    type="button"
-                    onClick={() => handleDownload("insurance")}
-                    className="font-medium text-primary hover:underline cursor-pointer transition"
-                    title="Download certificate"
-                  >
-                    Download
+                    <FileText className="h-3.5 w-3.5 text-muted group-hover:text-primary transition-colors shrink-0" />
+                    <span className="font-mono text-[11px] underline decoration-line-strong underline-offset-2 group-hover:decoration-primary">
+                      {insuranceFile}
+                    </span>
                   </button>
                 </div>
               </div>
             </div>
 
-            {canSubmit && (
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition shrink-0 self-start sm:self-auto">
-                <FileUp className="h-3.5 w-3.5" />
-                <span>Replace file</span>
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  className="sr-only"
-                  onChange={(e) => handleFileUpload("insurance", e)}
-                />
-              </label>
-            )}
+            {/* Right side actions: Download button & optional Replace button */}
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => handleDownload("insurance")}
+                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition cursor-pointer"
+                title="Download certificate"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Download</span>
+              </button>
+              {canSubmit && (
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-title hover:bg-smoke shadow-2xs transition">
+                  <FileUp className="h-3.5 w-3.5" />
+                  <span>Replace</span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="sr-only"
+                    onChange={(e) => handleFileUpload("insurance", e)}
+                  />
+                </label>
+              )}
+            </div>
           </div>
         </Card>
       </div>
