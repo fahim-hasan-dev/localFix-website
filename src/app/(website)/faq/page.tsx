@@ -8,7 +8,7 @@ export default function FaqPage() {
       <PageBanner
         eyebrow="Help & FAQ"
         title="Frequently Asked Questions"
-        description="Find clear answers to common questions about booking, quoting, payments, and contractor verification."
+        description="Find clear answers about booking, quoting, direct payments, and contractor verification."
         image={photos.banners.how}
       />
       <FaqSection
