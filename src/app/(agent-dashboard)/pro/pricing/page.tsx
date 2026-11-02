@@ -202,27 +202,26 @@ export default function PricingPage() {
           {/* Quick Management Buttons */}
           <div className="flex items-center gap-2">
             {!active || cancelled ? (
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleStartTrial}
-                className={cn(
-                  "h-8 font-semibold text-xs rounded-xl",
-                  !isCleared && "bg-smoke text-muted border border-line hover:bg-smoke/80",
-                )}
-              >
-                {!isCleared ? (
-                  <>
-                    <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-amber-600" />
-                    <span>Clearance Required</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-3.5 w-3.5 mr-1.5" />
-                    <span>Start Free Trial</span>
-                  </>
-                )}
-              </Button>
+              !isCleared ? (
+                <Link
+                  href="/pro/application"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 transition shadow-2xs"
+                  title="Complete screening in application"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5 text-amber-700 shrink-0" />
+                  <span>Verification Required</span>
+                </Link>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleStartTrial}
+                  className="h-8 font-semibold text-xs rounded-xl"
+                >
+                  <Play className="h-3.5 w-3.5 mr-1.5" />
+                  <span>Start Free Trial</span>
+                </Button>
+              )
             ) : (
               <Button
                 type="button"
