@@ -59,7 +59,7 @@ function buildDirectThread(proId: string): MessageThread | null {
   return {
     id: threadId,
     jobId: `dm:${pro.id}`,
-    jobTitle: `Chat with ${pro.name}`,
+    jobTitle: `${pro.trade} Inquiry & Estimate`,
     otherParty: pro.name,
     proId: pro.id,
     unread: 0,

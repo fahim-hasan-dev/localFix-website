@@ -284,10 +284,10 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
               <button
                 type="button"
                 onClick={() => handleDownload("license")}
-                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-title hover:text-primary hover:border-primary/40 hover:bg-smoke shadow-2xs transition cursor-pointer"
                 title="Download document"
               >
-                <Download className="h-3.5 w-3.5" />
+                <Download className="h-3.5 w-3.5 text-primary" />
                 <span>Download</span>
               </button>
               {canSubmit && (
@@ -345,10 +345,10 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
               <button
                 type="button"
                 onClick={() => handleDownload("insurance")}
-                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-title hover:text-primary hover:border-primary/40 hover:bg-smoke shadow-2xs transition cursor-pointer"
                 title="Download certificate"
               >
-                <Download className="h-3.5 w-3.5" />
+                <Download className="h-3.5 w-3.5 text-primary" />
                 <span>Download</span>
               </button>
               {canSubmit && (

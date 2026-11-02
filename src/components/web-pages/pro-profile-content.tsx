@@ -302,7 +302,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
       { id: "3", label: "3 Stars", stars: 3, count: counts[3] },
       { id: "2", label: "2 Stars", stars: 2, count: counts[2] },
       { id: "1", label: "1 Star", stars: 1, count: counts[1] },
-    ];
+    ].filter((f) => f.id === "all" || f.count > 0);
   }, [allReviews]);
 
   // Service list with category & specialty filter

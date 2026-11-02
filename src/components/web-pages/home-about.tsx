@@ -1,8 +1,7 @@
 "use client";
 
-import { Check, Clock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { photos } from "@/lib/media";
+import Link from "next/link";
+import { Check, ArrowUpRight } from "lucide-react";
 
 const points = [
   "Verified Professionals",
@@ -16,28 +15,56 @@ const points = [
 export function HomeAbout() {
   return (
     <section className="relative overflow-x-clip bg-surface py-[var(--section-sm)] md:py-[var(--section)]">
-      <div className="container-site relative z-[1] grid items-center gap-10 pb-4 lg:grid-cols-2 lg:gap-14">
-        <div>
-          <div className="inline-flex items-center gap-2 font-geist text-[13.5px] sm:text-[14px] font-medium tracking-tight text-title">
+      <div className="container-site relative z-[1] grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        {/* Left: 2 Staggered Portrait Photos (matches reference design) */}
+        <div className="order-2 lg:order-1 grid grid-cols-2 gap-4 sm:gap-6 items-start">
+          {/* Photo 1: Skilled craftsman / contractor on roof inspecting */}
+          <div className="relative overflow-hidden rounded-[24px] sm:rounded-[28px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+            <div
+              className="h-[340px] sm:h-[420px] md:h-[470px] w-full bg-cover bg-center"
+              style={{
+                backgroundImage: `url(https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=900&q=80)`,
+              }}
+              role="img"
+              aria-label="Professional contractor inspecting on site"
+            />
+          </div>
+
+          {/* Photo 2: Finished modern architectural craftsmanship */}
+          <div className="relative mt-6 sm:mt-10 overflow-hidden rounded-[24px] sm:rounded-[28px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+            <div
+              className="h-[300px] sm:h-[370px] md:h-[420px] w-full bg-cover bg-center"
+              style={{
+                backgroundImage: `url(https://images.unsplash.com/photo-1632759145351-1d592919f522?auto=format&fit=crop&w=900&q=80)`,
+              }}
+              role="img"
+              aria-label="Finished modern home craftsmanship"
+            />
+          </div>
+        </div>
+
+        {/* Right: Content & Checklist */}
+        <div className="order-1 lg:order-2">
+          <div className="inline-flex items-center gap-2 font-geist text-[13px] sm:text-[13.5px] font-medium tracking-tight text-title">
             <span
               aria-hidden="true"
-              className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border-[1.75px] border-primary"
+              className="inline-block h-2 w-2 shrink-0 rounded-full bg-primary"
             />
             <span>Our Approach</span>
           </div>
 
-          <h2 className="mt-3.5 font-geist text-[32px] font-medium leading-[1.15] tracking-[-1.5px] sm:text-[40px] sm:leading-[46px] sm:tracking-[-2px] md:text-[48px] md:leading-[54px] md:tracking-[-2.88px] !text-black">
+          <h2 className="mt-3.5 font-geist text-[32px] font-semibold leading-[1.15] tracking-[-1.5px] sm:text-[40px] sm:leading-[46px] sm:tracking-[-2px] md:text-[46px] md:leading-[52px] md:tracking-[-2.5px] text-title">
             Quality Home Repairs, Without Extra Fees
           </h2>
 
-          <p className="mt-4 max-w-xl font-['Inter_Display',Inter,sans-serif] text-[18px] font-normal leading-[25px] tracking-[-0.18px] text-[#757575]">
-            Find trusted local professionals, compare clear quotes, and pay contractors directly. No pushy sales calls or hidden markups.
+          <p className="mt-4 max-w-xl font-sans text-[16px] sm:text-[17px] font-normal leading-relaxed text-[#666]">
+            Find trusted local professionals, compare clear quotes, and pay contractors directly. No pushy sales calls, no hidden markups, and zero platform commission.
           </p>
 
-          {/* Clean checklist without subtext */}
-          <ul className="mt-7 grid gap-3.5 sm:grid-cols-2">
+          {/* Clean checklist */}
+          <ul className="mt-7 grid gap-3 sm:grid-cols-2">
             {points.map((point) => (
-              <li key={point} className="flex items-center gap-2.5 text-[14.5px] font-semibold text-title">
+              <li key={point} className="flex items-center gap-2.5 text-[14px] font-medium text-title">
                 <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
                   <Check className="h-3 w-3 stroke-[2.5]" />
                 </span>
@@ -47,36 +74,15 @@ export function HomeAbout() {
           </ul>
 
           <div className="mt-8 sm:mt-9">
-            <Button href="/about" size="lg">
-              Learn more ↗
-            </Button>
-          </div>
-        </div>
-
-        <div className="relative z-[1] mx-auto w-full max-w-[480px] lg:max-w-none">
-          <div
-            className="h-[380px] overflow-hidden rounded-[28px] bg-cover bg-center shadow-lg md:h-[440px]"
-            style={{ backgroundImage: `url(https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=80)` }}
-          />
-
-          {/* Floating Pill: $0 Fee */}
-          <div className="absolute right-4 top-4 z-10 rounded-[18px] bg-primary p-3.5 text-white shadow-lg">
-            <p className="font-display text-[22px] font-bold leading-none text-white">$0</p>
-            <p className="mt-1 text-xs font-semibold text-white/90">Platform Fee</p>
-          </div>
-
-          {/* Floating Thumbnail */}
-          <div
-            className="absolute -bottom-4 left-4 z-10 h-24 w-32 overflow-hidden rounded-[18px] border-4 border-white bg-cover bg-center shadow-2xl sm:h-28 sm:w-40"
-            style={{ backgroundImage: `url(${photos.trustAlt})` }}
-          />
-
-          {/* Floating Badge */}
-          <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2.5 rounded-full border border-black/5 bg-white/95 px-4 py-2.5 shadow-xl backdrop-blur-md">
-            <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-white">
-              <Clock className="h-3.5 w-3.5 text-white" />
-            </span>
-            <p className="font-display text-xs font-bold text-title">Fast local response</p>
+            <Link
+              href="/about"
+              className="group inline-flex items-center gap-3 rounded-full border border-line bg-white px-6 py-3 text-sm font-semibold text-title shadow-2xs hover:border-primary/40 hover:bg-smoke/70 transition-all duration-200"
+            >
+              <span>Learn More</span>
+              <span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-white transition-transform duration-200 group-hover:scale-110">
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </span>
+            </Link>
           </div>
         </div>
       </div>
