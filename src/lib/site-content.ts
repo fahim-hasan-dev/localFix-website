@@ -36,7 +36,7 @@ export const homeownerFaqs = [
 export const proFaqs = [
   {
     q: "How much does it cost for contractors to join?",
-    a: "We offer a 3-month completely free trial with full directory listing and unlimited quoting. Afterward, membership is a flat $19.99/month (or $14.99/month billed annually). We charge 0% commission on your jobs and never charge per-lead fees.",
+    a: "We offer a 30-day completely free trial with full directory listing and unlimited quoting once your background screening is cleared. Afterward, membership is a flat $19.99/month (or $14.99/month billed annually). We charge 0% commission on your jobs and never charge per-lead fees.",
   },
   {
     q: "Do you take a cut of my earnings or charge for leads?",
@@ -113,9 +113,9 @@ export const plans: PlanItem[] = [
     badge: "🔥 Popular",
     price: "$19.99",
     period: "/per month",
-    tagline: "Flat subscription for pros. First 3 months free. Cancel anytime.",
+    tagline: "Flat subscription for pros. First 30 days free upon background check clearance. Cancel anytime.",
     href: "/pro-register",
-    cta: "Start 3 months free ↗",
+    cta: "Start 30 days free ↗",
     featured: true,
     features: [
       { text: "Keep 100% of your earnings ($0 job cut)", icon: "percent" },
@@ -131,7 +131,7 @@ export const plans: PlanItem[] = [
     badge: "Save 25%",
     price: "$14.99",
     period: "/per month",
-    tagline: "Flat annual pro subscription ($179/yr) after 3-month trial.",
+    tagline: "Flat annual pro subscription ($179/yr) after 30-day trial.",
     href: "/pro-register",
     cta: "Get started ↗",
     featured: false,

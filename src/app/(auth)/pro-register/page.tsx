@@ -6,10 +6,11 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
+  ExternalLink,
   FileText,
   FileUp,
   Image as ImageIcon,
-  Loader2,
+  Mail,
   ShieldCheck,
   Sparkles,
   Trash2,
@@ -28,7 +29,6 @@ import {
 } from "@/redux/slices/featuresSlice";
 import { useAppDispatch } from "@/redux/hooks";
 import {
-  defaultIdDoc,
   defaultInsuranceDoc,
   defaultLicenseDoc,
   fileFromUpload,
@@ -36,8 +36,7 @@ import {
   type CredentialFile,
 } from "@/lib/credential-file";
 
-const steps = ["Account", "Trade & Area", "Credentials & ID", "Verification"];
-type CheckStatus = "idle" | "running" | "clear";
+const steps = ["Account", "Trade & Area", "Trade License", "Background Check"];
 
 type FormState = {
   // Step 0: Account
@@ -52,7 +51,7 @@ type FormState = {
   serviceZip: string;
   radius: string;
 
-  // Step 2: Credentials & Attachments (Identical to Profile Edit)
+  // Step 2: Trade License & Optional Insurance (NO Government ID stored!)
   licenseNumber: string;
   licenseState: string;
   licenseDoc: CredentialFile | null;
@@ -60,8 +59,6 @@ type FormState = {
   insuranceCarrier: string;
   insuranceCoverage: string;
   insuranceDoc: CredentialFile | null;
-
-  idDoc: CredentialFile | null;
 };
 
 const empty: FormState = {
@@ -79,7 +76,6 @@ const empty: FormState = {
   insuranceCarrier: "",
   insuranceCoverage: "$1,000,000",
   insuranceDoc: null,
-  idDoc: null,
 };
 
 function CompactAttachment({
@@ -114,7 +110,7 @@ function CompactAttachment({
               ({file.sizeLabel})
             </span>
             <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
-              <CheckCircle2 className="h-2.5 w-2.5" /> Ready
+              <CheckCircle2 className="h-2.5 w-2.5" /> Attached
             </span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
@@ -168,11 +164,9 @@ export default function ProRegisterPage() {
   const [docErrors, setDocErrors] = useState<{
     license?: string;
     insurance?: string;
-    id?: string;
   }>({});
+  const [checkrOpened, setCheckrOpened] = useState(false);
   const [consent, setConsent] = useState(false);
-  const [checkStatus, setCheckStatus] = useState<CheckStatus>("idle");
-  const [screeningStage, setScreeningStage] = useState<string>("");
   const dispatch = useAppDispatch();
   const router = useRouter();
 
@@ -180,10 +174,7 @@ export default function ProRegisterPage() {
     setForm((prev) => ({ ...prev, ...partial }));
   }
 
-  function handleCredentialUpload(
-    kind: "license" | "insurance" | "id",
-    file: File,
-  ) {
+  function handleCredentialUpload(kind: "license" | "insurance", file: File) {
     const message = validateCredentialFile(file);
     setDocErrors((prev) => ({ ...prev, [kind]: message ?? undefined }));
     if (message) return;
@@ -191,10 +182,8 @@ export default function ProRegisterPage() {
     const next = fileFromUpload(file);
     if (kind === "license") {
       patch({ licenseDoc: next });
-    } else if (kind === "insurance") {
-      patch({ insuranceDoc: next });
     } else {
-      patch({ idDoc: next });
+      patch({ insuranceDoc: next });
     }
   }
 
@@ -208,39 +197,13 @@ export default function ProRegisterPage() {
       insuranceCarrier: "Next Insurance",
       insuranceCoverage: "$1,000,000",
       insuranceDoc: defaultInsuranceDoc(),
-      idDoc: defaultIdDoc(),
     });
-  }
-
-  function runBackgroundCheck() {
-    setError("");
-    if (!consent) {
-      setError("Authorization consent is required to run automated screening.");
-      return;
-    }
-    setCheckStatus("running");
-    setScreeningStage("1/3 Verifying Government Photo ID & facial match…");
-
-    window.setTimeout(() => {
-      setScreeningStage(
-        `2/3 Validating Trade License #${form.licenseNumber || "TX-M-42981"} with state registrar…`,
-      );
-    }, 800);
-
-    window.setTimeout(() => {
-      setScreeningStage("3/3 Screening national safety & criminal registries…");
-    }, 1500);
-
-    window.setTimeout(() => {
-      setCheckStatus("clear");
-      setScreeningStage("All identity and background checks cleared");
-    }, 2200);
   }
 
   function next() {
     setError("");
 
-    // Step 0 validation
+    // Step 0 validation: Account
     if (step === 0) {
       if (!form.name.trim() || !form.email.trim() || !form.password) {
         setError("Please enter your name, email, and password to continue.");
@@ -268,7 +231,7 @@ export default function ProRegisterPage() {
       return;
     }
 
-    // Step 2 validation: Credentials (same as profile edit)
+    // Step 2 validation: Trade License (No personal photo ID required!)
     if (step === 2) {
       if (!form.licenseNumber.trim()) {
         setError("Please enter your state trade license number.");
@@ -282,20 +245,14 @@ export default function ProRegisterPage() {
         setError("Please attach your Trade License certificate document.");
         return;
       }
-      if (!form.idDoc) {
-        setError(
-          "Please attach your Government Photo ID document for identity verification.",
-        );
-        return;
-      }
       setStep(3);
       return;
     }
 
-    // Step 3: Verification Check
-    if (checkStatus !== "clear") {
+    // Step 3: Background Check authorization
+    if (!consent) {
       setError(
-        "Please authorize and run the identity screening to complete your registration.",
+        "Please acknowledge the third-party screening requirement to submit your application.",
       );
       return;
     }
@@ -318,17 +275,15 @@ export default function ProRegisterPage() {
         licenseFile: form.licenseDoc?.name || "Trade-License.pdf",
         insuranceCarrier: form.insuranceCarrier.trim(),
         insuranceCoverage: form.insuranceCoverage,
-        insuranceExpires: "2027-09",
-        insuranceFile:
-          form.insuranceDoc?.name || "Liability-Insurance-COI.pdf",
-        idFile: form.idDoc?.name || "Gov-Photo-ID.jpg",
+        insuranceFile: form.insuranceDoc?.name || "",
         savedAt: new Date().toISOString(),
-        backgroundCheck: "clear",
-        idVerification: "verified",
+        thirdPartyScreening: "checkr_initiated",
+        backgroundCheck: "submitted",
+        trialDaysLeft: "30",
       }),
     );
 
-    // 2. Update Pro Profile (exact 1:1 match with profile edit fields)
+    // 2. Update Pro Profile
     dispatch(
       updateProProfile({
         businessName: form.businessName.trim() || "Pro Services",
@@ -346,7 +301,6 @@ export default function ProRegisterPage() {
         insuranceCoverage: form.insuranceCoverage || "$1,000,000",
         insuranceExpires: "2027-09",
         insuranceDoc: form.insuranceDoc,
-        idDoc: form.idDoc,
       }),
     );
 
@@ -378,9 +332,9 @@ export default function ProRegisterPage() {
         {step === 1 &&
           "Set your primary trade specialty and local service territory radius."}
         {step === 2 &&
-          "Provide trade credentials and government photo ID for identity screening."}
+          "Provide your verified trade license and optional liability insurance."}
         {step === 3 &&
-          "Authorize automated identity and safety screening before going live."}
+          "Complete confidential background screening through Checkr to unlock your 30-day trial."}
       </p>
 
       {/* Stepper with centered ticks and numbers */}
@@ -513,12 +467,12 @@ export default function ProRegisterPage() {
           </>
         ) : null}
 
-        {/* Step 2: Compact Credentials & Attachments */}
+        {/* Step 2: Trade License & Optional Insurance (NO Government Photo ID!) */}
         {step === 2 ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2 pb-0.5">
               <span className="text-xs font-bold text-title">
-                Required Credentials
+                Trade Credentials
               </span>
               <button
                 type="button"
@@ -530,7 +484,7 @@ export default function ProRegisterPage() {
               </button>
             </div>
 
-            {/* 1. Trade license card (compact, no bloated height) */}
+            {/* 1. Trade license card */}
             <div className="rounded-xl border border-line bg-smoke/30 p-3 space-y-2.5">
               <h3 className="text-xs font-bold text-title">
                 Trade License *
@@ -565,21 +519,7 @@ export default function ProRegisterPage() {
               />
             </div>
 
-            {/* 2. Government photo ID card (compact) */}
-            <div className="rounded-xl border border-line bg-smoke/30 p-3 space-y-2">
-              <h3 className="text-xs font-bold text-title">
-                Government Photo ID *
-              </h3>
-              <CompactAttachment
-                label="Upload Driver's License or Passport (Photo/PDF)"
-                file={form.idDoc}
-                error={docErrors.id}
-                onUpload={(file) => handleCredentialUpload("id", file)}
-                onRemove={() => patch({ idDoc: null })}
-              />
-            </div>
-
-            {/* 3. Liability insurance card (2 columns, NO overlapping!) */}
+            {/* 2. Liability insurance card (Optional) */}
             <div className="rounded-xl border border-line bg-smoke/30 p-3 space-y-2.5">
               <h3 className="text-xs font-bold text-title">
                 Liability Insurance <span className="font-normal text-muted text-[11px]">(Optional)</span>
@@ -618,98 +558,85 @@ export default function ProRegisterPage() {
           </div>
         ) : null}
 
-        {/* Step 3: Identity Verification & Background Check */}
+        {/* Step 3: Third-Party Screening (Checkr Network) */}
         {step === 3 ? (
-          <div className="rounded-xl border border-line bg-surface/50 p-3.5 space-y-3">
-            <div className="flex items-start gap-2.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                <ShieldCheck className="h-4 w-4" />
+          <div className="rounded-xl border border-line bg-surface/50 p-4 space-y-3.5">
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                <ShieldCheck className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <h2 className="font-display text-sm sm:text-base font-semibold text-title">
-                  Identity &amp; Background Screening
-                </h2>
-                <p className="mt-0.5 text-xs text-copy">
-                  Verification runs against your uploaded Government ID and License #{form.licenseNumber || "TX-M-42981"}.
+                <div className="flex items-center gap-2">
+                  <h2 className="font-display text-sm sm:text-base font-bold text-title">
+                    Confidential Screening via Checkr
+                  </h2>
+                  <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 text-[10px] font-semibold">
+                    Third-Party Partner
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-[#555] leading-relaxed">
+                  LocalHomeFix <strong>does not collect or store</strong> your Social Security Number, photo ID, or personal background records.
+                  All screenings are processed confidentially through Checkr.
                 </p>
               </div>
             </div>
 
-            {/* Attached Verification Documents Summary */}
-            <div className="rounded-lg border border-line/80 bg-white p-2.5 space-y-1.5">
-              <p className="text-[10px] font-bold text-muted uppercase tracking-wider">
-                Submitted Credentials for Screening:
-              </p>
-              <div className="flex flex-wrap gap-1.5 text-xs">
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 border border-emerald-200">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                  ID: {form.idDoc?.name || "Verified ID"}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 border border-emerald-200">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                  License #{form.licenseNumber || "TX-M-42981"} ({form.licenseState || "TX"})
-                </span>
-                {form.insuranceDoc && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-800 border border-blue-200">
-                    <CheckCircle2 className="h-3 w-3 text-blue-600" />
-                    Insurance: {form.insuranceCarrier || "Commercial"} ({form.insuranceCoverage})
-                  </span>
-                )}
+            {/* How It Works & Dual-Email Confirmation Notice */}
+            <div className="rounded-xl border border-line/80 bg-white p-3 space-y-2 text-xs">
+              <div className="flex items-center gap-2 font-semibold text-title pb-1 border-b border-line/60">
+                <Mail className="h-4 w-4 text-primary" />
+                <span>Dual-Email Confirmation &amp; 30-Day Free Trial</span>
               </div>
+              <ul className="space-y-1.5 text-copy text-[11px] leading-relaxed list-disc list-inside">
+                <li>
+                  <strong>Direct Link:</strong> Click the secure link below to submit your screening directly on Checkr.
+                </li>
+                <li>
+                  <strong>Dual Email:</strong> Upon submission, Checkr sends an instant confirmation receipt to your email (<span className="font-medium text-title">{form.email || "your email"}</span>) and notifies LocalHomeFix Administration.
+                </li>
+                <li>
+                  <strong>30-Day Free Trial:</strong> Once Checkr reports your screening clear, your profile goes live and your <strong>30-Day Free Pro Trial</strong> is automatically activated!
+                </li>
+              </ul>
             </div>
 
-            {/* Consent Checkbox */}
-            <label className="flex items-start gap-2 text-xs text-copy cursor-pointer pt-0.5">
+            {/* External Screening Link Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+              <div>
+                <p className="text-xs font-bold text-title">Checkr Candidate Screening</p>
+                <p className="text-[11px] text-muted">Estimated completion: 2–3 minutes on Checkr portal.</p>
+              </div>
+              <a
+                href="https://checkr.com"
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setCheckrOpened(true)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-white hover:bg-primary/90 transition shadow-2xs shrink-0"
+              >
+                <span>Start on Checkr</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
+
+            {checkrOpened && (
+              <div className="flex items-center gap-2 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/70 p-2.5 rounded-lg">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>Checkr portal opened. Confirmation email will arrive from Checkr once submitted.</span>
+              </div>
+            )}
+
+            {/* Acknowledgment Consent Checkbox */}
+            <label className="flex items-start gap-2.5 text-xs text-copy cursor-pointer pt-1">
               <input
                 type="checkbox"
-                className="mt-0.5 h-3.5 w-3.5 rounded border-line"
+                className="mt-0.5 h-4 w-4 rounded border-line"
                 checked={consent}
                 onChange={(e) => setConsent(e.target.checked)}
-                disabled={checkStatus === "running"}
               />
               <span>
-                I authorize LocalHomeFix and its verified screening partners to
-                verify my uploaded government ID and perform a background screening.
+                I confirm that I will complete my confidential background check via Checkr and acknowledge that my <strong>30-Day Free Pro Trial</strong> will activate immediately upon clearance.
               </span>
             </label>
-
-            {/* Screening Action & Status */}
-            <div>
-              {checkStatus === "idle" ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={runBackgroundCheck}
-                  className="text-xs h-9 px-3"
-                >
-                  Run identity &amp; background check
-                </Button>
-              ) : null}
-
-              {checkStatus === "running" ? (
-                <div className="space-y-1">
-                  <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Running screening…
-                  </p>
-                  <p className="text-[11px] text-muted font-medium pl-5">
-                    {screeningStage}
-                  </p>
-                </div>
-              ) : null}
-
-              {checkStatus === "clear" ? (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 p-2.5 flex items-center gap-2 text-xs font-semibold text-emerald-800">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <div>
-                    <p>Screening Cleared — Identity &amp; License Verified</p>
-                    <p className="text-[11px] font-normal text-emerald-700">
-                      Your documents match records. You are eligible to submit your application.
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-            </div>
           </div>
         ) : null}
       </div>
@@ -734,12 +661,8 @@ export default function ProRegisterPage() {
             ← Back
           </Button>
         ) : null}
-        <Button
-          type="button"
-          onClick={next}
-          disabled={step === 3 && checkStatus === "running"}
-        >
-          {step < 3 ? "Next ↗" : "Submit application ↗"}
+        <Button type="button" onClick={next}>
+          {step < 3 ? "Next ↗" : "Submit Application & Finish ↗"}
         </Button>
       </div>
 

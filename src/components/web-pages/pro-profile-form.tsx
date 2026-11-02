@@ -33,7 +33,6 @@ import {
 } from "@/lib/business-hours";
 import { CredentialAttachment } from "@/components/shared/credential-attachment";
 import {
-  defaultIdDoc,
   defaultInsuranceDoc,
   defaultLicenseDoc,
   fileFromUpload,
@@ -85,7 +84,6 @@ export function ProProfileForm() {
     ...proProfile,
     businessHours: normalizeWeeklyHours(proProfile.businessHours),
     licenseDoc: proProfile.licenseDoc ?? defaultLicenseDoc(),
-    idDoc: proProfile.idDoc ?? defaultIdDoc(),
     insuranceDoc: proProfile.insuranceDoc ?? defaultInsuranceDoc(),
     insuranceExpires: proProfile.insuranceExpires ?? "2027-09",
     insuranceCoverage: ["$500,000", "$1,000,000", "$2,000,000"].includes(proProfile.insuranceCoverage)
@@ -670,29 +668,16 @@ export function ProProfileForm() {
             />
           </Card>
 
-          <Card className="space-y-4 rounded-2xl border border-line/80 bg-white p-6 shadow-2xs">
-            <div>
-              <h3 className="font-display text-base font-bold text-title">Government photo ID</h3>
-              <p className="text-xs text-muted">Driver&apos;s license or passport used for identity verification.</p>
-            </div>
-            <CredentialAttachment
-              label="Photo ID document"
-              file={formData.idDoc ?? null}
-              error={docErrors.id}
-              onUpload={(file) => handleCredentialUpload("id", file)}
-            />
-          </Card>
-
           <Card className="flex items-center justify-between gap-3 rounded-2xl border border-line/80 bg-white p-5 shadow-2xs">
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
               <div>
                 <p className="text-sm font-semibold text-title">Background check</p>
-                <p className="text-xs text-muted">Done at signup. No file to attach.</p>
+                <p className="text-xs text-muted">Processed confidentially via Checkr. No PII stored on LocalHomeFix.</p>
               </div>
             </div>
             <Link href="/pro/application" className="text-xs font-semibold text-primary hover:underline">
-              Verified
+              Check Status
             </Link>
           </Card>
         </div>

@@ -30,7 +30,7 @@ export default function PricingPage() {
   const { applicationStatus } = useRoleAccess();
   const active = useAppSelector((state) => state.marketplace.membershipActive);
   const cancelled = useAppSelector((state) => state.features.membershipCancelled);
-  const trialDaysLeft = useAppSelector((state) => state.features.trialDaysLeft ?? 67);
+  const trialDaysLeft = useAppSelector((state) => state.features.trialDaysLeft ?? 30);
   const currentPlan = useAppSelector(
     (state) => state.features.subscriptionPlan ?? "trial"
   );
@@ -62,7 +62,7 @@ export default function PricingPage() {
       })
     );
     if (applicationStatus === "cleared") dispatch(unlockContact());
-    showToast("3-Month Free Trial started successfully. Enjoy zero platform fees!");
+    showToast("30-Day Free Trial started successfully. Enjoy zero platform fees!");
   }
 
   function handleSelectPlan(plan: "monthly" | "annual", immediate = false) {
@@ -163,7 +163,7 @@ export default function PricingPage() {
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-md bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-title border border-line/80">
-                90-Day Free Trial
+                30-Day Free Trial
               </span>
             )}
           </div>
@@ -199,7 +199,7 @@ export default function PricingPage() {
                 ? currentPlan === "annual"
                   ? "Pro Annual"
                   : "Pro Monthly"
-                : "Pro 3-Month Free Trial"}
+                : "Pro 30-Day Free Trial"}
             </h2>
             <p className="max-w-lg text-xs sm:text-[13px] text-muted leading-relaxed">
               {isCancelled
@@ -240,14 +240,14 @@ export default function PricingPage() {
             <div className="flex items-center justify-between text-xs font-medium text-title mb-1.5">
               <span className="flex items-center gap-1.5 text-muted text-[11px] sm:text-xs">
                 <Clock className="h-3.5 w-3.5 text-primary" />
-                Trial Progress · Day {90 - trialDaysLeft} of 90
+                Trial Progress · Day {30 - trialDaysLeft} of 30
               </span>
               <span className="text-title font-semibold text-[11px] sm:text-xs">{trialDaysLeft} days remaining</span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
               <div
                 className="h-full bg-primary rounded-full transition-all duration-300"
-                style={{ width: `${Math.round(((90 - trialDaysLeft) / 90) * 100)}%` }}
+                style={{ width: `${Math.round(((30 - trialDaysLeft) / 30) * 100)}%` }}
               />
             </div>
             <p className="mt-1.5 text-[11px] text-muted">Zero charges incurred prior to {currentRenewalDate}.</p>

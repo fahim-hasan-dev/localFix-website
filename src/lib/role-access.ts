@@ -108,7 +108,7 @@ export function resolveRoleAccess(user: User | null, pro?: Partial<ProGate>): Ro
   const contactOk = cleared && membershipOk && Boolean(pro?.contactUnlocked);
 
   let blockedReason: string | null = null;
-  let notice: string | null = "One pro membership: $19.99/mo after 3 free months. No repair packages.";
+  let notice: string | null = "One pro membership: $19.99/mo after 30-day free trial. No commissions.";
 
   if (!cleared) {
     blockedReason =
@@ -118,10 +118,10 @@ export function resolveRoleAccess(user: User | null, pro?: Partial<ProGate>): Ro
           ? "Admin needs more info before clearance."
           : status === "draft"
             ? "Finish and submit your application."
-            : "Waiting on administrator clearance.";
+            : "Third-party background screening pending clearance. 30-day free trial unlocks upon clearance.";
     notice = blockedReason;
   } else if (!pro?.membershipActive) {
-    blockedReason = "Start the free trial to quote and unlock contact.";
+    blockedReason = "Background cleared! Start your 30-day free trial to quote and unlock contact.";
     notice = blockedReason;
   } else if (pro.membershipPaused) {
     blockedReason = "Membership paused — resume to quote and unlock contact.";

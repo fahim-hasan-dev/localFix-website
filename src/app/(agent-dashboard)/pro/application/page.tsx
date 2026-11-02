@@ -10,7 +10,6 @@ import {
   FileUp,
   Shield,
   ShieldCheck,
-  UserCheck,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,15 +39,12 @@ export default function ProApplicationPage() {
   const [insuranceFile, setInsuranceFile] = useState(
     draft.insuranceFile || "Next-General-Liability-COI-2026.pdf",
   );
-  const [idFile, setIdFile] = useState(
-    draft.idFile || "TX-DL-Luis-Ortega-Front.jpg",
-  );
   const [, startTransition] = useTransition();
 
   const current = statusConfig[status] || statusConfig.draft;
   const canSubmit = status === "draft" || status === "needs_info" || status === "rejected";
   const backgroundClear =
-    draft.backgroundCheck === "clear" || status === "cleared" || status === "submitted";
+    draft.backgroundCheck === "clear" || status === "cleared";
 
   function handleSubmit() {
     dispatch(
@@ -56,30 +52,24 @@ export default function ProApplicationPage() {
         savedAt: new Date().toISOString(),
         licenseFile,
         insuranceFile,
-        idFile,
       }),
     );
     dispatch(submitApplication());
   }
 
   function handleFileUpload(
-    type: "license" | "insurance" | "id",
+    type: "license" | "insurance",
     event: React.ChangeEvent<HTMLInputElement>,
   ) {
     const file = event.target.files?.[0];
     if (!file) return;
     startTransition(() => {
       if (type === "license") setLicenseFile(file.name);
-      else if (type === "insurance") setInsuranceFile(file.name);
-      else setIdFile(file.name);
+      else setInsuranceFile(file.name);
       dispatch(
         saveApplicationDraft({
           savedAt: new Date().toISOString(),
-          [type === "license"
-            ? "licenseFile"
-            : type === "insurance"
-              ? "insuranceFile"
-              : "idFile"]: file.name,
+          [type === "license" ? "licenseFile" : "insuranceFile"]: file.name,
         }),
       );
     });
@@ -124,28 +114,48 @@ export default function ProApplicationPage() {
 
       {/* Verification Items with Strong Visual Hierarchy */}
       <div className="space-y-4">
-        {/* Background Check Item */}
+        {/* Background Check Item (Third-Party Checkr Network) */}
         <Card className="rounded-2xl border border-line/80 bg-white p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
               <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-smoke/80 text-primary border border-line/70 shadow-2xs">
                 <ShieldCheck className="h-5 w-5" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-display text-sm sm:text-base font-bold text-title">
-                    Identity &amp; Background Screening
+                    Third-Party Background Screening
                   </h3>
-                  <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 text-[11px] font-semibold">
-                    {backgroundClear ? "Verified Clear" : "Pending"}
+                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${
+                    backgroundClear
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200/60"
+                      : "bg-amber-50 text-amber-700 border-amber-200/60"
+                  }`}>
+                    {backgroundClear ? "Cleared · 30-Day Trial Active" : "Pending Checkr Screening"}
                   </span>
                 </div>
-                <div className="mt-1.5 flex items-center gap-2 text-xs text-copy font-medium">
-                  <span className="text-muted">Status:</span>
-                  <span>{backgroundClear ? "Cleared through Checkr Partner Network" : "In review"}</span>
+                <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
+                  Screening is handled directly by Checkr. LocalHomeFix does not store your Social Security Number or personal ID.
+                  Upon submission, Checkr dispatches confirmation emails to both you and LocalHomeFix admin.
+                </p>
+                <div className="mt-2 flex items-center gap-2 text-xs text-copy font-medium">
+                  <span className="text-muted">Partner:</span>
+                  <span className="font-semibold text-title">Checkr Candidate Network</span>
+                  <span className="text-muted/40">·</span>
+                  <span className="text-muted">Benefit:</span>
+                  <span className="text-emerald-700 font-medium">Unlocks 30-Day Free Trial upon clearance</span>
                 </div>
               </div>
             </div>
+
+            <a
+              href="https://checkr.com"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition shrink-0 self-start sm:self-auto"
+            >
+              <span>Checkr Portal ↗</span>
+            </a>
           </div>
         </Card>
 
@@ -183,46 +193,6 @@ export default function ProApplicationPage() {
                   accept="image/*,application/pdf"
                   className="sr-only"
                   onChange={(e) => handleFileUpload("license", e)}
-                />
-              </label>
-            )}
-          </div>
-        </Card>
-
-        {/* Government Photo ID Item */}
-        <Card className="rounded-2xl border border-line/80 bg-white p-5 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5 min-w-0">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-smoke/80 text-primary border border-line/70 shadow-2xs">
-                <UserCheck className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-display text-sm sm:text-base font-bold text-title">
-                    Government Photo ID
-                  </h3>
-                  <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2.5 py-0.5 text-[11px] font-semibold">
-                    Identity Verified
-                  </span>
-                </div>
-                <div className="mt-1.5 flex items-center gap-2 text-xs text-copy font-medium truncate">
-                  <span className="text-muted">Document:</span>
-                  <span className="truncate font-mono text-[11px] text-title bg-smoke px-2 py-0.5 rounded-md border border-line/60">
-                    {idFile || "TX-DL-Luis-Ortega-Front.jpg"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {canSubmit && (
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition shrink-0 self-start sm:self-auto">
-                <FileUp className="h-3.5 w-3.5" />
-                <span>Replace file</span>
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  className="sr-only"
-                  onChange={(e) => handleFileUpload("id", e)}
                 />
               </label>
             )}

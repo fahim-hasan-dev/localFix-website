@@ -1,7 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { defaultWeeklyHours, type WeeklyHours } from "@/lib/business-hours";
 import {
-  defaultIdDoc,
   defaultInsuranceDoc,
   defaultLicenseDoc,
   type CredentialFile,
@@ -238,28 +237,20 @@ const initialState: FeaturesState = {
     last4: "4242",
     exp: "08/29",
   },
-  trialDaysLeft: 67,
+  trialDaysLeft: 30,
   invoices: [
     {
       id: "inv-1",
-      date: "Sep 10, 2026",
-      period: "Sep 10 – Oct 10, 2026",
-      description: "Pro 3-Month Free Trial (Month 1)",
+      date: "Oct 10, 2026",
+      period: "Oct 10 – Nov 10, 2026",
+      description: "Pro 30-Day Free Trial",
       amount: "$0.00",
       status: "paid",
     },
     {
       id: "inv-2",
-      date: "Oct 10, 2026",
-      period: "Oct 10 – Nov 10, 2026",
-      description: "Pro 3-Month Free Trial (Month 2)",
-      amount: "$0.00",
-      status: "paid",
-    },
-    {
-      id: "inv-3",
-      date: "Jan 10, 2027",
-      period: "Jan 10 – Feb 10, 2027",
+      date: "Nov 10, 2026",
+      period: "Nov 10 – Dec 10, 2026",
       description: "Pro Monthly Membership (Scheduled Renewal)",
       amount: "$19.99",
       status: "upcoming",
@@ -356,7 +347,6 @@ const initialState: FeaturesState = {
     insuranceCoverage: "$1,000,000",
     insuranceExpires: "2027-09",
     insuranceDoc: defaultInsuranceDoc(),
-    idDoc: defaultIdDoc(),
     portfolio: [
       {
         title: "Kitchen supply line repair",
