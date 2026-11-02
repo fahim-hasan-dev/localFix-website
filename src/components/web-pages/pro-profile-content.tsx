@@ -84,7 +84,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   const [activeTab, setActiveTab] = useState<"about" | "services" | "photos" | "reviews">("about");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [selectedPhotoCategory, setSelectedPhotoCategory] = useState("all");
-  const [selectedReviewTag, setSelectedReviewTag] = useState("all");
+  const [selectedRating, setSelectedRating] = useState("all");
   const [copied, setCopied] = useState(false);
   const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
   const [bioExpanded, setBioExpanded] = useState(false);
@@ -277,20 +277,27 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   }, [allReviews]);
 
   const filteredReviews = useMemo(() => {
-    if (selectedReviewTag === "all") return allReviews;
-    return allReviews.filter((r) => r.tag === selectedReviewTag);
-  }, [allReviews, selectedReviewTag]);
+    if (selectedRating === "all") return allReviews;
+    const star = Number(selectedRating);
+    return allReviews.filter((r) => r.rating === star);
+  }, [allReviews, selectedRating]);
 
-  const reviewTags = useMemo(() => {
-    const punctualCount = allReviews.filter((r) => r.tag === "punctual").length;
-    const fairPriceCount = allReviews.filter((r) => r.tag === "fair-price").length;
-    const cleanWorkCount = allReviews.filter((r) => r.tag === "clean-work").length;
+  const ratingFilters = useMemo(() => {
+    const counts = {
+      5: allReviews.filter((r) => r.rating === 5).length,
+      4: allReviews.filter((r) => r.rating === 4).length,
+      3: allReviews.filter((r) => r.rating === 3).length,
+      2: allReviews.filter((r) => r.rating === 2).length,
+      1: allReviews.filter((r) => r.rating === 1).length,
+    };
 
     return [
-      { id: "all", name: "All", count: allReviews.length },
-      { id: "punctual", name: "Punctual", count: punctualCount },
-      { id: "fair-price", name: "Fair Price", count: fairPriceCount },
-      { id: "clean-work", name: "Clean Work", count: cleanWorkCount },
+      { id: "all", label: "All", count: allReviews.length },
+      { id: "5", label: "5 Stars", stars: 5, count: counts[5] },
+      { id: "4", label: "4 Stars", stars: 4, count: counts[4] },
+      { id: "3", label: "3 Stars", stars: 3, count: counts[3] },
+      { id: "2", label: "2 Stars", stars: 2, count: counts[2] },
+      { id: "1", label: "1 Star", stars: 1, count: counts[1] },
     ];
   }, [allReviews]);
 
@@ -815,63 +822,98 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 </div>
               </div>
 
-              {/* Progress bars */}
+              {/* Progress bars (Clickable Star Filters) */}
               <div className="sm:col-span-7 space-y-2 text-xs">
-                <div className="flex items-center gap-3">
-                  <span className="w-14 text-[11px] font-medium text-muted">5 stars</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRating(selectedRating === "5" ? "all" : "5")}
+                  className="flex items-center gap-3 w-full text-left group cursor-pointer"
+                  title="Filter by 5 stars"
+                >
+                  <span className={cn("w-14 text-[11px] font-medium transition-colors", selectedRating === "5" ? "text-primary font-bold" : "text-muted group-hover:text-primary")}>5 stars</span>
                   <div className="h-2 flex-1 rounded-full bg-line/80 overflow-hidden">
-                    <div className="h-full rounded-full bg-amber-400" style={{ width: `${reviewBreakdown.fivePct}%` }} />
+                    <div className="h-full rounded-full bg-amber-400 group-hover:bg-amber-500 transition-colors" style={{ width: `${reviewBreakdown.fivePct}%` }} />
                   </div>
                   <span className="w-8 text-right text-[11px] font-medium text-muted">{reviewBreakdown.fivePct}%</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-14 text-[11px] font-medium text-muted">4 stars</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRating(selectedRating === "4" ? "all" : "4")}
+                  className="flex items-center gap-3 w-full text-left group cursor-pointer"
+                  title="Filter by 4 stars"
+                >
+                  <span className={cn("w-14 text-[11px] font-medium transition-colors", selectedRating === "4" ? "text-primary font-bold" : "text-muted group-hover:text-primary")}>4 stars</span>
                   <div className="h-2 flex-1 rounded-full bg-line/80 overflow-hidden">
-                    <div className="h-full rounded-full bg-amber-400" style={{ width: `${reviewBreakdown.fourPct}%` }} />
+                    <div className="h-full rounded-full bg-amber-400 group-hover:bg-amber-500 transition-colors" style={{ width: `${reviewBreakdown.fourPct}%` }} />
                   </div>
                   <span className="w-8 text-right text-[11px] font-medium text-muted">{reviewBreakdown.fourPct}%</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-14 text-[11px] font-medium text-muted">1-3 stars</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRating(selectedRating === "3" ? "all" : "3")}
+                  className="flex items-center gap-3 w-full text-left group cursor-pointer"
+                  title="Filter by 3 stars"
+                >
+                  <span className={cn("w-14 text-[11px] font-medium transition-colors", selectedRating === "3" ? "text-primary font-bold" : "text-muted group-hover:text-primary")}>1-3 stars</span>
                   <div className="h-2 flex-1 rounded-full bg-line/80 overflow-hidden">
-                    <div className="h-full rounded-full bg-amber-400" style={{ width: `${reviewBreakdown.lowPct}%` }} />
+                    <div className="h-full rounded-full bg-amber-400 group-hover:bg-amber-500 transition-colors" style={{ width: `${reviewBreakdown.lowPct}%` }} />
                   </div>
                   <span className="w-8 text-right text-[11px] font-medium text-muted">{reviewBreakdown.lowPct}%</span>
-                </div>
+                </button>
               </div>
             </div>
 
-            {/* Standard Review Filter Pills */}
+            {/* Rating Filter Pills */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {reviewTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => setSelectedReviewTag(tag.id)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all cursor-pointer",
-                    selectedReviewTag === tag.id
-                      ? "bg-title text-white shadow-xs font-semibold ring-1 ring-title"
-                      : "bg-surface/80 text-copy hover:bg-smoke border border-line/80 hover:border-line"
-                  )}
-                >
-                  <span>{tag.name}</span>
-                  <span
+              {ratingFilters.map((filter) => {
+                const isSelected = selectedRating === filter.id;
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setSelectedRating(filter.id)}
                     className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                      selectedReviewTag === tag.id
-                        ? "bg-white/20 text-white"
-                        : "bg-smoke text-muted border border-line/50"
+                      "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all cursor-pointer",
+                      isSelected
+                        ? "bg-title text-white shadow-xs font-semibold ring-1 ring-title"
+                        : "bg-surface/80 text-copy hover:bg-smoke border border-line/80 hover:border-line"
                     )}
                   >
-                    {tag.count}
-                  </span>
-                </button>
-              ))}
+                    {filter.stars && (
+                      <Star className={cn("h-3 w-3 fill-amber-400 text-amber-500", isSelected && "fill-amber-300 text-amber-300")} />
+                    )}
+                    <span>{filter.label}</span>
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                        isSelected
+                          ? "bg-white/20 text-white"
+                          : "bg-smoke text-muted border border-line/50"
+                      )}
+                    >
+                      {filter.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Reviews List */}
-            <div className="space-y-3.5 pt-2">
+            {filteredReviews.length === 0 ? (
+              <div className="rounded-2xl border border-line/70 bg-white p-8 text-center space-y-2">
+                <p className="font-display text-sm font-semibold text-title">
+                  No {selectedRating}-star reviews yet
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRating("all")}
+                  className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                >
+                  Show all reviews
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3.5 pt-2">
               {filteredReviews.map((rev) => (
                 <div
                   key={rev.id}
@@ -919,6 +961,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 </div>
               ))}
             </div>
+            )}
           </section>
         </div>
 

@@ -323,15 +323,8 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                           </span>
                         </div>
 
-                        {/* Row 2: Job Subject Tag */}
-                        <div className="mt-1">
-                          <span className="inline-block max-w-[210px] truncate rounded-[6px] bg-smoke px-2 py-0.5 font-sans text-[11px] font-medium text-title/80 border border-line/50">
-                            {thread.jobTitle}
-                          </span>
-                        </div>
-
-                        {/* Row 3: Last Message + Unread Pill */}
-                        <div className="mt-1.5 flex items-center justify-between gap-2">
+                        {/* Row 2: Last Message + Unread Pill */}
+                        <div className="mt-1 flex items-center justify-between gap-2">
                           <p className="min-w-0 flex-1 truncate font-sans text-[12.5px] leading-relaxed text-[#666]">
                             {previewLine(thread, role)}
                           </p>
