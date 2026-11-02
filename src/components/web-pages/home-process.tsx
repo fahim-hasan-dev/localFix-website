@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ShieldCheck } from "lucide-react";
+import { Check } from "lucide-react";
 
 const steps = [
   {
@@ -51,33 +51,6 @@ export function HomeProcess() {
             <p className="mt-3.5 sm:mt-4 max-w-md font-['Inter_Display',Inter,sans-serif] text-[16px] sm:text-[18px] font-normal leading-[26px] tracking-[-0.18px] text-[#757575]">
               From posting your repair request to final in-person inspection, we keep the entire process transparent, fast, and 100% fee-free.
             </p>
-
-            {/* Left Column Trust Card: Balances visual height and answers why to trust the process */}
-            <div className="mt-8 rounded-2xl border border-line/80 bg-surface/60 p-5 space-y-3.5 max-w-md shadow-2xs">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-display text-sm font-bold text-title">The Local Fix Guarantee</p>
-                  <p className="text-xs text-muted">Inspect completed repairs in person before paying.</p>
-                </div>
-              </div>
-              <div className="pt-3 border-t border-line/60 grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <p className="font-display text-base font-bold text-title">0%</p>
-                  <p className="text-[11px] text-muted font-medium">Platform fees</p>
-                </div>
-                <div>
-                  <p className="font-display text-base font-bold text-title">&lt; 2 min</p>
-                  <p className="text-[11px] text-muted font-medium">Easy posting</p>
-                </div>
-                <div>
-                  <p className="font-display text-base font-bold text-title">100%</p>
-                  <p className="text-[11px] text-muted font-medium">Direct to pro</p>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Right Column: Clean Vertical Timeline Steps with connecting line */}
@@ -95,8 +68,8 @@ export function HomeProcess() {
                     key={item.step}
                     className="group relative flex items-start gap-4 sm:gap-5 cursor-pointer"
                   >
-                    {/* Step Icon Badge sitting directly on the timeline */}
-                    <div className="relative z-10 grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-full border border-line/80 bg-white text-muted group-hover:border-primary group-hover:bg-primary group-hover:text-white transition-all duration-200 shadow-2xs ring-4 ring-white">
+                    {/* Step Icon Badge with Vibrant Blue Tick Mark */}
+                    <div className="relative z-10 grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-full border border-primary/30 bg-blue-50/70 text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-white transition-all duration-200 shadow-2xs ring-4 ring-white">
                       <Check className="h-4 w-4 stroke-[2.5]" />
                     </div>
 
