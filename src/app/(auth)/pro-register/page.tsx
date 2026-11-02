@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
+  Download,
   ExternalLink,
   FileText,
   FileUp,
@@ -92,6 +93,31 @@ function CompactAttachment({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
+  function handleFileDownload(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!file) return;
+    if (file.previewUrl) {
+      const a = document.createElement("a");
+      a.href = file.previewUrl;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+    const blob = new Blob([`Local Fix Verified Document: ${file.name}\nAttached: ${file.uploadedAt}`], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-1">
       {file ? (
@@ -105,19 +131,32 @@ function CompactAttachment({
               )}
             </div>
             <div className="min-w-0">
-              <p className="truncate font-medium text-title text-xs sm:text-[13px] leading-tight">
+              <button
+                type="button"
+                onClick={handleFileDownload}
+                className="truncate font-medium text-title text-xs sm:text-[13px] leading-tight hover:text-primary hover:underline cursor-pointer block text-left"
+                title="Click to download document"
+              >
                 {file.name}
-              </p>
+              </button>
               <p className="text-[10px] text-muted leading-tight mt-0.5">
                 {file.sizeLabel} · <span className="text-emerald-700 font-medium">Attached</span>
               </p>
             </div>
           </div>
-          <div className="flex items-center shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={handleFileDownload}
+              className="rounded-lg p-1.5 text-muted hover:text-primary hover:bg-smoke transition cursor-pointer"
+              title="Download attached document"
+            >
+              <Download className="h-4 w-4" />
+            </button>
             <button
               type="button"
               onClick={onRemove}
-              className="rounded-lg p-1.5 text-muted hover:text-red-600 hover:bg-red-50 transition"
+              className="rounded-lg p-1.5 text-muted hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
               title="Delete file"
             >
               <Trash2 className="h-4 w-4" />
@@ -247,7 +286,7 @@ export default function ProRegisterPage() {
     // Step 3: Background Check authorization
     if (!consent) {
       setError(
-        "Please acknowledge the third-party screening requirement to submit your application.",
+        "Please agree to complete the background check on Checkr to continue.",
       );
       return;
     }
@@ -559,14 +598,14 @@ export default function ProRegisterPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-xs font-bold text-title">
-                    Background Verification
+                    Background Check
                   </h2>
                   <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 text-[10px] font-semibold">
                     Via Checkr
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted leading-relaxed">
-                  All pros complete a quick check through Checkr. Your SSN and ID stay with Checkr—Local Fix never collects or stores them. Both you and Local Fix will receive confirmation once submitted.
+                  All professionals complete a quick safety screening powered by Checkr to activate their account.
                 </p>
               </div>
             </div>
@@ -574,8 +613,8 @@ export default function ProRegisterPage() {
             {/* Checkr Portal Action Row */}
             <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white p-3">
               <div className="min-w-0">
-                <p className="text-xs font-bold text-title">Checkr Portal</p>
-                <p className="text-[11px] text-muted">Takes ~2–3 minutes</p>
+                <p className="text-xs font-bold text-title">Checkr Screening Portal</p>
+                <p className="text-[11px] text-muted">Takes ~2–3 minutes online</p>
               </div>
               <a
                 href="https://checkr.com"
@@ -584,7 +623,7 @@ export default function ProRegisterPage() {
                 onClick={() => setCheckrOpened(true)}
                 className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-white hover:bg-primary/90 transition shadow-2xs shrink-0"
               >
-                <span>Open Checkr</span>
+                <span>Start on Checkr</span>
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </div>
@@ -592,7 +631,7 @@ export default function ProRegisterPage() {
             {checkrOpened && (
               <div className="flex items-center gap-2 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/70 p-2.5 rounded-lg">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>Portal opened in a new tab. Check your inbox for confirmation.</span>
+                <span>Portal opened in a new tab. Check your email for updates.</span>
               </div>
             )}
 
@@ -605,7 +644,7 @@ export default function ProRegisterPage() {
                 onChange={(e) => setConsent(e.target.checked)}
               />
               <span className="leading-snug">
-                I agree to complete my background check on Checkr.
+                I agree to complete the background check on Checkr.
               </span>
             </label>
           </div>
