@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { RequestDetail } from "@/components/web-pages/request-detail";
 import { ProQuoteForm } from "@/components/web-pages/pro-quote-form";
 import { Button } from "@/components/ui/button";
-import { selectJob, selectQuotesForJob } from "@/lib/marketplace";
+import { selectBooking, selectJob, selectQuotesForJob } from "@/lib/marketplace";
 import { useRoleAccess } from "@/hooks/use-role-access";
 import { setLeadAction } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
@@ -33,6 +33,7 @@ export function ProJobLead({
   const dispatch = useAppDispatch();
   const { access } = useRoleAccess();
   const job = useAppSelector((state) => selectJob(state, jobId));
+  const booking = useAppSelector((state) => selectBooking(state, jobId));
   const leadAction = useAppSelector((state) => state.features.leadActions[jobId] ?? "open");
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[jobId]);
   const user = useAppSelector((state) => state.auth.user);
@@ -40,11 +41,23 @@ export function ProJobLead({
   const quotes = useAppSelector((state) => selectQuotesForJob(state, jobId));
   const myQuote = quotes.find((quote) => quote.proId === myProId);
   const alreadyQuoted = Boolean(myQuote);
-  const forSomeoneElse = Boolean(job?.requestedProId && job.requestedProId !== myProId);
-  const hiredElsewhere = Boolean(hiredQuoteId && !quotes.some((quote) => quote.id === hiredQuoteId && quote.proId === myProId));
+
+  const isBooked = Boolean(
+    job && ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm", "completed"].includes(job.status)
+  );
+
+  const isMyBooking = Boolean(
+    (booking && (booking.proId === myProId || !booking.proId)) ||
+    (myQuote && hiredQuoteId === myQuote.id) ||
+    (job && job.requestedProId === myProId && isBooked)
+  );
+
+  const forSomeoneElse = Boolean(!isMyBooking && job?.requestedProId && job.requestedProId !== myProId);
+  const hiredElsewhere = Boolean(
+    !isMyBooking && isBooked && ((booking && booking.proId !== myProId) || (hiredQuoteId && (!myQuote || hiredQuoteId !== myQuote.id)))
+  );
   const passed = leadAction === "declined";
 
-  const isBooked = job && ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm", "completed"].includes(job.status);
   const resolvedBackHref = backHref ?? (isBooked ? "/pro/bookings" : "/pro/jobs");
   const resolvedBackLabel = backLabel ?? (isBooked ? "My Bookings" : "Available jobs");
 
@@ -67,7 +80,7 @@ export function ProJobLead({
         viewer="pro"
       />
 
-      {forSomeoneElse ? (
+      {isMyBooking && isBooked ? null : forSomeoneElse ? (
         <div className="rounded-xl border border-line/80 bg-white px-6 py-4">
           <p className="text-sm text-muted">This quote request was sent to another professional.</p>
         </div>
