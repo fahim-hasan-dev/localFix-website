@@ -17,11 +17,11 @@ export function HomeAbout() {
   return (
     <section className="relative overflow-x-clip bg-surface py-[var(--section-sm)] md:py-[var(--section)]">
       <div className="container-site relative z-[1] grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-        {/* Left: 2 Staggered Portrait Photos (matches reference design) */}
+        {/* Left: 2 Asymmetric Staggered Photos (1 Large Hero + 1 Compact Secondary) */}
         <div className="order-2 lg:order-1 grid grid-cols-2 gap-4 sm:gap-6 items-start">
-          {/* Photo 1 (Left): Beautiful residential home exterior */}
-          <div className="relative overflow-hidden rounded-[24px] sm:rounded-[28px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-            <div className="relative h-[340px] sm:h-[420px] md:h-[470px] w-full">
+          {/* Photo 1 (Left): Large Tall Anchor - House Architecture */}
+          <div className="relative overflow-hidden rounded-[26px] sm:rounded-[32px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+            <div className="relative h-[370px] sm:h-[450px] md:h-[500px] w-full">
               <Image
                 src="/images/about/House.jpg"
                 alt="Beautiful residential home exterior"
@@ -33,15 +33,15 @@ export function HomeAbout() {
             </div>
           </div>
 
-          {/* Photo 2 (Right): Professional licensed contractor on site */}
-          <div className="relative mt-6 sm:mt-10 overflow-hidden rounded-[24px] sm:rounded-[28px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-            <div className="relative h-[300px] sm:h-[370px] md:h-[420px] w-full">
+          {/* Photo 2 (Right): Compact Smaller Offset Frame - Trade Contractor */}
+          <div className="relative mt-14 sm:mt-20 md:mt-24 overflow-hidden rounded-[22px] sm:rounded-[28px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+            <div className="relative h-[220px] sm:h-[280px] md:h-[320px] w-full">
               <Image
                 src="/images/about/Contrcutor.png"
                 alt="Professional licensed contractor on site"
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 30vw"
-                className="object-cover"
+                className="object-cover object-top"
               />
             </div>
           </div>
