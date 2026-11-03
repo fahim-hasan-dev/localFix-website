@@ -19,12 +19,12 @@ export function HomeAbout() {
       <div className="container-site relative z-[1] grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
         {/* Left: 2 Staggered Portrait Photos (matches reference design) */}
         <div className="order-2 lg:order-1 grid grid-cols-2 gap-4 sm:gap-6 items-start">
-          {/* Photo 1: Authentic skilled residential contractor in proper trade workwear */}
+          {/* Photo 1 (Left): Beautiful residential home exterior */}
           <div className="relative overflow-hidden rounded-[24px] sm:rounded-[28px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
             <div className="relative h-[340px] sm:h-[420px] md:h-[470px] w-full">
               <Image
-                src="/images/about/pro-contractor.jpg"
-                alt="Professional residential contractor in authentic workwear on site"
+                src="/images/about/House.jpg"
+                alt="Beautiful residential home exterior"
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 30vw"
                 className="object-cover"
@@ -33,12 +33,12 @@ export function HomeAbout() {
             </div>
           </div>
 
-          {/* Photo 2: Authentic residential plumber in proper trade workwear at work */}
+          {/* Photo 2 (Right): Professional licensed contractor on site */}
           <div className="relative mt-6 sm:mt-10 overflow-hidden rounded-[24px] sm:rounded-[28px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
             <div className="relative h-[300px] sm:h-[370px] md:h-[420px] w-full">
               <Image
-                src="/images/about/plumbing-craftsmanship.jpg"
-                alt="Skilled master plumber in authentic workwear installing residential fixtures"
+                src="/images/about/Contrcutor.png"
+                alt="Professional licensed contractor on site"
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 30vw"
                 className="object-cover"
