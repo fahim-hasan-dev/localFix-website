@@ -86,6 +86,7 @@ export interface ProServiceItem {
   description: string;
   price?: number;
   unit?: string;
+  category?: string;
 }
 
 export interface ProSpecialOffer {
@@ -295,6 +296,7 @@ const initialState: FeaturesState = {
       {
         id: "srv-1",
         name: "Leak Detection & Emergency Pipe Repair",
+        category: "Leak repair",
         price: 95,
         unit: "starting rate",
         description: "Electronic water line detection and non-invasive pipe repairs.",
@@ -302,6 +304,7 @@ const initialState: FeaturesState = {
       {
         id: "srv-2",
         name: "Water Heater Flush, Repair & Replacement",
+        category: "Water heaters",
         price: 140,
         unit: "flush & diag",
         description: "Standard tank & tankless servicing, element replacement, and anode rods.",
@@ -309,6 +312,7 @@ const initialState: FeaturesState = {
       {
         id: "srv-3",
         name: "Drain Clearing & Hydro-Jetting",
+        category: "Drains",
         price: 89,
         unit: "starting rate",
         description: "Kitchen sinks, bathroom lines, and main sewer branch snake clearing.",
@@ -316,6 +320,7 @@ const initialState: FeaturesState = {
       {
         id: "srv-4",
         name: "Fixture, Toilet & Faucet Installation",
+        category: "Fixtures",
         price: 110,
         unit: "per fixture",
         description: "OEM fixture mounting, supply hookups, and leak-tested seal guarantee.",
@@ -323,6 +328,7 @@ const initialState: FeaturesState = {
       {
         id: "srv-5",
         name: "Garbage Disposal Repair & Replacement",
+        category: "Repairs",
         price: 85,
         unit: "starting rate",
         description: "Humming or jammed disposals, seal gaskets, and new unit installs.",

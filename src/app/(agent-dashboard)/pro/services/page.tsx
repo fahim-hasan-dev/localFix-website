@@ -30,6 +30,7 @@ export default function ProServicesPage() {
   // Form state for modal (pricing completely removed)
   const [serviceForm, setServiceForm] = useState({
     name: "",
+    category: "",
     description: "",
   });
 
@@ -44,6 +45,7 @@ export default function ProServicesPage() {
     return services.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
+        (s.category && s.category.toLowerCase().includes(q)) ||
         (s.description && s.description.toLowerCase().includes(q)),
     );
   }, [services, searchQuery]);
@@ -52,6 +54,7 @@ export default function ProServicesPage() {
     setEditingServiceId(null);
     setServiceForm({
       name: "",
+      category: "",
       description: "",
     });
     setShowModal(true);
@@ -61,6 +64,7 @@ export default function ProServicesPage() {
     setEditingServiceId(srv.id);
     setServiceForm({
       name: srv.name,
+      category: srv.category || "",
       description: srv.description || "",
     });
     setShowModal(true);
@@ -69,6 +73,7 @@ export default function ProServicesPage() {
   function handleSaveService() {
     if (!serviceForm.name.trim()) return;
 
+    const trimmedCat = serviceForm.category.trim();
     let updatedList: ProServiceItem[];
     if (editingServiceId) {
       updatedList = services.map((s) =>
@@ -76,6 +81,7 @@ export default function ProServicesPage() {
           ? {
               ...s,
               name: serviceForm.name.trim(),
+              category: trimmedCat || undefined,
               description: serviceForm.description.trim(),
             }
           : s,
@@ -85,6 +91,7 @@ export default function ProServicesPage() {
       const newService: ProServiceItem = {
         id: `srv-${Date.now()}`,
         name: serviceForm.name.trim(),
+        category: trimmedCat || undefined,
         description: serviceForm.description.trim(),
       };
       updatedList = [...services, newService];
@@ -181,13 +188,22 @@ export default function ProServicesPage() {
             >
               <div>
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-smoke/80 text-primary border border-line/70 shadow-2xs">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-smoke/80 text-primary border border-line/70 shadow-2xs mt-0.5">
                       <Wrench className="h-4 w-4" />
                     </div>
-                    <h2 className="font-display text-sm sm:text-[15px] font-bold text-title leading-snug">
-                      {srv.name}
-                    </h2>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="font-display text-sm sm:text-[15px] font-bold text-title leading-snug">
+                          {srv.name}
+                        </h2>
+                        {srv.category && (
+                          <span className="inline-flex items-center rounded-md bg-primary/10 text-primary px-2 py-0.5 text-[11px] font-semibold border border-primary/20">
+                            {srv.category}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0 -mr-1">
@@ -252,6 +268,16 @@ export default function ProServicesPage() {
                     setServiceForm({ ...serviceForm, name: e.target.value })
                   }
                   placeholder="e.g. Tankless Water Heater Flush"
+                />
+              </Field>
+
+              <Field label="Category / Specialty (Optional)">
+                <TextField
+                  value={serviceForm.category}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setServiceForm({ ...serviceForm, category: e.target.value })
+                  }
+                  placeholder="e.g. Troubleshooting, Lighting, Repairs, Installation…"
                 />
               </Field>
 

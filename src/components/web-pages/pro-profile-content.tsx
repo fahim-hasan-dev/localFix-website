@@ -25,7 +25,6 @@ import { Button } from "@/components/ui/button";
 import { photos } from "@/lib/media";
 import { getAvatar } from "@/lib/avatars";
 import {
-  serviceLines,
   tradeDefaultServices,
   tradeDefaultReviews,
   getProGallery,
@@ -83,7 +82,6 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   }, [completions, hiredByJob, extraQuotes, pro.id, pro.jobsCompleted]);
 
   const [activeTab, setActiveTab] = useState<"about" | "services" | "photos" | "reviews">("about");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [selectedPhotoCategory, setSelectedPhotoCategory] = useState("all");
   const [selectedRating, setSelectedRating] = useState("all");
   const [copied, setCopied] = useState(false);
@@ -136,7 +134,6 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   const similarJobsCount = Math.max(7, Math.round(pro.jobsCompleted * 0.12));
 
   const cover = photos.services[pro.categorySlug] ?? photos.banner;
-  const specialties = serviceLines[pro.categorySlug] ?? [pro.trade, "Diagnostics", "Repairs", "Maintenance"];
   const profilePath = `/browse-pros/${pro.id}`;
 
   const galleryPhotos = useMemo(() => {
@@ -305,20 +302,10 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
     ].filter((f) => f.id === "all" || f.count > 0);
   }, [allReviews]);
 
-  // Service list with category & specialty filter
+  // Full list of services offered
   const servicesList = useMemo(() => {
-    if (!displayServices || displayServices.length === 0) return [];
-    if (selectedCategoryFilter === "all") return displayServices;
-    const q = selectedCategoryFilter.toLowerCase();
-    return displayServices.filter((s) => {
-      const cat = ("category" in s && typeof s.category === "string" ? s.category : "").toLowerCase();
-      return (
-        s.name.toLowerCase().includes(q) ||
-        s.description.toLowerCase().includes(q) ||
-        cat.includes(q)
-      );
-    });
-  }, [displayServices, selectedCategoryFilter]);
+    return displayServices ?? [];
+  }, [displayServices]);
 
   return (
     <div className="min-h-screen bg-white pb-20">
@@ -668,59 +655,38 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
               </p>
             </div>
 
-            {/* Specialties / Service Categories Filter */}
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedCategoryFilter("all")}
-                className={cn(
-                  "rounded-full px-3.5 py-1 text-xs font-medium transition-colors cursor-pointer",
-                  selectedCategoryFilter === "all"
-                    ? "bg-title text-white font-semibold shadow-2xs"
-                    : "bg-surface border border-line/70 text-copy hover:bg-smoke"
-                )}
-              >
-                All Services
-              </button>
-              {specialties.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setSelectedCategoryFilter(item)}
-                  className={cn(
-                    "rounded-full px-3.5 py-1 text-xs font-medium transition-colors cursor-pointer",
-                    selectedCategoryFilter === item
-                      ? "bg-title text-white font-semibold shadow-2xs"
-                      : "bg-surface border border-line/70 text-copy hover:bg-smoke"
-                  )}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-
             {/* Clean 2-column checklist clearly showing services offered */}
             {servicesList.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 pt-1">
-                {servicesList.map((srv) => (
-                  <div key={srv.id} className="flex items-start gap-2.5">
-                    <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0 stroke-[2.5]" />
-                    <div className="min-w-0">
-                      <span className="font-display text-sm font-semibold text-title leading-tight">
-                        {srv.name}
-                      </span>
-                      {srv.description && (
-                        <p className="mt-0.5 text-xs text-muted leading-relaxed">
-                          {srv.description}
-                        </p>
-                      )}
+                {servicesList.map((srv) => {
+                  const srvCategory = "category" in srv && typeof srv.category === "string" ? srv.category : undefined;
+                  return (
+                    <div key={srv.id} className="flex items-start gap-2.5">
+                      <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0 stroke-[2.5]" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-display text-sm font-semibold text-title leading-tight">
+                            {srv.name}
+                          </span>
+                          {srvCategory && (
+                            <span className="inline-flex items-center rounded-md bg-smoke px-2 py-0.5 text-[11px] font-medium text-stone-600 border border-line/60">
+                              {srvCategory}
+                            </span>
+                          )}
+                        </div>
+                        {srv.description && (
+                          <p className="mt-1 text-xs text-muted leading-relaxed">
+                            {srv.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="rounded-xl border border-line/60 bg-surface/30 p-6 text-center text-xs text-muted">
-                No specific services match this filter. Select &ldquo;All Services&rdquo; to view full offerings.
+                No services currently listed.
               </div>
             )}
           </section>
