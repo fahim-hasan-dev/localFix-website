@@ -117,11 +117,8 @@ export function AccountProfileForm() {
               </button>
             </div>
 
-            <div className="flex-1 text-center sm:text-left space-y-1.5">
+            <div className="flex-1 text-center sm:text-left space-y-2">
               <h3 className="font-display text-sm sm:text-base font-bold text-title">Profile Picture</h3>
-              <p className="text-xs text-muted max-w-md leading-relaxed">
-                Add a recognizable headshot so local service pros and technicians know who they are working with.
-              </p>
               <input
                 ref={fileInput}
                 type="file"
@@ -129,7 +126,7 @@ export function AccountProfileForm() {
                 className="hidden"
                 onChange={onPhotoPick}
               />
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+              <div>
                 <Button
                   type="button"
                   variant="ghost"
@@ -140,15 +137,6 @@ export function AccountProfileForm() {
                   <Camera className="h-3.5 w-3.5 mr-1" />
                   Choose New Photo
                 </Button>
-                {avatar && avatar !== current.avatar ? (
-                  <button
-                    type="button"
-                    onClick={() => setCustomAvatar(null)}
-                    className="text-xs font-medium text-stone-500 hover:text-red-600 transition px-2 py-1"
-                  >
-                    Reset
-                  </button>
-                ) : null}
               </div>
               <p className="text-[11px] text-muted">JPG, PNG, or WebP · Up to 5 MB</p>
               {photoError ? <p className="text-xs font-medium text-error">{photoError}</p> : null}

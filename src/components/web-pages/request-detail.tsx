@@ -636,84 +636,61 @@ export function RequestDetail({
 
       {/* LIVE OPERATIONAL STATUS CARDS */}
       {job.status === "en_route" ? (
-        <div className="rounded-[20px] border border-primary/40 bg-gradient-to-r from-primary/10 via-blue-50/60 to-white p-5 shadow-xs flex items-start gap-4 animate-in fade-in">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-white shadow-xs">
-            <Truck className="h-5 w-5 animate-pulse" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-display text-base font-bold text-title">
-                {hiredPro?.name ?? hiredPro?.businessName ?? "Contractor"} is on the way (En Route)
-              </h3>
-              <span className="rounded-full bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
-                Live Tracking
-              </span>
-            </div>
-            <p className="mt-1 text-xs sm:text-sm text-copy leading-relaxed">
-              Your contractor has departed and is en route to your service address. Scheduled arrival window: <strong>{booking?.arrivalWindow || booking?.scheduledTime}</strong>. Please ensure the work area is clear.
+        <div className="rounded-2xl border border-line bg-white p-4 sm:p-5 shadow-2xs flex items-center gap-3.5">
+          <Truck className="h-5 w-5 text-primary shrink-0" />
+          <div className="min-w-0">
+            <h3 className="font-display text-sm sm:text-base font-bold text-title">
+              {hiredPro?.name ?? hiredPro?.businessName ?? "Contractor"} is en route
+            </h3>
+            <p className="text-xs text-muted">
+              Scheduled arrival window: <strong className="text-title font-semibold">{booking?.arrivalWindow || booking?.scheduledTime}</strong>
             </p>
           </div>
         </div>
       ) : null}
 
       {job.status === "in_progress" ? (
-        <div className="rounded-[20px] border border-amber-300 bg-amber-50/70 p-5 shadow-xs flex items-start gap-4 animate-in fade-in">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-600 text-white shadow-xs">
-            <Wrench className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-display text-base font-bold text-title">
-                Work in progress on-site
-              </h3>
-              <span className="rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
-                Active Diagnostic &amp; Service
-              </span>
-            </div>
-            <p className="mt-1 text-xs sm:text-sm text-copy leading-relaxed">
-              Contractor is currently executing the agreed project scope. If any unexpected issues or replacement parts are discovered, the pro will submit an in-app Change Request below for your explicit approval before doing extra work.
+        <div className="rounded-2xl border border-line bg-white p-4 sm:p-5 shadow-2xs flex items-center gap-3.5">
+          <div className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+          <div className="min-w-0">
+            <h3 className="font-display text-sm sm:text-base font-bold text-title">
+              Work in progress on-site
+            </h3>
+            <p className="text-xs text-muted">
+              Contractor is currently executing the project. Any extra scope requires your approval.
             </p>
           </div>
         </div>
       ) : null}
 
       {job.status === "awaiting_confirm" ? (
-        <div className="rounded-[20px] border border-emerald-300 bg-emerald-50/90 p-5 sm:p-6 shadow-sm animate-in fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white shadow-xs">
-                <CheckCircle2 className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-display text-base font-bold text-title">
-                    Contractor marked work 100% completed!
-                  </h3>
-                  <span className="rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
-                    Action Required
-                  </span>
-                </div>
-                <p className="mt-1 text-xs sm:text-sm text-copy leading-relaxed">
-                  Please inspect the completed work and test any fixtures/repairs. Once you are 100% satisfied, confirm completion to settle directly with zero platform markup.
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <h3 className="font-display text-sm sm:text-base font-bold text-title">
+                Contractor marked work completed
+              </h3>
+              <p className="text-xs text-muted">
+                Inspect the work and confirm satisfaction to settle directly with zero fees.
+              </p>
+              {completion?.completionNotes ? (
+                <p className="mt-1 text-xs text-stone-600 italic">
+                  Note: &ldquo;{completion.completionNotes}&rdquo;
                 </p>
-                {completion?.completionNotes ? (
-                  <p className="mt-2 text-xs text-stone-700 italic border-l-2 border-emerald-500 pl-3">
-                    Pro note: &ldquo;{completion.completionNotes}&rdquo;
-                  </p>
-                ) : null}
-              </div>
+              ) : null}
             </div>
-            {canHire ? (
-              <Button
-                type="button"
-                size="md"
-                onClick={() => setShowSettleModal(true)}
-                className="shrink-0 rounded-full font-semibold shadow-xs"
-              >
-                Confirm &amp; Settle Direct ↗
-              </Button>
-            ) : null}
           </div>
+          {canHire ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setShowSettleModal(true)}
+              className="shrink-0 rounded-full font-semibold text-xs"
+            >
+              Confirm &amp; Settle Direct ↗
+            </Button>
+          ) : null}
         </div>
       ) : null}
 

@@ -92,22 +92,6 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   const proProfile = useAppSelector((state) => state.features.proProfile);
   const isDemoPro = pro.id === "pro-1";
 
-  const effectiveLicenseNumber = isDemoPro && proProfile?.licenseNumber
-    ? proProfile.licenseNumber
-    : `TX-${pro.categorySlug.slice(0, 2).toUpperCase()}-42981`;
-
-  const effectiveLicenseState = isDemoPro && proProfile?.licenseState
-    ? proProfile.licenseState
-    : pro.state || "TX";
-
-  const effectiveInsuranceCarrier = isDemoPro && proProfile?.insuranceCarrier
-    ? proProfile.insuranceCarrier
-    : "Next Insurance";
-
-  const effectiveInsuranceCoverage = isDemoPro && proProfile?.insuranceCoverage
-    ? proProfile.insuranceCoverage
-    : "$1,000,000";
-
   const defaultBio =
     pro.categorySlug === "house-cleaning"
       ? "We’re a full-time, professional cleaning team serving both residential and commercial clients. Our experience includes recurring home cleanings, Airbnb turnovers, apartment move-in/move-out services, and office or commercial property cleaning."
@@ -614,7 +598,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                         <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[2.5]" />
                       </p>
                       <p className="text-xs text-muted">
-                        {effectiveLicenseState} Lic #{effectiveLicenseNumber} · {effectiveInsuranceCoverage} ({effectiveInsuranceCarrier})
+                        State licensed · Fully insured · Background cleared
                       </p>
                     </div>
                   </div>
@@ -1102,34 +1086,6 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />
                 Zero booking fees · Pay pro directly
               </p>
-            </div>
-          </div>
-
-          {/* Verified Credentials Trust Card */}
-          <div className="rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs space-y-3">
-            <h4 className="font-display text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
-              <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              Verified Credentials
-            </h4>
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between gap-2 border-b border-line/40 pb-2">
-                <span className="text-muted">Trade License</span>
-                <span className="font-medium text-title text-right">
-                  {effectiveLicenseState} #{effectiveLicenseNumber}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-2 border-b border-line/40 pb-2">
-                <span className="text-muted">Liability Insurance</span>
-                <span className="font-medium text-title text-right">
-                  {effectiveInsuranceCoverage} ({effectiveInsuranceCarrier})
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-muted">Background Check</span>
-                <span className="font-medium text-emerald-700 inline-flex items-center gap-1">
-                  <Check className="h-3 w-3 stroke-[3]" /> Passed Checkr
-                </span>
-              </div>
             </div>
           </div>
         </aside>

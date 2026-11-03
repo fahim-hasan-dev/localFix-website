@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { DashboardSidebar, type SidebarSection } from "@/components/layout/dashboard-sidebar";
-import { selectProBookingsGrouped, selectProJobsGrouped } from "@/lib/marketplace";
+import { selectProJobsGrouped } from "@/lib/marketplace";
 import { useAppSelector } from "@/redux/hooks";
 
 export default function AgentDashboardLayout({
@@ -26,10 +26,7 @@ export default function AgentDashboardLayout({
   const sections: SidebarSection[] = useMemo(() => {
     const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
     const proJobs = selectProJobsGrouped(state, myProId);
-    const proBookings = selectProBookingsGrouped(state, myProId);
     const pendingQuotes = proJobs.totalDirect + proJobs.totalLeads;
-    const activeBookings = proBookings.upcoming.length + proBookings.inProgress.length;
-    const reviewsCount = state.features.reviews.length;
 
     return [
       {
@@ -41,11 +38,7 @@ export default function AgentDashboardLayout({
             label: "Quote Requests",
             badge: pendingQuotes > 0 ? pendingQuotes : undefined,
           },
-          {
-            href: "/pro/bookings",
-            label: "My Bookings",
-            badge: activeBookings > 0 ? activeBookings : undefined,
-          },
+          { href: "/pro/bookings", label: "My Bookings" },
           { href: "/pro/messages", label: "Messages" },
         ],
       },
@@ -54,11 +47,7 @@ export default function AgentDashboardLayout({
         items: [
           { href: "/pro/profile", label: "Profile" },
           { href: "/pro/services", label: "Services" },
-          {
-            href: "/pro/reviews",
-            label: "Reviews",
-            badge: reviewsCount > 0 ? reviewsCount : undefined,
-          },
+          { href: "/pro/reviews", label: "Reviews" },
         ],
       },
       {

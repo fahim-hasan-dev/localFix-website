@@ -129,10 +129,6 @@ export function ProProfileForm() {
     reader.readAsDataURL(file);
   }
 
-  function handleResetAvatar() {
-    setAvatarPreview("");
-    setFormData((prev) => ({ ...prev, avatar: "" }));
-  }
 
   // Modal "Add / Edit Photo" state
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
@@ -404,10 +400,9 @@ export function ProProfileForm() {
         <Card className="rounded-2xl border border-line/80 bg-white p-6 shadow-2xs space-y-6">
           <div>
             <h3 className="font-display text-base sm:text-[17px] font-bold text-title">Profile Information</h3>
-            <p className="text-xs text-muted">Your photo, name, contact details, and where you work.</p>
           </div>
 
-          {/* Prominent Profile Photo & Headshot Section */}
+          {/* Profile Photo Section */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 sm:p-5 rounded-2xl border border-line/70 bg-smoke/40">
             <div className="relative group shrink-0">
               <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm bg-white">
@@ -431,19 +426,16 @@ export function ProProfileForm() {
               </button>
             </div>
 
-            <div className="flex-1 text-center sm:text-left space-y-1.5">
-              <h4 className="font-display text-sm sm:text-base font-bold text-title">Profile Picture &amp; Headshot</h4>
-              <p className="text-xs text-muted max-w-md leading-relaxed">
-                Appears on your public storefront, quote proposals, and messaging threads with homeowners.
-              </p>
+            <div className="flex-1 text-center sm:text-left space-y-2">
+              <h4 className="font-display text-sm sm:text-base font-bold text-title">Profile Picture</h4>
               <input
                 ref={avatarInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                className="hidden"
+                className="sr-only"
                 onChange={handleAvatarFileChange}
               />
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+              <div>
                 <Button
                   type="button"
                   variant="ghost"
@@ -454,15 +446,6 @@ export function ProProfileForm() {
                   <Camera className="h-3.5 w-3.5 mr-1" />
                   Upload Photo
                 </Button>
-                {avatarPreview ? (
-                  <button
-                    type="button"
-                    onClick={handleResetAvatar}
-                    className="text-xs font-medium text-stone-500 hover:text-red-600 transition px-2 py-1"
-                  >
-                    Reset
-                  </button>
-                ) : null}
               </div>
               <p className="text-[11px] text-muted">JPG, PNG, or WebP · Up to 5 MB</p>
               {avatarError ? <p className="text-xs font-medium text-error">{avatarError}</p> : null}
