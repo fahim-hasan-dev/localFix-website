@@ -17,14 +17,14 @@ export function HomeAbout() {
   return (
     <section className="relative overflow-x-clip bg-surface py-[var(--section-sm)] md:py-[var(--section)]">
       <div className="container-site relative z-[1] grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-        {/* Left: 2 Asymmetric Staggered Photos (1 Large Hero + 1 Compact Secondary) */}
-        <div className="order-2 lg:order-1 grid grid-cols-2 gap-4 sm:gap-6 items-start">
-          {/* Photo 1 (Left): Large Tall Anchor - House Architecture */}
+        {/* Left: 2 Asymmetric Photos aligned at bottom baseline (Large Left + Compact Right) */}
+        <div className="order-2 lg:order-1 grid grid-cols-2 gap-4 sm:gap-6 items-end">
+          {/* Photo 1 (Left): Large Tall Anchor - Skilled craftsman on residential building */}
           <div className="relative overflow-hidden rounded-[26px] sm:rounded-[32px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
             <div className="relative h-[370px] sm:h-[450px] md:h-[500px] w-full">
               <Image
-                src="/images/about/House.jpg"
-                alt="Beautiful residential home exterior"
+                src="/images/about/house-construction.jpg"
+                alt="Professional skilled craftsman working on residential home exterior"
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 30vw"
                 className="object-cover"
@@ -33,9 +33,9 @@ export function HomeAbout() {
             </div>
           </div>
 
-          {/* Photo 2 (Right): Compact Smaller Offset Frame - Trade Contractor */}
-          <div className="relative mt-14 sm:mt-20 md:mt-24 overflow-hidden rounded-[22px] sm:rounded-[28px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-            <div className="relative h-[220px] sm:h-[280px] md:h-[320px] w-full">
+          {/* Photo 2 (Right): Compact Smaller Frame - Aligned at exact bottom baseline */}
+          <div className="relative overflow-hidden rounded-[22px] sm:rounded-[28px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+            <div className="relative h-[240px] sm:h-[300px] md:h-[340px] w-full">
               <Image
                 src="/images/about/Contrcutor.png"
                 alt="Professional licensed contractor on site"
