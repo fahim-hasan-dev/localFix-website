@@ -730,31 +730,21 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
             {/* Clean 2-column checklist clearly showing services offered */}
             {servicesList.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 pt-1">
-                {servicesList.map((srv) => {
-                  const srvCategory = "category" in srv && typeof srv.category === "string" ? srv.category : undefined;
-                  return (
-                    <div key={srv.id} className="flex items-start gap-2.5">
-                      <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0 stroke-[2.5]" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-display text-sm font-semibold text-title leading-tight">
-                            {srv.name}
-                          </span>
-                          {srvCategory && (
-                            <span className="inline-flex items-center rounded-md bg-smoke px-2 py-0.5 text-[11px] font-medium text-stone-600 border border-line/60">
-                              {srvCategory}
-                            </span>
-                          )}
-                        </div>
-                        {srv.description && (
-                          <p className="mt-1 text-xs text-muted leading-relaxed">
-                            {srv.description}
-                          </p>
-                        )}
-                      </div>
+                {servicesList.map((srv) => (
+                  <div key={srv.id} className="flex items-start gap-2.5">
+                    <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0 stroke-[2.5]" />
+                    <div className="min-w-0">
+                      <span className="font-display text-sm font-semibold text-title leading-tight">
+                        {srv.name}
+                      </span>
+                      {srv.description && (
+                        <p className="mt-1 text-xs text-muted leading-relaxed">
+                          {srv.description}
+                        </p>
+                      )}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="rounded-xl border border-line/60 bg-surface/30 p-6 text-center text-xs text-muted">
@@ -1219,9 +1209,6 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 <h4 className="font-display text-sm sm:text-base font-bold text-white">
                   {galleryPhotos[activePhotoIndex].title}
                 </h4>
-                <p className="text-xs text-white/70 leading-relaxed">
-                  {galleryPhotos[activePhotoIndex].description}
-                </p>
               </div>
 
               {quoteHref && (

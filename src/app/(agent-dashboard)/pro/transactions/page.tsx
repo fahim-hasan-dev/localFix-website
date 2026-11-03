@@ -4,12 +4,9 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Calendar,
   CheckCircle2,
   Download,
   FileText,
-  Percent,
-  ShieldCheck,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,39 +63,24 @@ export default function TransactionsPage() {
 
       {/* 2. Key Subscription Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <Card className="rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Active Membership</p>
-              <p className="text-base sm:text-lg font-bold text-title">Pro Monthly ($19.99/mo)</p>
-            </div>
+        <Card className="rounded-2xl border border-line/70 bg-white p-4 sm:p-5 shadow-2xs hover:border-line transition">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">Active Membership</p>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-base sm:text-lg font-bold text-title">Pro Monthly</span>
+            <span className="text-xs text-muted font-medium">($19.99/mo)</span>
           </div>
         </Card>
 
-        <Card className="rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
-              <Calendar className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Next Auto-Renew</p>
-              <p className="text-base sm:text-lg font-bold text-title">Jan 10, 2027</p>
-            </div>
-          </div>
+        <Card className="rounded-2xl border border-line/70 bg-white p-4 sm:p-5 shadow-2xs hover:border-line transition">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">Next Auto-Renew</p>
+          <p className="text-base sm:text-lg font-bold text-title">Jan 10, 2027</p>
         </Card>
 
-        <Card className="rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <Percent className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Job Take Rate</p>
-              <p className="text-base sm:text-lg font-bold text-title">0% Fee (100% Kept)</p>
-            </div>
+        <Card className="rounded-2xl border border-line/70 bg-white p-4 sm:p-5 shadow-2xs hover:border-line transition">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">Platform Take Rate</p>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-base sm:text-lg font-bold text-emerald-700">0% Fee</span>
+            <span className="text-xs text-muted font-medium">(100% Direct to Pro)</span>
           </div>
         </Card>
       </div>

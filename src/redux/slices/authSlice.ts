@@ -3,6 +3,7 @@ import { demoHomeowner, demoProUser } from "@/Mockdata";
 import type { User, UserRole } from "@/types";
 
 const STORAGE_KEY = "lhf-auth-role";
+const USER_DATA_STORAGE_PREFIX = "lhf-user-data-";
 
 interface AuthState {
   user: User | null;
@@ -12,6 +13,25 @@ interface AuthState {
 function userFromRole(role: UserRole) {
   if (role === "pro") return demoProUser;
   return demoHomeowner;
+}
+
+function getStoredUserData(role: UserRole): Partial<User> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(`${USER_DATA_STORAGE_PREFIX}${role}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistUserData(role: UserRole, user: User) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(`${USER_DATA_STORAGE_PREFIX}${role}`, JSON.stringify(user));
+  } catch {
+    /* ignore storage errors */
+  }
 }
 
 const initialState: AuthState = {
@@ -45,7 +65,13 @@ const authSlice = createSlice({
         const match = document.cookie.match(new RegExp(`(?:^|; )${STORAGE_KEY}=(pro|homeowner)`));
         if (match) role = match[1] as UserRole;
       }
-      state.user = role === "pro" || role === "homeowner" ? userFromRole(role) : null;
+      if (role === "pro" || role === "homeowner") {
+        const base = userFromRole(role);
+        const stored = getStoredUserData(role);
+        state.user = stored ? { ...base, ...stored, id: base.id, role } : base;
+      } else {
+        state.user = null;
+      }
       state.hydrated = true;
     },
     loginAs(state, action: PayloadAction<UserRole | { role: UserRole; profile?: Partial<User> }>) {
@@ -55,15 +81,18 @@ const authSlice = createSlice({
       state.user = profile ? { ...base, ...profile, id: base.id, role } : base;
       state.hydrated = true;
       persistRole(role);
+      if (state.user) persistUserData(role, state.user);
     },
     login(state, action: PayloadAction<User>) {
       state.user = action.payload;
       state.hydrated = true;
       persistRole(action.payload.role);
+      persistUserData(action.payload.role, action.payload);
     },
     updateUser(state, action: PayloadAction<Partial<User>>) {
       if (!state.user) return;
       state.user = { ...state.user, ...action.payload, id: state.user.id, role: state.user.role };
+      persistUserData(state.user.role, state.user);
     },
     logout(state) {
       state.user = null;

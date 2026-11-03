@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
+  Camera,
   CheckCircle2,
   Clock,
   Edit2,
@@ -99,6 +100,40 @@ export function ProProfileForm() {
     allDaysMatch(normalizeWeeklyHours(proProfile.businessHours)) ? "all" : "custom",
   );
 
+  // Avatar / Profile Headshot state
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>(
+    formData.avatar || user?.avatar || "",
+  );
+  const [avatarError, setAvatarError] = useState("");
+
+  function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("Please select a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError("File size must be under 5 MB.");
+      return;
+    }
+    setAvatarError("");
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setAvatarPreview(reader.result);
+        setFormData((prev) => ({ ...prev, avatar: reader.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleResetAvatar() {
+    setAvatarPreview("");
+    setFormData((prev) => ({ ...prev, avatar: "" }));
+  }
+
   // Modal "Add / Edit Photo" state
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
   const [photoForm, setPhotoForm] = useState({
@@ -122,11 +157,16 @@ export function ProProfileForm() {
       ? Math.min(...formData.services.map((service) => service.price ?? formData.startingPrice ?? 95))
       : formData.startingPrice;
     const proName = formData.contactName || formData.businessName || "Luis Ortega";
+    const proAvatar = avatarPreview || formData.avatar || "";
+    const proEmail = formData.email || user?.email || "luis.ortega@example.com";
+
     dispatch(
       updateProProfile({
         ...formData,
         contactName: proName,
         businessName: proName,
+        avatar: proAvatar,
+        email: proEmail,
         startingPrice: startingFromServices,
         responseTime: proProfile.responseTime,
       }),
@@ -134,6 +174,8 @@ export function ProProfileForm() {
     dispatch(
       updateUser({
         name: proName,
+        email: proEmail,
+        avatar: proAvatar,
         phone: formData.phone,
         street: formData.street,
         city: formData.city,
@@ -359,10 +401,72 @@ export function ProProfileForm() {
       {/* TAB 1: PROFILE INFO                                          */}
       {/* ============================================================ */}
       {activeTab === "overview" && (
-        <Card className="rounded-2xl border border-line/80 bg-white p-6 shadow-2xs space-y-5">
+        <Card className="rounded-2xl border border-line/80 bg-white p-6 shadow-2xs space-y-6">
           <div>
             <h3 className="font-display text-base sm:text-[17px] font-bold text-title">Profile Information</h3>
-            <p className="text-xs text-muted">Your name, contact, and where you work.</p>
+            <p className="text-xs text-muted">Your photo, name, contact details, and where you work.</p>
+          </div>
+
+          {/* Prominent Profile Photo & Headshot Section */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 sm:p-5 rounded-2xl border border-line/70 bg-smoke/40">
+            <div className="relative group shrink-0">
+              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm bg-white">
+                {avatarPreview ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={avatarPreview} alt={formData.contactName || "Pro profile"} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="grid h-full w-full place-items-center bg-primary/10 text-primary font-bold text-xl sm:text-2xl font-display">
+                    {(formData.contactName || "Luis Ortega").slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute bottom-0 right-0 grid h-8 w-8 place-items-center rounded-full bg-primary text-white shadow-md hover:bg-primary-hover transition ring-2 ring-white cursor-pointer"
+                title="Change profile photo"
+                aria-label="Change profile photo"
+              >
+                <Camera className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 text-center sm:text-left space-y-1.5">
+              <h4 className="font-display text-sm sm:text-base font-bold text-title">Profile Picture &amp; Headshot</h4>
+              <p className="text-xs text-muted max-w-md leading-relaxed">
+                Appears on your public storefront, quote proposals, and messaging threads with homeowners.
+              </p>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarFileChange}
+              />
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="rounded-full text-xs font-semibold"
+                >
+                  <Camera className="h-3.5 w-3.5 mr-1" />
+                  Upload Photo
+                </Button>
+                {avatarPreview ? (
+                  <button
+                    type="button"
+                    onClick={handleResetAvatar}
+                    className="text-xs font-medium text-stone-500 hover:text-red-600 transition px-2 py-1"
+                  >
+                    Reset
+                  </button>
+                ) : null}
+              </div>
+              <p className="text-[11px] text-muted">JPG, PNG, or WebP · Up to 5 MB</p>
+              {avatarError ? <p className="text-xs font-medium text-error">{avatarError}</p> : null}
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -377,6 +481,18 @@ export function ProProfileForm() {
                   })
                 }
                 placeholder="Luis Ortega"
+                required
+              />
+            </Field>
+
+            <Field label="Email Address">
+              <TextField
+                type="email"
+                value={formData.email || user?.email || "luis.ortega@example.com"}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                placeholder="luis.ortega@example.com"
                 required
               />
             </Field>
@@ -938,12 +1054,9 @@ export function ProProfileForm() {
                     </div>
                   </div>
 
-                  {/* Bottom Caption Overlay */}
+                  {/* Bottom Caption Overlay (Only Title & Category) */}
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3 pt-6 text-white">
                     <p className="text-xs font-semibold truncate leading-tight drop-shadow-xs">{item.title}</p>
-                    {item.description && (
-                      <p className="text-[11px] text-white/80 line-clamp-1 mt-0.5">{item.description}</p>
-                    )}
                   </div>
                 </div>
               ))}

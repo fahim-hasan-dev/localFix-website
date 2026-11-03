@@ -195,22 +195,15 @@ export default function ProServicesPage() {
             >
               <div>
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-smoke/80 text-primary border border-line/70 shadow-2xs mt-0.5">
-                      <Wrench className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="font-display text-sm sm:text-[15px] font-bold text-title leading-snug">
-                          {srv.name}
-                        </h2>
-                        {srv.category && (
-                          <span className="inline-flex items-center rounded-md bg-primary/10 text-primary px-2 py-0.5 text-[11px] font-semibold border border-primary/20">
-                            {srv.category}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                  <div className="min-w-0 flex-1">
+                    {srv.category && (
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">
+                        {srv.category}
+                      </p>
+                    )}
+                    <h2 className="font-display text-sm sm:text-[15px] font-bold text-title leading-snug">
+                      {srv.name}
+                    </h2>
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0 -mr-1">
