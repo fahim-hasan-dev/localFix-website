@@ -15,7 +15,7 @@ export const photos = {
   trustAlt: u("photo-1581578731548-c64695cc6952", 900),
   cta: u("photo-1558618666-fcd25c85cd64", 2000),
   banner: u("photo-1504328345606-18bbc8c9d7d1", 1800),
-  auth: "/images/about/pro-contractor.jpg",
+  auth: "/images/auth-electrician.jpg",
   banners: {
     pros: u("photo-1621905252472-943afaa20e20", 1800),
     how: u("photo-1585704032915-c3400ca199e7", 1800),
