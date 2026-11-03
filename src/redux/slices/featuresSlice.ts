@@ -184,17 +184,6 @@ const initialState: FeaturesState = {
   ],
   reviews: [
     {
-      id: "rev-job-10",
-      jobId: "job-10",
-      proId: "pro-1",
-      author: "Maya Chen",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&h=256&q=80",
-      rating: 5,
-      body: "Marcus replaced our failed pressure regulator within 2 hours. Main pressure dropped back to a safe 55 PSI immediately. Zero water left on floor.",
-      createdAt: "Oct 18, 2026",
-      reply: "Thank you Maya! Glad we caught that before your water heater expansion tank took damage.",
-    },
-    {
       id: "rev-1",
       jobId: "job-past-1",
       proId: "pro-1",
@@ -414,7 +403,9 @@ const featuresSlice = createSlice({
             state.notifications = saved.notifications;
           }
           if (saved.reviews) {
-            state.reviews = saved.reviews;
+            state.reviews = saved.reviews.filter(
+              (r: ReviewItem) => r.id !== "rev-job-10" && r.jobId !== "job-10"
+            );
           }
           if (saved.membershipCancelled !== undefined) {
             state.membershipCancelled = saved.membershipCancelled;

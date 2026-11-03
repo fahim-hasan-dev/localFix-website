@@ -286,9 +286,6 @@ export default function MyBookingsPage() {
                             Contractor Assigned
                           </h2>
                         )}
-                        {pro?.clearance === "cleared" ? (
-                          <span className="text-[11px] font-medium text-muted">Verified</span>
-                        ) : null}
                       </div>
                       <p className="text-xs text-muted truncate">
                         {pro?.trade ? `${pro.trade} · ` : ""}{job.city}, {job.state}
@@ -394,7 +391,7 @@ export default function MyBookingsPage() {
                         ))}
                       </div>
                       <span className="font-medium text-title">
-                        {review.rating}.0 Verified Review submitted
+                        {review.rating}.0 Review submitted
                       </span>
                     </div>
                     <Link
