@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Field, TextField } from "@/components/ui/field";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { updateProProfile, type ProServiceItem } from "@/redux/slices/featuresSlice";
+import { tradeDefaultServices } from "@/lib/pro-extras";
 
 export default function ProServicesPage() {
   const dispatch = useAppDispatch();
@@ -62,9 +63,15 @@ export default function ProServicesPage() {
 
   function handleOpenEdit(srv: ProServiceItem) {
     setEditingServiceId(srv.id);
+    const fallbackCategory =
+      srv.category ||
+      tradeDefaultServices.plumbing?.find(
+        (s) => s.id === srv.id || s.name.toLowerCase() === srv.name.toLowerCase(),
+      )?.category ||
+      "";
     setServiceForm({
       name: srv.name,
-      category: srv.category || "",
+      category: fallbackCategory,
       description: srv.description || "",
     });
     setShowModal(true);

@@ -403,7 +403,7 @@ const initialState: FeaturesState = {
   },
 };
 
-const FEATURES_STORAGE_KEY = "lhf-features-v2";
+const FEATURES_STORAGE_KEY = "lhf-features-v3";
 
 function persistFeatures(state: FeaturesState) {
   if (typeof window === "undefined") return;
@@ -467,7 +467,25 @@ const featuresSlice = createSlice({
             state.phoneVerified = saved.phoneVerified;
           }
           if (saved.proProfile) {
-            state.proProfile = { ...state.proProfile, ...saved.proProfile };
+            const rawServices = Array.isArray(saved.proProfile.services) && saved.proProfile.services.length > 0
+              ? saved.proProfile.services
+              : state.proProfile.services;
+            const patchedServices = rawServices.map((srv: ProServiceItem) => {
+              if (!srv.category) {
+                const match = initialState.proProfile.services.find(
+                  (s) => s.id === srv.id || s.name.toLowerCase() === srv.name.toLowerCase()
+                );
+                if (match?.category) {
+                  return { ...srv, category: match.category };
+                }
+              }
+              return srv;
+            });
+            state.proProfile = {
+              ...state.proProfile,
+              ...saved.proProfile,
+              services: patchedServices,
+            };
           }
           if (saved.applicationStatus) {
             state.applicationStatus = saved.applicationStatus;

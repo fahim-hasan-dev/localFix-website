@@ -768,16 +768,16 @@ export function ProProfileForm() {
           {/* Upload / Edit Photo Modal */}
           {showPhotoModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-              <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-line space-y-5 animate-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between border-b border-line pb-4">
+              <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-line space-y-4 animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between border-b border-line pb-3">
                   <div>
                     <h3 className="font-display text-base font-bold text-title">
                       {editingPhotoIndex !== null ? "Edit Project Photo" : "Upload Project Photo"}
                     </h3>
                     <p className="text-xs text-muted mt-0.5">
                       {editingPhotoIndex !== null
-                        ? "Update title, category tag, or image for this project."
-                        : "Showcase past jobs to build trust with prospective clients."}
+                        ? "Update title, category, or photo for this project."
+                        : "Showcase completed work to build homeowner trust."}
                     </p>
                   </div>
                   <button
@@ -790,12 +790,12 @@ export function ProProfileForm() {
                 </div>
 
                 {/* File Dropzone / Preview */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <label className="text-xs font-semibold text-title block">
                     Project Image
                   </label>
                   {photoPreview ? (
-                    <div className="relative aspect-[16/9] w-full rounded-xl overflow-hidden border border-line bg-smoke group">
+                    <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden border border-line bg-smoke group">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={photoPreview}
@@ -832,49 +832,10 @@ export function ProProfileForm() {
                     onChange={handlePhotoFileChange}
                     className="hidden"
                   />
-
-                  {/* Sample presets if testing locally */}
-                  <div className="pt-1">
-                    <span className="text-[11px] text-muted block mb-1.5">
-                      Or select sample project image:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {[
-                        {
-                          name: "Plumbing Installation",
-                          url: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80",
-                        },
-                        {
-                          name: "Kitchen Tile & Backsplash",
-                          url: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80",
-                        },
-                        {
-                          name: "HVAC & Thermostat Setup",
-                          url: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80",
-                        },
-                      ].map((preset) => (
-                        <button
-                          key={preset.name}
-                          type="button"
-                          onClick={() => {
-                            setPhotoPreview(preset.url);
-                            setPhotoForm((prev) => ({
-                              ...prev,
-                              image: preset.url,
-                              title: prev.title || preset.name,
-                            }));
-                          }}
-                          className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-line bg-smoke/50 hover:bg-smoke hover:border-primary/40 text-body transition-colors cursor-pointer"
-                        >
-                          {preset.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
 
-                <div className="space-y-3">
-                  <Field label="Project Title / Caption (Required)">
+                <div className="space-y-3 pt-1">
+                  <Field label="Project Title">
                     <TextField
                       value={photoForm.title}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -884,28 +845,18 @@ export function ProProfileForm() {
                     />
                   </Field>
 
-                  <Field label="Category / Specialty (e.g. Installations, Replacements, Repairs, Mounting)">
+                  <Field label="Category">
                     <TextField
                       value={photoForm.category}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                         setPhotoForm({ ...photoForm, category: e.target.value })
                       }
-                      placeholder="e.g. Installations, Repairs, Replacements, Diagnostics…"
-                    />
-                  </Field>
-
-                  <Field label="Scope & Details (Optional)">
-                    <TextField
-                      value={photoForm.description}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setPhotoForm({ ...photoForm, description: e.target.value })
-                      }
-                      placeholder="Brief details or scope of work completed"
+                      placeholder="e.g. Installations, Repairs, Replacements"
                     />
                   </Field>
                 </div>
 
-                <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-line">
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-line">
                   <Button
                     type="button"
                     variant="ghost"
