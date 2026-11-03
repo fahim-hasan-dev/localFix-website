@@ -172,8 +172,11 @@ function BookingFlow() {
 
   const selectedCategory = categories.find((c) => c.slug === categorySlug) ?? categories[0];
   const activeAddress = addresses.find((a) => a.label?.toLowerCase() === "home") ?? addresses[0];
-  const displayLocation = activeAddress?.street
-    ? `${activeAddress.street}, ${activeAddress.city || "Austin"}, ${activeAddress.state || "TX"} ${zipInput}`
+  const streetName = activeAddress?.street || user?.street;
+  const cityName = activeAddress?.city || user?.city || "Austin";
+  const stateName = activeAddress?.state || user?.state || "TX";
+  const displayLocation = streetName
+    ? `${streetName}, ${cityName}, ${stateName} ${zipInput}`
     : `Austin, TX ${zipInput}`;
 
   // Simple Step Validations
