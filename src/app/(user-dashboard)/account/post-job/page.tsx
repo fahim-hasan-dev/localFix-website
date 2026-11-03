@@ -840,6 +840,14 @@ function BookingFlow() {
                         className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-3 font-mono text-sm font-semibold tracking-wider text-title outline-none transition-colors placeholder:text-muted focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
                       />
                     </div>
+                    {(activeAddress?.street || user?.street) ? (
+                      <p className="text-[11px] text-muted flex items-center gap-1 mt-1">
+                        <span>Linked address:</span>
+                        <span className="font-medium text-title truncate">
+                          {activeAddress?.street || user?.street}, {activeAddress?.city || user?.city || "Austin"}
+                        </span>
+                      </p>
+                    ) : null}
                   </div>
 
                   {/* Preferred Arrival Window (Dropdown) */}

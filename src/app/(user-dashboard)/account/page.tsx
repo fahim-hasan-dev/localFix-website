@@ -159,16 +159,13 @@ export default function AccountPage() {
                         </span>
                       )}
 
+                      {/* Status / Awaiting Quotes Badge (no duplicate quote count since the CTA button clearly displays it) */}
                       {!isHired ? (
-                        jobQuotes.length > 0 ? (
-                          <span className="rounded-full bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                            {jobQuotes.length} Quote{jobQuotes.length > 1 ? "s" : ""} Received
-                          </span>
-                        ) : (
+                        jobQuotes.length === 0 ? (
                           <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-muted">
                             Awaiting Quotes
                           </span>
-                        )
+                        ) : null
                       ) : (
                         <StatusBadge status={job.status} />
                       )}

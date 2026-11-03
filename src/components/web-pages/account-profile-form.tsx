@@ -1,66 +1,26 @@
 "use client";
 
 import { useRef, useState } from "react";
-import {
-  Building2,
-  Camera,
-  Check,
-  Home,
-  MapPin,
-  Pencil,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Camera, Check, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, TextField } from "@/components/ui/field";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { updateUser } from "@/redux/slices/authSlice";
-import {
-  addAddress,
-  removeAddress,
-  updateAddress,
-  type SavedAddress,
-} from "@/redux/slices/featuresSlice";
+import { updateAddress } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-
-type AddressDraft = Omit<SavedAddress, "id"> & { id?: string; isPrimary?: boolean };
-
-const emptyDraft = (): AddressDraft => ({
-  label: "Home",
-  street: "",
-  city: "Austin",
-  state: "TX",
-  zip: "",
-  isPrimary: false,
-});
 
 export function AccountProfileForm() {
   const user = useAppSelector((state) => state.auth.user);
   const dispatch = useAppDispatch();
   const fileInput = useRef<HTMLInputElement>(null);
-  const addresses = useAppSelector((state) => state.features.addresses);
   const [customAvatar, setCustomAvatar] = useState<string | null>(null);
   const avatar = customAvatar ?? user?.avatar ?? "";
   const [saved, setSaved] = useState(false);
   const [photoError, setPhotoError] = useState("");
-  const [editingId, setEditingId] = useState<string | "new" | null>(null);
-  const [draft, setDraft] = useState<AddressDraft>(emptyDraft());
-  const [addrError, setAddrError] = useState("");
 
   if (!user) return null;
   const current = user;
-
-  function isAddressPrimary(addr: SavedAddress, index: number) {
-    if (current.street) {
-      return (
-        addr.street.trim().toLowerCase() === current.street.trim().toLowerCase() &&
-        addr.zip.trim() === current.zip?.trim()
-      );
-    }
-    return index === 0;
-  }
 
   function onPhotoPick(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -84,154 +44,48 @@ export function AccountProfileForm() {
   function submitProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    const street = String(data.get("street") ?? current.street ?? "").trim();
+    const city = String(data.get("city") ?? current.city ?? "").trim();
+    const state = String(data.get("state") ?? current.state ?? "").trim();
+    const zip = String(data.get("zip") ?? current.zip ?? "").trim();
+
     dispatch(
       updateUser({
         name: String(data.get("name") ?? current.name).trim(),
         phone: String(data.get("phone") ?? "").trim(),
         avatar: avatar || current.avatar,
+        street,
+        city,
+        state,
+        zip,
       }),
     );
+
+    // Keep features address in sync for any components referencing it
+    dispatch(
+      updateAddress({
+        id: "addr-1",
+        label: "Home",
+        street: street || "418 West 5th Street",
+        city: city || "Austin",
+        state: state || "TX",
+        zip: zip || "78701",
+      }),
+    );
+
     setSaved(true);
     setTimeout(() => setSaved(false), 3500);
   }
 
-  function startEdit(addr: SavedAddress, isPrimary: boolean) {
-    setEditingId(addr.id);
-    setDraft({ ...addr, isPrimary });
-    setAddrError("");
-  }
-
-  function startAdd() {
-    setEditingId("new");
-    setDraft({
-      ...emptyDraft(),
-      street: "",
-      city: current.city || "",
-      state: current.state || "",
-      zip: current.zip || "",
-      isPrimary: addresses.length === 0,
-    });
-    setAddrError("");
-  }
-
-  function cancelEdit() {
-    setEditingId(null);
-    setDraft(emptyDraft());
-    setAddrError("");
-  }
-
-  function makePrimary(addr: SavedAddress) {
-    dispatch(
-      updateUser({
-        street: addr.street,
-        city: addr.city,
-        state: addr.state,
-        zip: addr.zip,
-      }),
-    );
-  }
-
-  function handleDeleteAddress(id: string) {
-    const target = addresses.find((a) => a.id === id);
-    const wasPrimary =
-      target &&
-      current.street &&
-      target.street.trim().toLowerCase() === current.street.trim().toLowerCase();
-
-    dispatch(removeAddress(id));
-
-    if (wasPrimary) {
-      const remaining = addresses.filter((a) => a.id !== id);
-      if (remaining.length > 0) {
-        dispatch(
-          updateUser({
-            street: remaining[0].street,
-            city: remaining[0].city,
-            state: remaining[0].state,
-            zip: remaining[0].zip,
-          }),
-        );
-      } else {
-        dispatch(updateUser({ street: "", city: "", state: "", zip: "" }));
-      }
-    }
-  }
-
-  function saveAddress() {
-    const label = draft.label.trim();
-    const street = draft.street.trim();
-    const city = draft.city.trim();
-    const state = draft.state.trim().toUpperCase();
-    const zip = draft.zip.trim();
-
-    if (!label) {
-      setAddrError("Please enter an address label (e.g. Home, Office).");
-      return;
-    }
-    if (street.length < 3) {
-      setAddrError("Enter a valid street address.");
-      return;
-    }
-    if (!city) {
-      setAddrError("Enter a city.");
-      return;
-    }
-    if (state.length !== 2) {
-      setAddrError("Enter a valid 2-letter state code (e.g. TX).");
-      return;
-    }
-    if (!/^\d{5}$/.test(zip)) {
-      setAddrError("Enter a valid 5-digit ZIP code.");
-      return;
-    }
-
-    setAddrError("");
-
-    if (editingId && editingId !== "new") {
-      dispatch(updateAddress({ id: editingId, label, street, city, state, zip }));
-    } else {
-      dispatch(addAddress({ label, street, city, state, zip }));
-    }
-
-    // Sync primary address with user profile if marked or if it's the only address
-    if (draft.isPrimary || addresses.length === 0) {
-      dispatch(updateUser({ street, city, state, zip }));
-    }
-
-    cancelEdit();
-  }
-
-  function getAddressIcon(label: string) {
-    const lower = label.toLowerCase();
-    if (
-      lower.includes("office") ||
-      lower.includes("work") ||
-      lower.includes("commercial") ||
-      lower.includes("building")
-    ) {
-      return Building2;
-    }
-    if (
-      lower.includes("home") ||
-      lower.includes("house") ||
-      lower.includes("residence") ||
-      lower.includes("condo") ||
-      lower.includes("apt")
-    ) {
-      return Home;
-    }
-    return MapPin;
-  }
-
   return (
-    <div className="w-full max-w-5xl space-y-6">
-      {/* Page Title */}
-      <div className="border-b border-line/70 pb-4 pt-1">
+    <div className="w-full max-w-3xl space-y-6">
+      {/* Page Header */}
+      <div>
         <h1 className="font-display text-[22px] sm:text-[26px] font-semibold text-title tracking-tight">
           Profile Settings
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Photo, contact, and service address.
+          Your personal photo, contact details, and primary service address.
         </p>
       </div>
 
@@ -240,7 +94,7 @@ export function AccountProfileForm() {
           <h2 className="font-display text-base font-semibold text-title">Personal information</h2>
         </div>
 
-        <form id="profile-form" className="space-y-5" onSubmit={submitProfile}>
+        <form id="profile-form" className="space-y-6" onSubmit={submitProfile}>
           {/* Avatar and Photo Upload */}
           <div className="flex flex-wrap items-center gap-4 sm:gap-6 border-b border-line/60 pb-6">
             <div className="relative group">
@@ -289,7 +143,7 @@ export function AccountProfileForm() {
             </div>
           </div>
 
-          {/* Form Fields Grid */}
+          {/* Form Fields Grid: Contact Info */}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Full name" className="sm:col-span-2">
               <TextField
@@ -327,112 +181,57 @@ export function AccountProfileForm() {
               />
             </Field>
           </div>
-        </form>
 
-        <div className="mt-6 border-t border-line/60 pt-5">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-display text-sm font-semibold text-title">Address</h3>
-            {editingId === null ? (
-              <button
-                type="button"
-                onClick={startAdd}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add
-              </button>
-            ) : null}
-          </div>
-
-        {editingId !== null ? (
-          <div className="mt-3 rounded-2xl border border-line/80 bg-smoke/50 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="font-display text-sm font-semibold text-title">
-                {editingId === "new" ? "New address" : "Edit address"}
-              </p>
-              <button
-                type="button"
-                onClick={cancelEdit}
-                aria-label="Close address editor"
-                className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-white hover:text-title"
-              >
-                <X className="h-4 w-4" />
-              </button>
+          {/* Single Service Address Section (One clean location for all requests) */}
+          <div className="pt-5 border-t border-line/60">
+            <div className="flex items-center gap-2 mb-4">
+              <MapPin className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-sm font-semibold text-title">Service Address</h3>
             </div>
-            <AddressEditor
-              draft={draft}
-              error={addrError}
-              onChange={setDraft}
-              onSave={saveAddress}
-              onCancel={cancelEdit}
-            />
-          </div>
-        ) : null}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Street address" className="sm:col-span-2">
+                <TextField
+                  name="street"
+                  defaultValue={current.street || "418 West 5th Street"}
+                  autoComplete="street-address"
+                  placeholder="e.g. 418 West 5th Street"
+                  required
+                />
+              </Field>
 
-        <div className="mt-3 space-y-2">
-          {addresses.map((addr, index) => {
-            const isPrimary = isAddressPrimary(addr, index);
-            const Icon = getAddressIcon(addr.label);
+              <Field label="City">
+                <TextField
+                  name="city"
+                  defaultValue={current.city || "Austin"}
+                  autoComplete="address-level2"
+                  placeholder="e.g. Austin"
+                  required
+                />
+              </Field>
 
-            return (
-              <div
-                key={addr.id}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-line/80 px-3.5 py-3"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-smoke text-muted">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-1.5 font-display text-sm font-semibold text-title">
-                      {addr.label}
-                      {isPrimary ? (
-                        <span className="text-xs font-medium text-muted">Primary</span>
-                      ) : null}
-                    </p>
-                    <p className="truncate text-xs text-muted">
-                      {addr.street}, {addr.city}, {addr.state} {addr.zip}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {!isPrimary ? (
-                    <button
-                      type="button"
-                      onClick={() => makePrimary(addr)}
-                      className="text-xs font-semibold text-muted hover:text-title"
-                    >
-                      Primary
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => startEdit(addr, isPrimary)}
-                    disabled={editingId !== null}
-                    className="text-muted hover:text-title disabled:opacity-40"
-                    aria-label={`Edit ${addr.label}`}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteAddress(addr.id)}
-                    disabled={editingId !== null}
-                    aria-label={`Remove ${addr.label}`}
-                    className="text-muted hover:text-error disabled:opacity-40"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="State">
+                  <TextField
+                    name="state"
+                    defaultValue={current.state || "TX"}
+                    autoComplete="address-level1"
+                    placeholder="TX"
+                    required
+                  />
+                </Field>
+                <Field label="ZIP Code">
+                  <TextField
+                    name="zip"
+                    defaultValue={current.zip || "78701"}
+                    autoComplete="postal-code"
+                    placeholder="78701"
+                    required
+                  />
+                </Field>
               </div>
-            );
-          })}
-
-          {!addresses.length && editingId !== "new" ? (
-            <p className="text-sm text-muted">No address yet.</p>
-          ) : null}
-        </div>
-        </div>
+            </div>
+          </div>
+        </form>
 
         {/* Bottom Save Action Bar */}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-line/60 pt-4">
@@ -447,107 +246,6 @@ export function AccountProfileForm() {
           ) : null}
         </div>
       </Card>
-    </div>
-  );
-}
-
-function AddressEditor({
-  draft,
-  error,
-  onChange,
-  onSave,
-  onCancel,
-}: {
-  draft: AddressDraft;
-  error: string;
-  onChange: (next: AddressDraft) => void;
-  onSave: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="space-y-4">
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Address Label">
-          <TextField
-            value={draft.label}
-            onChange={(event) => onChange({ ...draft, label: event.target.value })}
-            placeholder="e.g. Home, Office, Townhouse"
-          />
-        </Field>
-
-        <Field label="Street Address" className="sm:col-span-2">
-          <TextField
-            value={draft.street}
-            onChange={(event) => onChange({ ...draft, street: event.target.value })}
-            placeholder="418 West 5th Street"
-          />
-        </Field>
-
-        <Field label="City">
-          <TextField
-            value={draft.city}
-            onChange={(event) => onChange({ ...draft, city: event.target.value })}
-            placeholder="City"
-          />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="State">
-            <TextField
-              value={draft.state}
-              maxLength={2}
-              onChange={(event) =>
-                onChange({ ...draft, state: event.target.value.toUpperCase() })
-              }
-              placeholder="TX"
-            />
-          </Field>
-          <Field label="ZIP Code">
-            <TextField
-              value={draft.zip}
-              inputMode="numeric"
-              maxLength={5}
-              onChange={(event) => onChange({ ...draft, zip: event.target.value })}
-              placeholder="78701"
-            />
-          </Field>
-        </div>
-      </div>
-
-      {/* Set as Primary Checkbox */}
-      <label className="flex items-center gap-2 cursor-pointer pt-1">
-        <input
-          type="checkbox"
-          checked={Boolean(draft.isPrimary)}
-          onChange={(e) => onChange({ ...draft, isPrimary: e.target.checked })}
-          className="h-4 w-4 rounded border-line text-primary focus:ring-primary"
-        />
-        <span className="text-xs font-medium text-copy">
-          Set as my primary service address
-        </span>
-      </label>
-
-      {error ? (
-        <p className="rounded-[8px] bg-rose-50 px-3 py-2 text-xs font-medium text-error border border-rose-200">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line/40">
-        <Button type="button" size="sm" onClick={onSave} className="rounded-full">
-          Save address
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={onCancel}
-          className="rounded-full"
-        >
-          Cancel
-        </Button>
-      </div>
     </div>
   );
 }

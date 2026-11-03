@@ -19,13 +19,32 @@ const initialState: AuthState = {
   hydrated: false,
 };
 
+function persistRole(role: UserRole | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (role) {
+      window.localStorage.setItem(STORAGE_KEY, role);
+      document.cookie = `${STORAGE_KEY}=${role}; path=/; max-age=31536000; SameSite=Lax`;
+    } else {
+      window.localStorage.removeItem(STORAGE_KEY);
+      document.cookie = `${STORAGE_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    }
+  } catch {
+    /* ignore storage errors */
+  }
+}
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
     hydrate(state) {
       if (typeof window === "undefined") return;
-      const role = window.localStorage.getItem(STORAGE_KEY) as UserRole | null;
+      let role = window.localStorage.getItem(STORAGE_KEY) as UserRole | null;
+      if (!role && document.cookie) {
+        const match = document.cookie.match(new RegExp(`(?:^|; )${STORAGE_KEY}=(pro|homeowner)`));
+        if (match) role = match[1] as UserRole;
+      }
       state.user = role === "pro" || role === "homeowner" ? userFromRole(role) : null;
       state.hydrated = true;
     },
@@ -35,16 +54,12 @@ const authSlice = createSlice({
       const base = userFromRole(role);
       state.user = profile ? { ...base, ...profile, id: base.id, role } : base;
       state.hydrated = true;
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(STORAGE_KEY, role);
-      }
+      persistRole(role);
     },
     login(state, action: PayloadAction<User>) {
       state.user = action.payload;
       state.hydrated = true;
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(STORAGE_KEY, action.payload.role);
-      }
+      persistRole(action.payload.role);
     },
     updateUser(state, action: PayloadAction<Partial<User>>) {
       if (!state.user) return;
@@ -53,9 +68,7 @@ const authSlice = createSlice({
     logout(state) {
       state.user = null;
       state.hydrated = true;
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(STORAGE_KEY);
-      }
+      persistRole(null);
     },
   },
 });

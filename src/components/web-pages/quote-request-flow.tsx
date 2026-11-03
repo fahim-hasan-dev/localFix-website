@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Check, ShieldCheck, Star } from "lucide-react";
+import { ArrowLeft, Check, MapPin, ShieldCheck, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, TextArea } from "@/components/ui/field";
 import { categories, getPro, professionals } from "@/Mockdata";
@@ -49,7 +49,7 @@ function resolveJobLocation(
   user: User | null,
   addresses: SavedAddress[],
 ) {
-  const home = addresses.find((item) => item.label.toLowerCase() === "home") ?? addresses[0];
+  const home = addresses.find((item) => item.label?.toLowerCase() === "home") ?? addresses[0];
   const zip =
     fiveDigitZip(user?.zip) ||
     fiveDigitZip(home?.zip) ||
@@ -57,8 +57,9 @@ function resolveJobLocation(
     "78701";
   return {
     zip,
-    city: home?.city || user?.city || "Austin",
-    state: home?.state || user?.state || "TX",
+    street: user?.street || home?.street || "418 West 5th Street",
+    city: user?.city || home?.city || "Austin",
+    state: user?.state || home?.state || "TX",
   };
 }
 
@@ -379,6 +380,18 @@ export function QuoteRequestFlow() {
             <p className="mt-1 text-sm text-muted">
               Add a short description. Budget and photos are optional. Posting does not hire anyone.
             </p>
+
+            {/* Automatically Linked Service Address */}
+            <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-line/80 bg-smoke/60 px-3.5 py-2.5 text-xs">
+              <MapPin className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <span className="font-semibold text-title">Linked Service Address: </span>
+                <span className="text-muted">
+                  {location.street ? `${location.street}, ` : ""}{location.city}, {location.state} {location.zip}
+                </span>
+              </div>
+            </div>
+
             <div className="mt-5 space-y-4">
               <Field label="Describe the work">
                 <TextArea

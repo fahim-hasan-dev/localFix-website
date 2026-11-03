@@ -22,6 +22,7 @@ const homeownerLinks = [
 export function Navbar() {
   const pathname = usePathname();
   const user = useAppSelector((state) => state.auth.user);
+  const hydrated = useAppSelector((state) => state.auth.hydrated);
   const isPro = user?.role === "pro";
   const isDashboard = pathname.startsWith("/pro") || pathname.startsWith("/account");
   const navLinks = isPro || isDashboard ? [] : homeownerLinks;
@@ -55,7 +56,10 @@ export function Navbar() {
         )}
 
         <div className="hidden items-center gap-3.5 lg:flex">
-          {user ? (
+          {!hydrated ? (
+            /* Layout-preserving placeholder while hydrating auth state — prevents flash of 'Get Started' on refresh */
+            <div className="h-9 w-24 opacity-0 pointer-events-none" aria-hidden="true" />
+          ) : user ? (
             <>
               {/* Notification Popover Dropdown */}
               <NotificationMenu user={user} />
@@ -69,7 +73,7 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-3 lg:hidden">
-          {user ? (
+          {hydrated && user ? (
             <>
               <NotificationMenu user={user} />
               <AccountMenu user={user} />
@@ -99,7 +103,9 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-              {user ? (
+              {!hydrated ? (
+                <div className="h-9 w-full opacity-0 pointer-events-none" aria-hidden="true" />
+              ) : user ? (
                 <Link
                   href={notifHref}
                   onClick={() => setOpen(false)}
