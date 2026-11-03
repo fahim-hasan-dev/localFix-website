@@ -48,11 +48,11 @@ export function HomeWhyChoose() {
             {/* Large primary photo */}
             <div className="mt-7 sm:mt-9 relative h-[320px] sm:h-[400px] w-full overflow-hidden rounded-[24px] sm:rounded-[28px] border border-line/70 shadow-sm group">
               <Image
-                src="/images/why-choose/pro-contractor-kitchen.jpg"
+                src="/images/why-choose/pro-contractor-wide.jpeg"
                 alt="Professional licensed contractor on site"
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover object-[center_30%] transition-transform duration-700 group-hover:scale-105"
+                className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60" />
             </div>
