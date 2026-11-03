@@ -137,8 +137,17 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   const profilePath = `/browse-pros/${pro.id}`;
 
   const galleryPhotos = useMemo(() => {
+    if (isDemoPro && proProfile?.portfolio && proProfile.portfolio.length > 0) {
+      return proProfile.portfolio.map((p, idx) => ({
+        id: p.id || `${pro.id}-portfolio-${idx + 1}`,
+        title: p.title,
+        category: p.category || "Project",
+        image: p.image,
+        description: p.description || p.title,
+      }));
+    }
     return getProGallery(pro.id, pro.categorySlug);
-  }, [pro.id, pro.categorySlug]);
+  }, [pro.id, pro.categorySlug, isDemoPro, proProfile?.portfolio]);
 
   const photoCategories = useMemo(() => {
     const set = new Set<string>();

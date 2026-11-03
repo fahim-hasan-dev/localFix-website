@@ -96,6 +96,14 @@ export interface ProSpecialOffer {
   terms: string;
 }
 
+export interface ProPortfolioItem {
+  id: string;
+  title: string;
+  image: string;
+  category: string;
+  description?: string;
+}
+
 export interface ProProfileData {
   businessName: string;
   contactName: string;
@@ -128,7 +136,7 @@ export interface ProProfileData {
   insuranceExpires: string;
   insuranceDoc: CredentialFile | null;
   idDoc?: CredentialFile | null;
-  portfolio: { title: string; image: string }[];
+  portfolio: ProPortfolioItem[];
 }
 
 const seedNotifications: AppNotification[] = [
@@ -350,16 +358,46 @@ const initialState: FeaturesState = {
     insuranceDoc: defaultInsuranceDoc(),
     portfolio: [
       {
-        title: "Kitchen supply line repair",
-        image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80",
+        id: "port-1",
+        title: "Whole-Home PEX Water Line Repiping",
+        category: "Replacements",
+        image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=1200&q=80",
+        description: "Replaced degraded galvanized piping with commercial-grade PEX, copper manifolds, and shutoff valves.",
       },
       {
-        title: "Under-sink drain reseal",
-        image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=800&q=80",
+        id: "port-2",
+        title: "Tankless Water Heater Installation",
+        category: "Installations",
+        image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1200&q=80",
+        description: "High-efficiency condensing unit installation with dual vent kit and gas regulator.",
       },
       {
-        title: "Vanity fixture install",
-        image: "https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=800&q=80",
+        id: "port-3",
+        title: "Under-Sink Drain Rebuild & Disposal Line",
+        category: "Repairs",
+        image: "https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=1200&q=80",
+        description: "Rebuilt slip-joint drain lines with air gap and sound-dampened garbage disposal connection.",
+      },
+      {
+        id: "port-4",
+        title: "Modern Master Bath Vanity Fixtures",
+        category: "Installations",
+        image: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=80",
+        description: "Twin widespread brushed-nickel faucet mounting and pop-up drain alignment.",
+      },
+      {
+        id: "port-5",
+        title: "Main Emergency Shutoff & Pressure Valve",
+        category: "Repairs",
+        image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=1200&q=80",
+        description: "Installed lead-free quarter-turn brass ball valve and 75 PSI pressure regulator.",
+      },
+      {
+        id: "port-6",
+        title: "Sewer Line Cleanout & Camera Inspection",
+        category: "Diagnostics",
+        image: "https://images.unsplash.com/photo-1542013936693-884638332954?auto=format&fit=crop&w=1200&q=80",
+        description: "Full-run HD video camera diagnostic locating root intrusions and bellies.",
       },
     ],
   },

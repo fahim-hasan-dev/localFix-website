@@ -5,7 +5,9 @@ import { useState } from "react";
 import {
   CheckCircle2,
   Clock,
+  Edit2,
   Image as ImageIcon,
+  Plus,
   ShieldCheck,
   Trash2,
   Upload,
@@ -19,6 +21,7 @@ import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field"
 import { updateUser } from "@/redux/slices/authSlice";
 import {
   updateProProfile,
+  type ProPortfolioItem,
 } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/cn";
@@ -96,13 +99,16 @@ export function ProProfileForm() {
     allDaysMatch(normalizeWeeklyHours(proProfile.businessHours)) ? "all" : "custom",
   );
 
-  // Modal "Add Photo" state
-  const [newPhoto, setNewPhoto] = useState({
+  // Modal "Add / Edit Photo" state
+  const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
+  const [photoForm, setPhotoForm] = useState({
     title: "",
+    category: "",
     image: "",
+    description: "",
   });
   const [photoPreview, setPhotoPreview] = useState("");
-  const [showAddPhoto, setShowAddPhoto] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   if (!user) return null;
 
@@ -227,36 +233,87 @@ export function ProProfileForm() {
     if (!file) return;
     const preview = URL.createObjectURL(file);
     setPhotoPreview(preview);
-    if (!newPhoto.title) {
+    if (!photoForm.title) {
       const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-      setNewPhoto((prev) => ({ ...prev, title: cleanName.charAt(0).toUpperCase() + cleanName.slice(1) }));
+      setPhotoForm((prev) => ({ ...prev, title: cleanName.charAt(0).toUpperCase() + cleanName.slice(1) }));
     }
   }
 
-  function handleAddPhoto() {
-    const imgSrc = photoPreview || newPhoto.image || "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80";
-    const caption = newPhoto.title.trim() || "Completed project";
+  function handleOpenAddPhoto() {
+    setEditingPhotoIndex(null);
+    setPhotoForm({
+      title: "",
+      category: "",
+      image: "",
+      description: "",
+    });
+    setPhotoPreview("");
+    setShowPhotoModal(true);
+  }
+
+  function handleOpenEditPhoto(idx: number) {
+    const item = formData.portfolio[idx];
+    if (!item) return;
+    setEditingPhotoIndex(idx);
+    setPhotoForm({
+      title: item.title,
+      category: item.category || "",
+      image: item.image,
+      description: item.description || "",
+    });
+    setPhotoPreview(item.image);
+    setShowPhotoModal(true);
+  }
+
+  function handleSavePhoto() {
+    const imgSrc = photoPreview || photoForm.image || "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80";
+    const caption = photoForm.title.trim() || "Completed project";
+    const cat = photoForm.category.trim() || "Project";
+    const desc = photoForm.description.trim() || caption;
+
+    let updatedPortfolio: ProPortfolioItem[];
+    if (editingPhotoIndex !== null && editingPhotoIndex >= 0) {
+      updatedPortfolio = formData.portfolio.map((p, i) =>
+        i === editingPhotoIndex
+          ? {
+              ...p,
+              title: caption,
+              category: cat,
+              image: imgSrc,
+              description: desc,
+            }
+          : p,
+      );
+      showToast("Project photo updated!");
+    } else {
+      const newPortfolioItem: ProPortfolioItem = {
+        id: `port-${Date.now()}`,
+        title: caption,
+        category: cat,
+        image: imgSrc,
+        description: desc,
+      };
+      updatedPortfolio = [...formData.portfolio, newPortfolioItem];
+      showToast("Photo uploaded to portfolio!");
+    }
+
     setFormData((prev) => ({
       ...prev,
-      portfolio: [
-        ...prev.portfolio,
-        {
-          title: caption,
-          image: imgSrc,
-        },
-      ],
+      portfolio: updatedPortfolio,
     }));
-    setNewPhoto({ title: "", image: "" });
+    dispatch(updateProProfile({ portfolio: updatedPortfolio }));
+    setShowPhotoModal(false);
     setPhotoPreview("");
-    setShowAddPhoto(false);
-    showToast("Photo uploaded to portfolio!");
   }
 
   function handleRemovePhoto(index: number) {
+    const updatedPortfolio = formData.portfolio.filter((_, i) => i !== index);
     setFormData((prev) => ({
       ...prev,
-      portfolio: prev.portfolio.filter((_, i) => i !== index),
+      portfolio: updatedPortfolio,
     }));
+    dispatch(updateProProfile({ portfolio: updatedPortfolio }));
+    showToast("Photo removed from portfolio.");
   }
 
   return (
@@ -700,11 +757,7 @@ export function ProProfileForm() {
             <Button
               type="button"
               size="sm"
-              onClick={() => {
-                setPhotoPreview("");
-                setNewPhoto({ title: "", image: "" });
-                setShowAddPhoto(true);
-              }}
+              onClick={handleOpenAddPhoto}
               className="text-xs font-semibold"
             >
               <Upload className="h-3.5 w-3.5 mr-1" />
@@ -712,23 +765,25 @@ export function ProProfileForm() {
             </Button>
           </div>
 
-          {/* Upload Photo Modal */}
-          {showAddPhoto && (
+          {/* Upload / Edit Photo Modal */}
+          {showPhotoModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
               <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-line space-y-5 animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between border-b border-line pb-4">
                   <div>
                     <h3 className="font-display text-base font-bold text-title">
-                      Upload Project Photo
+                      {editingPhotoIndex !== null ? "Edit Project Photo" : "Upload Project Photo"}
                     </h3>
                     <p className="text-xs text-muted mt-0.5">
-                      Showcase past jobs to build trust with prospective clients.
+                      {editingPhotoIndex !== null
+                        ? "Update title, category tag, or image for this project."
+                        : "Showcase past jobs to build trust with prospective clients."}
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setShowAddPhoto(false)}
-                    className="p-1.5 rounded-lg text-muted hover:text-title hover:bg-smoke transition-colors"
+                    onClick={() => setShowPhotoModal(false)}
+                    className="p-1.5 rounded-lg text-muted hover:text-title hover:bg-smoke transition-colors cursor-pointer"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -803,13 +858,13 @@ export function ProProfileForm() {
                           type="button"
                           onClick={() => {
                             setPhotoPreview(preset.url);
-                            setNewPhoto((prev) => ({
+                            setPhotoForm((prev) => ({
                               ...prev,
                               image: preset.url,
                               title: prev.title || preset.name,
                             }));
                           }}
-                          className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-line bg-smoke/50 hover:bg-smoke hover:border-primary/40 text-body transition-colors"
+                          className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-line bg-smoke/50 hover:bg-smoke hover:border-primary/40 text-body transition-colors cursor-pointer"
                         >
                           {preset.name}
                         </button>
@@ -818,15 +873,37 @@ export function ProProfileForm() {
                   </div>
                 </div>
 
-                <Field label="Project Caption / Description">
-                  <TextField
-                    value={newPhoto.title}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setNewPhoto({ ...newPhoto, title: e.target.value })
-                    }
-                    placeholder="e.g. Tankless water heater installation"
-                  />
-                </Field>
+                <div className="space-y-3">
+                  <Field label="Project Title / Caption (Required)">
+                    <TextField
+                      value={photoForm.title}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setPhotoForm({ ...photoForm, title: e.target.value })
+                      }
+                      placeholder="e.g. Tankless water heater installation"
+                    />
+                  </Field>
+
+                  <Field label="Category / Specialty (e.g. Installations, Replacements, Repairs, Mounting)">
+                    <TextField
+                      value={photoForm.category}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setPhotoForm({ ...photoForm, category: e.target.value })
+                      }
+                      placeholder="e.g. Installations, Repairs, Replacements, Diagnostics…"
+                    />
+                  </Field>
+
+                  <Field label="Scope & Details (Optional)">
+                    <TextField
+                      value={photoForm.description}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setPhotoForm({ ...photoForm, description: e.target.value })
+                      }
+                      placeholder="Brief details or scope of work completed"
+                    />
+                  </Field>
+                </div>
 
                 <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-line">
                   <Button
@@ -834,7 +911,7 @@ export function ProProfileForm() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setShowAddPhoto(false);
+                      setShowPhotoModal(false);
                       setPhotoPreview("");
                     }}
                     className="text-xs"
@@ -844,11 +921,11 @@ export function ProProfileForm() {
                   <Button
                     type="button"
                     size="sm"
-                    disabled={!photoPreview && !newPhoto.image}
-                    onClick={handleAddPhoto}
+                    disabled={(!photoPreview && !photoForm.image) || !photoForm.title.trim()}
+                    onClick={handleSavePhoto}
                     className="text-xs font-semibold px-4"
                   >
-                    Upload Photo
+                    {editingPhotoIndex !== null ? "Save Changes" : "Upload Photo"}
                   </Button>
                 </div>
               </div>
@@ -856,32 +933,71 @@ export function ProProfileForm() {
           )}
 
           {/* Photos Grid */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            {formData.portfolio.map((item, idx) => (
-              <div
-                key={idx}
-                className="group relative aspect-[4/3] rounded-2xl overflow-hidden bg-smoke border border-line shadow-2xs"
+          {formData.portfolio.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-line/80 p-8 text-center bg-smoke/30">
+              <ImageIcon className="mx-auto h-8 w-8 text-muted mb-2" />
+              <p className="text-sm font-semibold text-title">No project photos yet</p>
+              <p className="text-xs text-muted mt-0.5">Upload photos of past work to showcase your craftsmanship.</p>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleOpenAddPhoto}
+                className="mt-3 text-xs font-semibold"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end justify-between p-3 text-white">
-                  <span className="text-xs font-medium truncate pr-2">{item.title}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePhoto(idx)}
-                    className="p-1 rounded-full bg-red-600/80 hover:bg-red-600 text-white shrink-0 transition"
-                    title="Remove Photo"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add First Photo
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+              {formData.portfolio.map((item, idx) => (
+                <div
+                  key={item.id || idx}
+                  className="group relative aspect-[4/3] rounded-2xl overflow-hidden bg-smoke border border-line shadow-2xs"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                  />
+                  {/* Top Bar with Category Badge and Action Buttons */}
+                  <div className="absolute inset-x-0 top-0 p-2.5 flex items-start justify-between gap-2 bg-gradient-to-b from-black/70 via-black/30 to-transparent">
+                    {item.category ? (
+                      <span className="rounded-md bg-black/60 backdrop-blur-xs px-2 py-0.5 text-[10px] font-semibold text-white">
+                        {item.category}
+                      </span>
+                    ) : <span />}
+                    <div className="flex items-center gap-1.5 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditPhoto(idx)}
+                        className="p-1.5 rounded-lg bg-black/70 hover:bg-black text-white transition cursor-pointer"
+                        title="Edit Photo"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(idx)}
+                        className="p-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white transition cursor-pointer"
+                        title="Remove Photo"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bottom Caption Overlay */}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3 pt-6 text-white">
+                    <p className="text-xs font-semibold truncate leading-tight drop-shadow-xs">{item.title}</p>
+                    {item.description && (
+                      <p className="text-[11px] text-white/80 line-clamp-1 mt-0.5">{item.description}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
       )}
 
