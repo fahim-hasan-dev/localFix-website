@@ -144,14 +144,14 @@ export function HomeHero() {
         <EmergencyBanner onDismiss={() => setShowEmergency(false)} />
       ) : null}
 
-      <section className="relative min-h-[680px] overflow-hidden bg-title text-white md:min-h-[740px] lg:min-h-[780px]">
+      <section className="relative overflow-hidden bg-title text-white min-h-[600px] lg:h-[calc(100vh-139px)] lg:min-h-[580px]">
         <div
-          className="absolute inset-0 bg-cover bg-[center_20%]"
+          className="absolute inset-0 bg-cover bg-[center_35%] md:bg-[85%_48%]"
           style={{ backgroundImage: `url(${photos.hero})` }}
         />
         <div className="hero-wash absolute inset-0 z-[1]" />
 
-        <div className="container-site relative z-[2] grid min-h-[680px] items-center gap-10 py-14 md:min-h-[740px] md:py-16 lg:min-h-[780px] lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:py-24">
+        <div className="container-site relative z-[2] grid h-full min-h-[600px] lg:min-h-0 items-center gap-8 py-8 md:py-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:py-4">
           {isPro ? (
             <div className="relative z-[1] max-w-xl">
               <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-3 py-1 font-display text-xs font-semibold text-emerald-300">
@@ -176,14 +176,14 @@ export function HomeHero() {
             </div>
           ) : (
             <div className="relative z-[1] max-w-xl">
-              <h1 className="hero-title text-white !text-white text-[38px] sm:text-[48px] lg:text-[64px] font-[500] leading-[1.08] lg:leading-[67px] tracking-[-1.8px] lg:tracking-[-3.2px]">
+              <h1 className="hero-title text-white !text-white text-[38px] sm:text-[46px] lg:text-[54px] xl:text-[62px] font-[500] leading-[1.08] lg:leading-[58px] xl:leading-[65px] tracking-[-1.8px] lg:tracking-[-2.6px]">
                 Find trusted local pros for{" "}
                 <span className="text-secondary">home repairs</span>
               </h1>
-              <p className="mt-4 max-w-[540px] font-['Inter_Display',Inter,sans-serif] text-[18px] font-normal leading-[25px] tracking-[-0.18px] text-white/85">
+              <p className="mt-3.5 max-w-[520px] font-['Inter_Display',Inter,sans-serif] text-[16px] sm:text-[17.5px] font-normal leading-[24px] tracking-[-0.18px] text-white/85">
                 Compare upfront bids from background-checked local contractors. Pay them directly when the job is done — with zero platform fees.
               </p>
-              <div className="mt-7 flex flex-wrap items-center gap-3">
+              <div className="mt-6 flex flex-wrap items-center gap-3">
                 <Button href="/browse-pros" variant="white" size="lg" className="font-medium text-sm">
                   Browse Pros ↗
                 </Button>
@@ -284,20 +284,18 @@ export function HomeHero() {
               </div>
             </div>
           ) : (
-            <div className="relative z-10 rounded-[24px] border border-white/80 bg-white/95 p-6 text-title shadow-[0_20px_50px_rgba(0,0,0,0.18)] backdrop-blur-xl md:p-7">
-              {/* Minimal Header */}
-              <div className="flex items-center justify-between border-b border-line/60 pb-3.5">
-                <div className="flex items-center gap-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary">
-                    <Wrench className="h-4 w-4" />
-                  </span>
-                  <h2 className="font-geist text-[17px] sm:text-[19px] font-medium tracking-tight text-title">
-                    What needs fixing?
-                  </h2>
-                </div>
+            <div className="relative z-10 rounded-[22px] border border-black/[0.04] bg-white p-5 sm:p-6 text-title shadow-[0_20px_50px_rgba(0,0,0,0.25)] md:p-6">
+              {/* Minimal Header matching Figma */}
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-blue-50 text-primary">
+                  <Wrench className="h-3.5 w-3.5" />
+                </span>
+                <h2 className="font-geist text-[17px] sm:text-[18px] font-semibold tracking-tight text-title">
+                  What needs fixing?
+                </h2>
               </div>
 
-              <div className="mt-4 space-y-3">
+              <div className="mt-3.5 space-y-2.5">
                 {isChangingCategory && (
                   <div className="relative">
                     <Wrench className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -312,7 +310,7 @@ export function HomeHero() {
                           });
                         }
                       }}
-                      className="pl-10 text-sm rounded-xl border-line/80 bg-surface/50 focus:bg-white"
+                      className="pl-10 text-sm rounded-xl border-line/80 bg-[#f9fafb] focus:bg-white"
                     >
                       <option value="">Select a trade (e.g. Plumbing, HVAC, Electrician)</option>
                       {categories.map((item) => (
@@ -334,26 +332,27 @@ export function HomeHero() {
                       }
                     }}
                     placeholder="Describe your issue (e.g. water leaking under sink, AC blowing warm air upstairs...)"
-                    className="min-h-[84px] resize-none text-sm rounded-xl border-line/80 bg-surface/50 p-3.5 focus:bg-white transition-colors"
+                    className="min-h-[78px] resize-none text-[13.5px] sm:text-sm rounded-xl border border-line/80 bg-[#f9fafb] p-3 placeholder:text-muted/70 focus:border-primary focus:bg-white transition-colors"
                     rows={3}
                   />
                 </div>
 
                 <div className="relative">
-                  <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                  <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                   <TextField
                     value={zip}
                     onChange={(event) => setZip(event.target.value)}
                     placeholder="Enter ZIP code or city (e.g. 78701)"
-                    className="pl-10 text-sm rounded-xl border-line/80 bg-surface/50 focus:bg-white"
+                    className="h-10 pl-9 text-[13.5px] sm:text-sm rounded-xl border border-line/80 bg-[#f9fafb] placeholder:text-muted/70 focus:border-primary focus:bg-white transition-colors"
                   />
                 </div>
 
-                <div className="pt-1">
+                <div className="pt-0.5">
                   <Button
                     type="button"
                     size="md"
                     onClick={handleSummarize}
+                    className="w-full justify-center rounded-xl h-11 text-sm font-semibold shadow-xs"
                   >
                     Review My Request ↗
                   </Button>

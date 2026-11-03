@@ -23,11 +23,11 @@ export function HomeAbout() {
           <div className="relative overflow-hidden rounded-[26px] sm:rounded-[32px] bg-slate-100 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
             <div className="relative h-[370px] sm:h-[450px] md:h-[500px] w-full">
               <Image
-                src="/images/about/house-construction.jpg"
+                src="/images/about/house-construction.jpeg"
                 alt="Professional skilled craftsman working on residential home exterior"
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 30vw"
-                className="object-cover"
+                className="object-cover object-top"
                 priority
               />
             </div>
