@@ -153,9 +153,10 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   const cover = photos.services[pro.categorySlug] ?? photos.banner;
   const profilePath = `/browse-pros/${pro.id}`;
 
+  const proPortfolio = proProfile?.portfolio;
   const galleryPhotos = useMemo(() => {
-    if (isDemoPro && proProfile?.portfolio && proProfile.portfolio.length > 0) {
-      return proProfile.portfolio.map((p, idx) => ({
+    if (isDemoPro && proPortfolio && proPortfolio.length > 0) {
+      return proPortfolio.map((p, idx) => ({
         id: p.id || `${pro.id}-portfolio-${idx + 1}`,
         title: p.title,
         category: p.category || "Project",
@@ -164,7 +165,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
       }));
     }
     return getProGallery(pro.id, pro.categorySlug);
-  }, [pro.id, pro.categorySlug, isDemoPro, proProfile?.portfolio]);
+  }, [pro.id, pro.categorySlug, isDemoPro, proPortfolio]);
 
   const photoCategories = useMemo(() => {
     const set = new Set<string>();
