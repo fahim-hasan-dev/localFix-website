@@ -219,7 +219,6 @@ export function RequestDetail({
   const [settlePaid, setSettlePaid] = useState(false);
   const [settleInspected, setSettleInspected] = useState(true);
   const [arrangePay, setArrangePay] = useState<DirectPaymentMethod>(() => booking?.paymentArrangement ?? "cash");
-  const [selectedReviewTags, setSelectedReviewTags] = useState<string[]>([]);
   const existingReview = useAppSelector((state) =>
     state.features.reviews.find((item) => item.jobId === id)
   );
@@ -272,9 +271,7 @@ export function RequestDetail({
     if (reviewRating === 0) return;
     const cleanBody =
       reviewBody.trim() ||
-      (selectedReviewTags.length
-        ? selectedReviewTags.join(" · ")
-        : "Great service, arrived on time and completed the work cleanly.");
+      "Great service, arrived on time and completed the work cleanly.";
 
     if (existingReview) {
       dispatch(
@@ -1374,64 +1371,28 @@ export function RequestDetail({
                 />
               </div>
 
-              {/* Standout Tags */}
-              <div className="space-y-1.5">
-                <span className="block text-[11px] font-semibold text-muted uppercase tracking-wider">
-                  What stood out? (optional)
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {["Punctual", "Clean Work", "Fair Price", "Great Quality", "Friendly"].map((tag) => {
-                    const active = selectedReviewTags.includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() =>
-                          setSelectedReviewTags((prev) =>
-                            active ? prev.filter((t) => t !== tag) : [...prev, tag],
-                          )
-                        }
-                        className={cn(
-                          "rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer border",
-                          active
-                            ? "bg-primary text-white border-primary shadow-2xs"
-                            : "bg-white text-muted border-line/80 hover:border-slate-300 hover:text-title",
-                        )}
-                      >
-                        {active ? "✓ " : ""}{tag}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
               {/* Submit / Cancel Actions */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-line/60">
-                <p className="text-xs text-muted">
-                  {reviewRating === 0 ? "Select a star rating (1–5) to submit." : "Your review will be verified and published."}
-                </p>
-                <div className="flex items-center gap-2">
-                  {existingReview && isEditingReview && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsEditingReview(false)}
-                      className="rounded-full text-xs font-semibold"
-                    >
-                      Cancel
-                    </Button>
-                  )}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-line/60">
+                {existingReview && isEditingReview && (
                   <Button
                     type="button"
+                    variant="ghost"
                     size="sm"
-                    disabled={reviewRating === 0}
-                    onClick={handleSaveReview}
-                    className="rounded-full px-5 text-xs font-semibold"
+                    onClick={() => setIsEditingReview(false)}
+                    className="rounded-full text-xs font-semibold"
                   >
-                    {existingReview ? "Update Review" : "Submit Review"}
+                    Cancel
                   </Button>
-                </div>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={reviewRating === 0}
+                  onClick={handleSaveReview}
+                  className="rounded-full px-5 text-xs font-semibold"
+                >
+                  {existingReview ? "Update Review" : "Submit Review"}
+                </Button>
               </div>
             </Card>
           )
@@ -1809,40 +1770,6 @@ export function RequestDetail({
               <p className="text-xs font-medium text-title">
                 {activeSentiment.title}
               </p>
-            </div>
-
-            {/* Highlight tags */}
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted">What stood out?</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  "Punctual",
-                  "Clean work",
-                  "Fair price",
-                  "Great quality",
-                  "Friendly",
-                ].map((tag) => {
-                  const active = selectedReviewTags.includes(tag);
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() =>
-                        setSelectedReviewTags((prev) =>
-                          active ? prev.filter((t) => t !== tag) : [...prev, tag],
-                        )
-                      }
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
-                        active
-                          ? "bg-title text-white"
-                          : "bg-smoke text-muted hover:text-title"
-                      }`}
-                    >
-                      {active ? "✓ " : ""}{tag}
-                    </button>
-                  );
-                })}
-              </div>
             </div>
 
             {/* Written review field */}

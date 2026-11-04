@@ -96,9 +96,9 @@ export function AccountProfileForm() {
 
         <form id="profile-form" className="space-y-6" onSubmit={submitProfile}>
           {/* Avatar and Photo Upload */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 sm:p-5 rounded-2xl border border-line/70 bg-smoke/40">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 pb-5 border-b border-line/60">
             <div className="relative group shrink-0">
-              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm bg-white">
+              <div className="h-20 w-20 sm:h-22 sm:w-22 rounded-full overflow-hidden border-2 border-primary/20 shadow-xs bg-white">
                 {avatar ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={avatar} alt={current.name} className="h-full w-full object-cover" />
@@ -109,16 +109,16 @@ export function AccountProfileForm() {
               <button
                 type="button"
                 onClick={() => fileInput.current?.click()}
-                className="absolute bottom-0 right-0 grid h-8 w-8 place-items-center rounded-full bg-primary text-white shadow-md hover:bg-primary-hover transition ring-2 ring-white cursor-pointer"
+                className="absolute bottom-0 right-0 grid h-7 w-7 sm:h-8 sm:w-8 place-items-center rounded-full bg-primary text-white shadow-md hover:bg-primary-hover transition ring-2 ring-white cursor-pointer"
                 title="Change profile photo"
                 aria-label="Change profile photo"
               >
-                <Camera className="h-4 w-4" />
+                <Camera className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
             </div>
 
-            <div className="flex-1 text-center sm:text-left space-y-2">
-              <h3 className="font-display text-sm sm:text-base font-bold text-title">Profile Picture</h3>
+            <div className="flex-1 text-center sm:text-left space-y-1.5">
+              <h3 className="font-display text-sm font-semibold text-title">Profile Picture</h3>
               <input
                 ref={fileInput}
                 type="file"
@@ -126,19 +126,19 @@ export function AccountProfileForm() {
                 className="hidden"
                 onChange={onPhotoPick}
               />
-              <div>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => fileInput.current?.click()}
-                  className="rounded-full text-xs font-semibold"
+                  className="rounded-full text-xs font-semibold border border-line/80"
                 >
                   <Camera className="h-3.5 w-3.5 mr-1" />
                   Choose New Photo
                 </Button>
+                <span className="text-xs text-muted">JPG, PNG, or WebP · Up to 5 MB</span>
               </div>
-              <p className="text-[11px] text-muted">JPG, PNG, or WebP · Up to 5 MB</p>
               {photoError ? <p className="text-xs font-medium text-error">{photoError}</p> : null}
             </div>
           </div>
