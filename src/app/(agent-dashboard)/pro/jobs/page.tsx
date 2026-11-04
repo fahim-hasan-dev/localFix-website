@@ -20,6 +20,7 @@ import { categories, getCategory, urgencyLabels } from "@/Mockdata";
 import { getAvatar } from "@/lib/avatars";
 import {
   jobCardSummary,
+  normalizeProId,
   selectProBookingsGrouped,
   selectProJobsGrouped,
 } from "@/lib/marketplace";
@@ -39,7 +40,7 @@ export default function ProJobsPage() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab") as MainTab | null;
   const user = useAppSelector((state) => state.auth.user);
-  const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
+  const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
 
   const [activeTab, setActiveTab] = useState<MainTab>(
     tabParam && ["direct", "leads", "quoted"].includes(tabParam)

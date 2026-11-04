@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { RequestDetail } from "@/components/web-pages/request-detail";
 import { ProQuoteForm } from "@/components/web-pages/pro-quote-form";
 import { Button } from "@/components/ui/button";
-import { selectBooking, selectJob, selectQuotesForJob } from "@/lib/marketplace";
+import { isSamePro, normalizeProId, selectBooking, selectJob, selectQuotesForJob } from "@/lib/marketplace";
 import { useRoleAccess } from "@/hooks/use-role-access";
 import { setLeadAction } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
@@ -37,29 +37,34 @@ export function ProJobLead({
   const leadAction = useAppSelector((state) => state.features.leadActions[jobId] ?? "open");
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[jobId]);
   const user = useAppSelector((state) => state.auth.user);
-  const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
+  const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
   const quotes = useAppSelector((state) => selectQuotesForJob(state, jobId));
-  const myQuote = quotes.find((quote) => quote.proId === myProId);
+  const myQuote = quotes.find((quote) => isSamePro(quote.proId, myProId));
   const alreadyQuoted = Boolean(myQuote);
 
   const isBooked = Boolean(
     job && ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm", "completed"].includes(job.status)
   );
 
-  const isMyBooking = Boolean(
-    (booking && (booking.proId === myProId || !booking.proId)) ||
-    (myQuote && hiredQuoteId === myQuote.id) ||
-    (job && job.requestedProId === myProId && isBooked)
-  );
-
-  const forSomeoneElse = Boolean(!isMyBooking && job?.requestedProId && job.requestedProId !== myProId);
-  const hiredElsewhere = Boolean(
-    !isMyBooking && isBooked && ((booking && booking.proId !== myProId) || (hiredQuoteId && (!myQuote || hiredQuoteId !== myQuote.id)))
-  );
-  const passed = leadAction === "declined";
-
   const resolvedBackHref = backHref ?? (isBooked ? "/pro/bookings" : "/pro/jobs");
   const resolvedBackLabel = backLabel ?? (isBooked ? "My Bookings" : "Available jobs");
+
+  const isFromBookings = resolvedBackHref === "/pro/bookings" || backHref === "/pro/bookings";
+
+  const isMyBooking = Boolean(
+    isFromBookings ||
+    (booking && (isSamePro(booking.proId, myProId) || !booking.proId)) ||
+    (myQuote && hiredQuoteId === myQuote.id) ||
+    (job && isSamePro(job.requestedProId, myProId) && isBooked)
+  );
+
+  const forSomeoneElse = Boolean(!isMyBooking && job?.requestedProId && !isSamePro(job.requestedProId, myProId));
+  const hiredElsewhere = Boolean(
+    !isMyBooking &&
+    isBooked &&
+    ((booking && !isSamePro(booking.proId, myProId)) || (hiredQuoteId && (!myQuote || hiredQuoteId !== myQuote.id)))
+  );
+  const passed = leadAction === "declined";
 
   function accept() {
     dispatch(setLeadAction({ jobId, action: "accepted" }));

@@ -1,7 +1,19 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { jobs as seedJobs, quotes as seedQuotes } from "@/Mockdata";
 import type { RootState } from "@/redux/store";
-import type { Job, JobStatus, Quote } from "@/types";
+import type { Booking, Job, JobStatus, Quote } from "@/types";
+
+export function normalizeProId(id?: string | null): string {
+  if (!id) return "";
+  if (id === "user-pro-1" || id === "pro-1") return "pro-1";
+  if (id.startsWith("user-pro-")) return id.replace(/^user-/, "");
+  return id;
+}
+
+export function isSamePro(a?: string | null, b?: string | null): boolean {
+  if (!a || !b) return false;
+  return normalizeProId(a) === normalizeProId(b);
+}
 
 export const selectAllJobs = createSelector(
   [
@@ -121,8 +133,29 @@ export function selectJobsForHomeowner(state: RootState, name: string) {
   );
 }
 
-export function selectBooking(state: RootState, jobId: string) {
-  return state.marketplace.bookings[jobId];
+export function selectBooking(state: RootState, jobId: string): Booking | undefined {
+  const direct = state.marketplace.bookings[jobId];
+  if (direct) return direct;
+  const hiredQuoteId = state.marketplace.hiredByJob[jobId];
+  if (hiredQuoteId) {
+    const quotes = selectAllQuotes(state);
+    const quote = quotes.find((q) => q.id === hiredQuoteId);
+    if (quote) {
+      return {
+        jobId,
+        quoteId: quote.id,
+        proId: quote.proId,
+        agreedPrice: quote.amount,
+        scheduledDate: quote.availability || "Flexible",
+        scheduledTime: quote.proposedSchedule || "10:00 AM – 12:00 PM",
+        arrivalWindow: quote.proposedSchedule || "10:00 AM – 12:00 PM",
+        scopeSnapshot: quote.scope,
+        status: "confirmed",
+        paymentArrangement: "cash",
+      };
+    }
+  }
+  return undefined;
 }
 
 export function selectChangeRequests(state: RootState, jobId: string) {
@@ -325,6 +358,7 @@ export const paymentMethodLabels: Record<string, string> = {
 };
 
 export function selectProJobsGrouped(state: RootState, proId: string = "pro-1") {
+  const normalizedId = normalizeProId(proId);
   const allJobs = selectAllJobs(state);
   const hiredByJob = state.marketplace.hiredByJob;
   const bookings = state.marketplace.bookings;
@@ -335,15 +369,17 @@ export function selectProJobsGrouped(state: RootState, proId: string = "pro-1") 
   // 1. Direct 1-on-1 inquiries specifically directed to this pro
   const directInquiries = allJobs.filter((job) => {
     const isDirect =
-      job.requestedProId === proId ||
-      (job.visibility === "direct" && (job.requestedProId === proId || invitedPros[job.id]?.includes(proId)));
+      isSamePro(job.requestedProId, normalizedId) ||
+      (job.visibility === "direct" &&
+        (isSamePro(job.requestedProId, normalizedId) ||
+          invitedPros[job.id]?.some((pId) => isSamePro(pId, normalizedId))));
     if (!isDirect) return false;
     const closed = ["completed", "cancelled", "disputed"].includes(job.status);
     if (closed) return false;
     const hiredId = hiredByJob[job.id];
     if (hiredId) {
       const q = quotes.find((item) => item.id === hiredId);
-      if (q?.proId === proId) return false;
+      if (isSamePro(q?.proId, normalizedId)) return false;
     }
     return leadActions[job.id] !== "declined";
   });
@@ -353,8 +389,8 @@ export function selectProJobsGrouped(state: RootState, proId: string = "pro-1") 
     const hiredId = hiredByJob[job.id];
     const booking = bookings[job.id];
     const isThisProHired =
-      (hiredId && quotes.find((q) => q.id === hiredId)?.proId === proId) ||
-      booking?.proId === proId;
+      (hiredId && isSamePro(quotes.find((q) => q.id === hiredId)?.proId, normalizedId)) ||
+      isSamePro(booking?.proId, normalizedId);
     if (!isThisProHired) return false;
     return ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm"].includes(job.status);
   });
@@ -364,8 +400,8 @@ export function selectProJobsGrouped(state: RootState, proId: string = "pro-1") 
     const hiredId = hiredByJob[job.id];
     const booking = bookings[job.id];
     const isThisProHired =
-      (hiredId && quotes.find((q) => q.id === hiredId)?.proId === proId) ||
-      booking?.proId === proId;
+      (hiredId && isSamePro(quotes.find((q) => q.id === hiredId)?.proId, normalizedId)) ||
+      isSamePro(booking?.proId, normalizedId);
     return isThisProHired && job.status === "completed";
   });
 
@@ -389,7 +425,7 @@ export function selectProJobsGrouped(state: RootState, proId: string = "pro-1") 
 
   // 5. Jobs where this pro has submitted a quote
   const quotedJobs = allJobs.filter((job) => {
-    return quotes.some((q) => q.jobId === job.id && q.proId === proId);
+    return quotes.some((q) => q.jobId === job.id && isSamePro(q.proId, normalizedId));
   });
 
   return {
@@ -453,6 +489,7 @@ export function selectHomeownerRequests(state: RootState, homeownerName: string)
 }
 
 export function selectProBookingsGrouped(state: RootState, proId: string = "pro-1") {
+  const normalizedTargetId = normalizeProId(proId);
   const allJobs = selectAllJobs(state);
   const hiredByJob = state.marketplace.hiredByJob;
   const bookings = state.marketplace.bookings;
@@ -463,8 +500,8 @@ export function selectProBookingsGrouped(state: RootState, proId: string = "pro-
       const hiredId = hiredByJob[job.id];
       const booking = bookings[job.id];
       const assigned =
-        (hiredId && quotes.find((q) => q.id === hiredId)?.proId === targetId) ||
-        booking?.proId === targetId;
+        (hiredId && isSamePro(quotes.find((q) => q.id === hiredId)?.proId, targetId)) ||
+        isSamePro(booking?.proId, targetId);
       return (
         assigned &&
         [
@@ -481,8 +518,8 @@ export function selectProBookingsGrouped(state: RootState, proId: string = "pro-
     });
   };
 
-  let booked = getBookedForPro(proId);
-  if (booked.length === 0) {
+  let booked = getBookedForPro(normalizedTargetId);
+  if (booked.length === 0 && normalizedTargetId !== "pro-1") {
     booked = getBookedForPro("pro-1");
   }
 

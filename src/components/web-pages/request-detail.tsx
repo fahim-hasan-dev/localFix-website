@@ -43,7 +43,9 @@ import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import {
   cleanJobDescription,
+  isSamePro,
   jobRequestFacts,
+  normalizeProId,
   paymentMethodLabels,
   selectBooking,
   selectChangeRequests,
@@ -151,7 +153,7 @@ export function RequestDetail({
   const completion = useAppSelector((state) => selectCompletion(state, id));
   const storedPhotos = useAppSelector((state) => state.features.jobPhotos[id] ?? []);
   const user = useAppSelector((state) => state.auth.user);
-  const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
+  const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
   const isProView = viewer === "pro";
   const marketplaceReady = useAppSelector((state) => state.marketplace.hydrated);
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[id]);
@@ -362,9 +364,10 @@ export function RequestDetail({
 
   const isHiredPro = Boolean(
     isProView &&
-    ((booking && booking.proId === myProId) ||
-      (hiredQuote && hiredQuote.proId === myProId) ||
-      (job && job.requestedProId === myProId))
+    (backHref?.includes("/pro/bookings") ||
+      (booking && (isSamePro(booking.proId, myProId) || !booking.proId)) ||
+      (hiredQuote && isSamePro(hiredQuote.proId, myProId)) ||
+      (job && isSamePro(job.requestedProId, myProId)))
   );
 
   const workActive =

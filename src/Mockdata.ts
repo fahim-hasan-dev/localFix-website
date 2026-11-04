@@ -105,7 +105,7 @@ export const demoHomeowner: User = {
 };
 
 export const demoProUser: User = {
-  id: "user-pro-1",
+  id: "pro-1",
   name: "Luis Ortega",
   email: "luis@ortegaplumbing.com",
   role: "pro",
@@ -1291,7 +1291,8 @@ export function getCategory(slug: string) {
 }
 
 export function getPro(id: string) {
-  return professionals.find((item) => item.id === id);
+  const norm = id === "user-pro-1" ? "pro-1" : id.startsWith("user-pro-") ? id.replace(/^user-/, "") : id;
+  return professionals.find((item) => item.id === norm || item.id === id);
 }
 
 export function getJob(id: string) {

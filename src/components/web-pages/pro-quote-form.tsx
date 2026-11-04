@@ -8,7 +8,7 @@ import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field"
 import { useRoleAccess } from "@/hooks/use-role-access";
 import { addQuote, acceptCounter, setOfferStatus } from "@/redux/slices/marketplaceSlice";
 import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
-import { selectJob, selectQuotesForJob } from "@/lib/marketplace";
+import { isSamePro, normalizeProId, selectJob, selectQuotesForJob } from "@/lib/marketplace";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import type { QuotePriceType } from "@/types";
 
@@ -39,9 +39,9 @@ export function ProQuoteForm({
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[jobId]);
   const quotes = useAppSelector((state) => selectQuotesForJob(state, jobId));
   const user = useAppSelector((state) => state.auth.user);
-  const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
-  const myQuote = quotes.find((q) => q.proId === myProId);
-  const myCounters = quotes.filter((q) => q.proId === myProId && q.status === "countered");
+  const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
+  const myQuote = quotes.find((q) => isSamePro(q.proId, myProId));
+  const myCounters = quotes.filter((q) => isSamePro(q.proId, myProId) && q.status === "countered");
   const jobClosed = Boolean(hiredQuoteId) || ["hired", "scheduled", "cancelled", "completed", "disputed"].includes(job?.status ?? "");
 
   const [saved, setSaved] = useState(false);

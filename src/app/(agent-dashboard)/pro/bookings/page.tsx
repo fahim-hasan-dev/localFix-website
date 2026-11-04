@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { getCategory } from "@/Mockdata";
 import { getAvatar } from "@/lib/avatars";
 import {
+  normalizeProId,
   selectAllQuotes,
   selectProBookingsGrouped,
 } from "@/lib/marketplace";
@@ -30,7 +31,7 @@ export default function ProBookingsPage() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab") as BookingTab | null;
   const user = useAppSelector((state) => state.auth.user);
-  const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
+  const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
   const state = useAppSelector((state) => state);
   const grouped = useMemo(
     () => selectProBookingsGrouped(state, myProId),

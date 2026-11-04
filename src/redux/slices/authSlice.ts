@@ -84,10 +84,15 @@ const authSlice = createSlice({
       if (state.user) persistUserData(role, state.user);
     },
     login(state, action: PayloadAction<User>) {
-      state.user = action.payload;
+      const payload = action.payload;
+      const normalizedUser =
+        payload.role === "pro" && (payload.id === "user-pro-1" || payload.id.startsWith("user-pro-"))
+          ? { ...payload, id: payload.id === "user-pro-1" ? "pro-1" : payload.id.replace(/^user-/, "") }
+          : payload;
+      state.user = normalizedUser;
       state.hydrated = true;
-      persistRole(action.payload.role);
-      persistUserData(action.payload.role, action.payload);
+      persistRole(normalizedUser.role);
+      persistUserData(normalizedUser.role, normalizedUser);
     },
     updateUser(state, action: PayloadAction<Partial<User>>) {
       if (!state.user) return;

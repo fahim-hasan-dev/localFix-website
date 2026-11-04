@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { DashboardSidebar, type SidebarSection } from "@/components/layout/dashboard-sidebar";
-import { selectProJobsGrouped } from "@/lib/marketplace";
+import { normalizeProId, selectProJobsGrouped } from "@/lib/marketplace";
 import { useAppSelector } from "@/redux/hooks";
 
 export default function AgentDashboardLayout({
@@ -24,7 +24,7 @@ export default function AgentDashboardLayout({
   }, [hydrated, router, user]);
 
   const sections: SidebarSection[] = useMemo(() => {
-    const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
+    const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
     const proJobs = selectProJobsGrouped(state, myProId);
     const pendingQuotes = proJobs.totalDirect + proJobs.totalLeads;
 
@@ -59,7 +59,7 @@ export default function AgentDashboardLayout({
         ],
       },
     ];
-  }, [state, user?.id, user?.role]);
+  }, [state, user]);
 
   if (!hydrated || !user || user.role !== "pro") return null;
 
