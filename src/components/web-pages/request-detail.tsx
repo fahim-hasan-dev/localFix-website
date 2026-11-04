@@ -150,6 +150,8 @@ export function RequestDetail({
   const changeRequests = useAppSelector((state) => selectChangeRequests(state, id));
   const completion = useAppSelector((state) => selectCompletion(state, id));
   const storedPhotos = useAppSelector((state) => state.features.jobPhotos[id] ?? []);
+  const user = useAppSelector((state) => state.auth.user);
+  const myProId = user?.role === "pro" && user?.id ? user.id : "pro-1";
   const isProView = viewer === "pro";
   const marketplaceReady = useAppSelector((state) => state.marketplace.hydrated);
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[id]);
@@ -352,7 +354,18 @@ export function RequestDetail({
   }
 
   const photosForJob = storedPhotos.length ? storedPhotos : job.photos ?? [];
-  const hiredPro = hiredQuote ? getPro(hiredQuote.proId) : null;
+  const hiredPro = hiredQuote
+    ? getPro(hiredQuote.proId)
+    : booking?.proId
+      ? getPro(booking.proId)
+      : null;
+
+  const isHiredPro = Boolean(
+    isProView &&
+    ((booking && booking.proId === myProId) ||
+      (hiredQuote && hiredQuote.proId === myProId) ||
+      (job && job.requestedProId === myProId))
+  );
 
   const workActive =
     job.status === "hired" ||
@@ -631,22 +644,31 @@ export function RequestDetail({
         {savedMsg ? <p className="mt-2 text-xs font-medium text-success">{savedMsg}</p> : null}
       </div>
 
-      {/* LIVE OPERATIONAL STATUS CARDS */}
-      {job.status === "en_route" ? (
+      {/* LIVE OPERATIONAL STATUS CARDS (Only visible to Homeowner or the Assigned Hired Contractor) */}
+      {(!isProView || isHiredPro) && job.status === "en_route" ? (
         <div className="rounded-2xl border border-line bg-white p-4 sm:p-5 shadow-2xs flex items-center gap-3.5">
           <Truck className="h-5 w-5 text-primary shrink-0" />
           <div className="min-w-0">
             <h3 className="font-display text-sm sm:text-base font-bold text-title">
-              {hiredPro?.name ?? hiredPro?.businessName ?? "Contractor"} is en route
+              {isProView ? "You are en route" : `${hiredPro?.name ?? hiredPro?.businessName ?? "Contractor"} is en route`}
             </h3>
             <p className="text-xs text-muted">
-              Scheduled arrival window: <strong className="text-title font-semibold">{booking?.arrivalWindow || booking?.scheduledTime}</strong>
+              {isProView ? (
+                "Homeowner has been notified that you are on the way to the service location."
+              ) : (
+                <>
+                  Scheduled arrival window:{" "}
+                  <strong className="text-title font-semibold">
+                    {booking?.arrivalWindow || booking?.scheduledTime}
+                  </strong>
+                </>
+              )}
             </p>
           </div>
         </div>
       ) : null}
 
-      {job.status === "in_progress" ? (
+      {(!isProView || isHiredPro) && job.status === "in_progress" ? (
         <div className="rounded-2xl border border-line bg-white p-4 sm:p-5 shadow-2xs flex items-center gap-3.5">
           <div className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
           <div className="min-w-0">
@@ -654,22 +676,26 @@ export function RequestDetail({
               Work in progress on-site
             </h3>
             <p className="text-xs text-muted">
-              Contractor is currently executing the project. Any extra scope requires your approval.
+              {isProView
+                ? "Job is currently underway on-site. Once completed, mark work complete below."
+                : "Contractor is currently executing the project. Any extra scope requires your approval."}
             </p>
           </div>
         </div>
       ) : null}
 
-      {job.status === "awaiting_confirm" ? (
+      {(!isProView || isHiredPro) && job.status === "awaiting_confirm" ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3 min-w-0">
             <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
             <div className="min-w-0">
               <h3 className="font-display text-sm sm:text-base font-bold text-title">
-                Contractor marked work completed
+                {isProView ? "Work marked complete" : "Contractor marked work completed"}
               </h3>
               <p className="text-xs text-muted">
-                Inspect the work and confirm satisfaction to settle directly with zero fees.
+                {isProView
+                  ? "Waiting for the homeowner to inspect and confirm satisfaction to settle directly."
+                  : "Inspect the work and confirm satisfaction to settle directly with zero fees."}
               </p>
               {completion?.completionNotes ? (
                 <p className="mt-1 text-xs text-stone-600 italic">
@@ -691,8 +717,8 @@ export function RequestDetail({
         </div>
       ) : null}
 
-      {/* Booking panel */}
-      {booking && (workActive || job.status === "completed" || job.status === "cancelled") ? (
+      {/* Booking panel (Private between Homeowner and the Assigned Contractor) */}
+      {booking && (workActive || job.status === "completed" || job.status === "cancelled") && (!isProView || isHiredPro) ? (
         <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
           <div className="flex items-center justify-between gap-2 border-b border-line/60 pb-3">
             <h2 className="font-display text-base sm:text-lg font-bold text-title">Appointment &amp; Booking</h2>
@@ -1396,7 +1422,7 @@ export function RequestDetail({
               </div>
             </Card>
           )
-        ) : isProView ? (
+        ) : isProView && isHiredPro ? (
           existingReview ? (
             <Card className="rounded-[20px] border border-line/80 bg-white p-5 sm:p-7 shadow-xs">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3.5">
