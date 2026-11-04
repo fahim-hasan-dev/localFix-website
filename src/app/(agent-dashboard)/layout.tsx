@@ -23,8 +23,9 @@ export default function AgentDashboardLayout({
     if (user?.role === "homeowner") router.replace("/account");
   }, [hydrated, router, user]);
 
+  const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
+
   const sections: SidebarSection[] = useMemo(() => {
-    const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
     const proJobs = selectProJobsGrouped(state, myProId);
     const pendingQuotes = proJobs.totalDirect + proJobs.totalLeads;
 
@@ -59,7 +60,7 @@ export default function AgentDashboardLayout({
         ],
       },
     ];
-  }, [state, user]);
+  }, [state, myProId]);
 
   if (!hydrated || !user || user.role !== "pro") return null;
 
