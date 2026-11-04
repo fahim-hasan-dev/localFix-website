@@ -381,6 +381,8 @@ export function selectProJobsGrouped(state: RootState, proId: string = "pro-1") 
       const q = quotes.find((item) => item.id === hiredId);
       if (isSamePro(q?.proId, normalizedId)) return false;
     }
+    const alreadyQuoted = quotes.some((q) => q.jobId === job.id && isSamePro(q.proId, normalizedId));
+    if (alreadyQuoted) return false;
     return leadActions[job.id] !== "declined";
   });
 

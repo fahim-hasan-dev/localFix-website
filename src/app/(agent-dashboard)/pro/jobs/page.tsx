@@ -19,8 +19,10 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { categories, getCategory, urgencyLabels } from "@/Mockdata";
 import { getAvatar } from "@/lib/avatars";
 import {
+  isSamePro,
   jobCardSummary,
   normalizeProId,
+  selectAllQuotes,
   selectProBookingsGrouped,
   selectProJobsGrouped,
 } from "@/lib/marketplace";
@@ -65,6 +67,7 @@ export default function ProJobsPage() {
   }
 
   const state = useAppSelector((state) => state);
+  const quotes = useAppSelector(selectAllQuotes);
   const grouped = useMemo(() => selectProJobsGrouped(state, myProId), [state, myProId]);
   const bookingsGrouped = useMemo(() => selectProBookingsGrouped(state, myProId), [state, myProId]);
 
@@ -271,7 +274,9 @@ export default function ProJobsPage() {
       ) : (
         <div className="space-y-4">
           {currentList.map((job) => {
-            const isDirect = job.requestedProId === myProId || job.visibility === "direct";
+            const isDirect = isSamePro(job.requestedProId, myProId) || job.visibility === "direct";
+            const myQuote = quotes.find((q) => q.jobId === job.id && isSamePro(q.proId, myProId));
+            const hasQuoted = Boolean(myQuote);
             const category = getCategory(job.categorySlug);
 
             return (
@@ -310,6 +315,11 @@ export default function ProJobsPage() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
+                    {hasQuoted ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold">
+                        ✓ Quoted (${myQuote?.amount})
+                      </span>
+                    ) : null}
                     {isDirect && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
                         <Inbox className="h-3 w-3" /> Direct
@@ -368,7 +378,7 @@ export default function ProJobsPage() {
                       Message
                     </Button>
 
-                    {activeTab === "quoted" ? (
+                    {hasQuoted ? (
                       <Button
                         href={`/pro/jobs/${job.id}`}
                         size="sm"

@@ -265,23 +265,24 @@ export function ProJobLead({
                     </div>
                   </div>
                 ) : null}
-
-                {myQuote.notes && !/^(veniam|elit|rerum|occaecat)/i.test(myQuote.notes) ? (
-                  <div className="flex items-start gap-2.5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-smoke/80 border border-line/70 text-primary shadow-2xs">
-                      <FileText className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="text-[11px] text-muted block leading-none font-normal">
-                        Contractor Notes
-                      </span>
-                      <strong className="font-semibold text-title text-xs sm:text-[13px] block mt-1 break-words leading-tight">
-                        {myQuote.notes}
-                      </strong>
-                    </div>
-                  </div>
-                ) : null}
               </div>
+
+              {/* Dedicated Contractor Notes Box */}
+              {myQuote.notes && !/^(veniam|elit|rerum|occaecat)/i.test(myQuote.notes) ? (
+                <div className="mt-4 flex items-start gap-3 rounded-xl border border-line/80 bg-smoke/40 p-3.5 text-xs">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-line text-primary shadow-2xs mt-0.5">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted block leading-none">
+                      Contractor Notes &amp; Site Prep
+                    </span>
+                    <p className="mt-1.5 text-xs sm:text-sm text-title leading-relaxed font-medium">
+                      {myQuote.notes}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
