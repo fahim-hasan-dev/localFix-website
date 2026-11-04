@@ -226,10 +226,10 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                     {backgroundClear ? "Cleared" : "Pending Verification"}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-muted max-w-xl leading-relaxed">
+                <p className="mt-0.5 text-xs text-muted">
                   {backgroundClear
-                    ? "Verified via Checkr. Your profile meets safety and quality standards."
-                    : "Complete your background screening through Checkr to get verified."}
+                    ? "Verified via Checkr screening."
+                    : "Complete background screening through Checkr to get verified."}
                 </p>
               </div>
             </div>
@@ -252,18 +252,15 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <FileCheck2 className="h-5 w-5" />
               </div>
-              <div className="min-w-0 space-y-2">
+              <div className="min-w-0 space-y-1.5">
                 <div>
                   <h3 className="font-display text-sm sm:text-base font-bold text-title">
                     State Trade License
                   </h3>
-                  <p className="text-xs text-muted">
-                    Official state-registered contractor trade license.
-                  </p>
                 </div>
 
                 {/* Standard structured key-value display (niche niche, clean and readable, no badge box) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs text-stone-700 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs text-stone-700 pt-0.5">
                   <div>
                     <span className="text-muted font-medium">License Number: </span>
                     <span className="font-semibold text-title">{proProfile?.licenseNumber || draft.licenseNumber || "TX-M-42981"}</span>
@@ -326,18 +323,15 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <Shield className="h-5 w-5" />
               </div>
-              <div className="min-w-0 space-y-2">
+              <div className="min-w-0 space-y-1.5">
                 <div>
                   <h3 className="font-display text-sm sm:text-base font-bold text-title">
                     General Commercial Liability Insurance
                   </h3>
-                  <p className="text-xs text-muted">
-                    Verified policy covering third-party property damage and bodily injury.
-                  </p>
                 </div>
 
                 {/* Standard structured key-value display (niche niche, clean and readable, no badge box) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs text-stone-700 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs text-stone-700 pt-0.5">
                   <div>
                     <span className="text-muted font-medium">Carrier: </span>
                     <span className="font-semibold text-title">{proProfile?.insuranceCarrier || draft.insuranceCarrier || "Next Insurance"}</span>

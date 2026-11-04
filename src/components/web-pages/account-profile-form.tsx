@@ -252,7 +252,7 @@ export function AccountProfileForm() {
 
             <div className="space-y-0.5">
               <h3 className="font-display text-sm font-semibold text-title">Profile Picture</h3>
-              <p className="text-xs text-muted">Click camera to change photo · JPG, PNG, or WebP (max 5 MB)</p>
+              <p className="text-xs text-muted">JPG, PNG, or WebP · Up to 5 MB</p>
               {photoError ? <p className="text-xs font-medium text-error mt-0.5">{photoError}</p> : null}
             </div>
 

@@ -63,10 +63,8 @@ export function ProQuoteForm({
     const estimatedDuration = String(data.get("duration") ?? "").trim();
     const scheduledDate = String(data.get("scheduledDate") ?? "").trim();
     const arrivalWindow = String(data.get("arrivalWindow") ?? "").trim();
-    const proposedSchedule = scheduledDate ? `${formatDisplayDate(scheduledDate)} (${arrivalWindow})` : "";
-    const paymentSchedule = String(data.get("paymentSchedule") ?? "").trim();
-    const paymentMethods = String(data.get("paymentMethods") ?? "").trim();
-    const compiledPaymentTerms = `${paymentSchedule}${paymentMethods ? ` · Accepted: ${paymentMethods}` : ""}`;
+    const proposedSchedule = scheduledDate ? `${formatDisplayDate(scheduledDate)}${arrivalWindow ? ` (${arrivalWindow})` : ""}` : "";
+    const compiledPaymentTerms = "Direct payment upon satisfactory completion";
     const warranty = String(data.get("warranty") ?? "").trim();
     const expiresAt = String(data.get("expires") ?? "").trim();
     const notes = String(data.get("notes") ?? "").trim();
@@ -243,12 +241,13 @@ export function ProQuoteForm({
               </Field>
 
               <Field label="Estimated Job Duration">
-                <NativeSelect name="duration" defaultValue="1–2 hours" disabled={locked} className="rounded-xl">
-                  <option value="1–2 hours">1–2 hours</option>
-                  <option value="2–4 hours (Half day)">2–4 hours (Half day)</option>
-                  <option value="4–8 hours (Full day)">4–8 hours (Full day)</option>
-                  <option value="2+ days (Multi-day)">2+ days (Multi-day)</option>
-                </NativeSelect>
+                <TextField
+                  name="duration"
+                  defaultValue="1–2 hours"
+                  placeholder="e.g. 1–2 hours, 4 hours, or 2 days"
+                  disabled={locked}
+                  className="rounded-xl"
+                />
               </Field>
             </div>
 
@@ -267,50 +266,17 @@ export function ProQuoteForm({
               </Field>
 
               <Field label="Arrival Time Window">
-                <NativeSelect
-                  name="arrivalWindow"
-                  defaultValue="10:00 AM – 12:00 PM (Late Morning)"
-                  disabled={locked}
-                  className="rounded-xl"
-                >
-                  <option value="8:00 AM – 10:00 AM (Early Morning)">8:00 AM – 10:00 AM (Early Morning)</option>
-                  <option value="10:00 AM – 12:00 PM (Late Morning)">10:00 AM – 12:00 PM (Late Morning)</option>
-                  <option value="12:00 PM – 2:00 PM (Early Afternoon)">12:00 PM – 2:00 PM (Early Afternoon)</option>
-                  <option value="2:00 PM – 4:00 PM (Late Afternoon)">2:00 PM – 4:00 PM (Late Afternoon)</option>
-                  <option value="4:00 PM – 6:00 PM (Evening)">4:00 PM – 6:00 PM (Evening)</option>
-                  <option value="Flexible All-Day (8:00 AM – 5:00 PM)">Flexible All-Day (8:00 AM – 5:00 PM)</option>
-                </NativeSelect>
-              </Field>
-            </div>
-
-            {/* 5. Payment Arrangement & Methods */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Payment Schedule">
-                <NativeSelect
-                  name="paymentSchedule"
-                  defaultValue="100% Upon Satisfactory Completion"
-                  disabled={locked}
-                  className="rounded-xl"
-                >
-                  <option value="100% Upon Satisfactory Completion">100% Upon Satisfactory Completion</option>
-                  <option value="50% Upfront Deposit / 50% Upon Completion">50% Upfront Deposit / 50% Upon Completion</option>
-                  <option value="Diagnostic Visit Fee Upfront + Balance Upon Completion">Diagnostic Visit Fee Upfront + Balance Upon Completion</option>
-                  <option value="Net 15 Invoiced After Completion">Net 15 Invoiced After Completion</option>
-                </NativeSelect>
-              </Field>
-
-              <Field label="Accepted Payment Methods">
                 <TextField
-                  name="paymentMethods"
-                  defaultValue="Cash, Zelle, Card, or Check"
-                  placeholder="e.g. Cash, Zelle, Card, or Check"
+                  name="arrivalWindow"
+                  defaultValue="10:00 AM – 12:00 PM"
+                  placeholder="e.g. 10:00 AM – 12:00 PM, or Morning"
                   disabled={locked}
                   className="rounded-xl"
                 />
               </Field>
             </div>
 
-            {/* 6. Warranty & Expiration */}
+            {/* 5. Warranty & Expiration */}
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Warranty (Optional)">
                 <TextField
