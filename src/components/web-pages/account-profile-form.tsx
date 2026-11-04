@@ -44,6 +44,9 @@ export function AccountProfileForm() {
   function submitProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    const name = String(data.get("name") ?? current.name).trim();
+    const email = String(data.get("email") ?? current.email).trim();
+    const phone = String(data.get("phone") ?? "").trim();
     const street = String(data.get("street") ?? current.street ?? "").trim();
     const city = String(data.get("city") ?? current.city ?? "").trim();
     const state = String(data.get("state") ?? current.state ?? "").trim();
@@ -51,8 +54,9 @@ export function AccountProfileForm() {
 
     dispatch(
       updateUser({
-        name: String(data.get("name") ?? current.name).trim(),
-        phone: String(data.get("phone") ?? "").trim(),
+        name: name || current.name,
+        email: email || current.email,
+        phone,
         avatar: avatar || current.avatar,
         street,
         city,
@@ -156,19 +160,14 @@ export function AccountProfileForm() {
             </Field>
 
             <Field label="Email address">
-              <div className="relative">
-                <TextField
-                  type="email"
-                  defaultValue={current.email}
-                  disabled
-                  autoComplete="email"
-                  className="bg-smoke/60 text-muted cursor-not-allowed pr-24"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                  <Check className="h-3 w-3" />
-                  Verified
-                </span>
-              </div>
+              <TextField
+                name="email"
+                type="email"
+                defaultValue={current.email}
+                required
+                autoComplete="email"
+                placeholder="e.g. maya@example.com"
+              />
             </Field>
 
             <Field label="Phone number">
