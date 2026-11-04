@@ -402,54 +402,44 @@ export function ProProfileForm() {
             <h3 className="font-display text-base sm:text-[17px] font-bold text-title">Profile Information</h3>
           </div>
 
-          {/* Profile Photo Section */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 pb-5 border-b border-line/60">
-            <div className="relative group shrink-0">
-              <div className="h-20 w-20 sm:h-22 sm:w-22 rounded-full overflow-hidden border-2 border-primary/20 shadow-xs bg-white">
+          {/* Profile Photo Section (No duplicate button) */}
+          <div className="flex items-center gap-4 pb-5 border-b border-line/60">
+            <div
+              className="relative group shrink-0 cursor-pointer"
+              onClick={() => avatarInputRef.current?.click()}
+              title="Click camera to change photo"
+            >
+              <div className="h-16 w-16 sm:h-18 sm:w-18 rounded-full overflow-hidden border-2 border-line/80 shadow-xs bg-white group-hover:border-primary/50 transition">
                 {avatarPreview ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={avatarPreview} alt={formData.contactName || "Pro profile"} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="grid h-full w-full place-items-center bg-primary/10 text-primary font-bold text-xl sm:text-2xl font-display">
+                  <div className="grid h-full w-full place-items-center bg-primary/10 text-primary font-bold text-lg font-display">
                     {(formData.contactName || "Luis Ortega").slice(0, 2).toUpperCase()}
                   </div>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => avatarInputRef.current?.click()}
-                className="absolute bottom-0 right-0 grid h-7 w-7 sm:h-8 sm:w-8 place-items-center rounded-full bg-primary text-white shadow-md hover:bg-primary-hover transition ring-2 ring-white cursor-pointer"
-                title="Change profile photo"
+              <span
+                className="absolute bottom-0 right-0 grid h-6 w-6 sm:h-7 sm:w-7 place-items-center rounded-full bg-primary text-white shadow-md group-hover:bg-primary-hover transition ring-2 ring-white"
                 aria-label="Change profile photo"
               >
-                <Camera className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
+                <Camera className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              </span>
             </div>
 
-            <div className="flex-1 text-center sm:text-left space-y-1.5">
+            <div className="space-y-0.5">
               <h4 className="font-display text-sm font-semibold text-title">Profile Picture</h4>
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                onChange={handleAvatarFileChange}
-              />
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="rounded-full text-xs font-semibold border border-line/80"
-                >
-                  <Camera className="h-3.5 w-3.5 mr-1" />
-                  Upload Photo
-                </Button>
-                <span className="text-xs text-muted">JPG, PNG, or WebP · Up to 5 MB</span>
-              </div>
-              {avatarError ? <p className="text-xs font-medium text-error">{avatarError}</p> : null}
+              <p className="text-xs text-muted">Click camera to change photo · JPG, PNG, or WebP (max 5 MB)</p>
+              {avatarError ? <p className="text-xs font-medium text-error mt-0.5">{avatarError}</p> : null}
             </div>
+
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={handleAvatarFileChange}
+            />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

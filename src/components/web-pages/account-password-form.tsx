@@ -151,14 +151,14 @@ export function AccountPasswordForm() {
 
           {/* Password Strength Checklist */}
           {next.length > 0 && (
-            <div className="rounded-[12px] bg-smoke/60 p-3.5 space-y-2 border border-line/50 text-xs">
-              <p className="font-display font-semibold text-title text-[11.5px] uppercase tracking-wider">
-                Password Requirements
+            <div className="space-y-2 text-xs pt-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                Password requirements:
               </p>
-              <div className="grid gap-2 sm:grid-cols-3">
-                <div
+              <ul className="space-y-1.5">
+                <li
                   className={cn(
-                    "flex items-center gap-1.5 font-medium transition-colors",
+                    "flex items-center gap-2 font-medium transition-colors text-xs",
                     hasMinLength ? "text-emerald-600" : "text-muted",
                   )}
                 >
@@ -169,11 +169,11 @@ export function AccountPasswordForm() {
                     )}
                   />
                   <span>8+ characters</span>
-                </div>
+                </li>
 
-                <div
+                <li
                   className={cn(
-                    "flex items-center gap-1.5 font-medium transition-colors",
+                    "flex items-center gap-2 font-medium transition-colors text-xs",
                     hasNumber ? "text-emerald-600" : "text-muted",
                   )}
                 >
@@ -183,12 +183,12 @@ export function AccountPasswordForm() {
                       hasNumber ? "text-emerald-600" : "text-muted/40",
                     )}
                   />
-                  <span>1+ number</span>
-                </div>
+                  <span>At least 1 number</span>
+                </li>
 
-                <div
+                <li
                   className={cn(
-                    "flex items-center gap-1.5 font-medium transition-colors",
+                    "flex items-center gap-2 font-medium transition-colors text-xs",
                     passwordsMatch ? "text-emerald-600" : "text-muted",
                   )}
                 >
@@ -199,8 +199,8 @@ export function AccountPasswordForm() {
                     )}
                   />
                   <span>Passwords match</span>
-                </div>
-              </div>
+                </li>
+              </ul>
             </div>
           )}
 
