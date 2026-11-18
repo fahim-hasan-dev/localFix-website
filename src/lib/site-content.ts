@@ -36,7 +36,7 @@ export const homeownerFaqs = [
 export const proFaqs = [
   {
     q: "How much does it cost for contractors to join?",
-    a: "We offer a 30-day completely free trial with full directory listing and unlimited quoting once your background screening is cleared. Afterward, membership is a flat $19.99/month (or $14.99/month billed annually). We charge 0% commission on your jobs and never charge per-lead fees.",
+    a: "We offer a free trial (length depends on the plan) with directory listing and quoting once your background screening is cleared. Afterward, membership is a flat monthly or yearly subscription from the packages listed on the site. We charge 0% commission on your jobs and never charge per-lead fees.",
   },
   {
     q: "Do you take a cut of my earnings or charge for leads?",
@@ -76,7 +76,7 @@ export type PlanFeature = {
 };
 
 export type PlanItem = {
-  id: "homeowner" | "pro" | "pro-annual";
+  id: string;
   name: string;
   badge?: string;
   price: string;
@@ -87,61 +87,4 @@ export type PlanItem = {
   featured: boolean;
   features: PlanFeature[];
 };
-
-export const plans: PlanItem[] = [
-  {
-    id: "homeowner",
-    name: "Homeowners",
-    badge: "100% Free Forever",
-    price: "$0",
-    period: "/forever",
-    tagline: "Always 100% free for homeowners. Zero commissions, zero fees.",
-    href: "/login?next=%2Faccount%2Fpost-job",
-    cta: "Post a request ↗",
-    featured: false,
-    features: [
-      { text: "100% free — zero commissions or service fees", icon: "shield" },
-      { text: "Post unlimited repair requests for $0", icon: "clipboard" },
-      { text: "Browse verified local contractor profiles", icon: "search" },
-      { text: "Compare itemized quotes side-by-side", icon: "layers" },
-      { text: "Pay contractor directly with zero markup", icon: "check" },
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro Monthly",
-    badge: "🔥 Popular",
-    price: "$19.99",
-    period: "/per month",
-    tagline: "Flat subscription for pros. First 30 days free upon background check clearance. Cancel anytime.",
-    href: "/pro-register",
-    cta: "Start 30 days free ↗",
-    featured: true,
-    features: [
-      { text: "Keep 100% of your earnings ($0 job cut)", icon: "percent" },
-      { text: "Quote unlimited local homeowner requests", icon: "briefcase" },
-      { text: "Verified Pro badge on pro listings", icon: "shield" },
-      { text: "Direct homeowner chat & scheduling", icon: "message" },
-      { text: "Zero bidding fees or pay-per-lead costs", icon: "zap" },
-    ],
-  },
-  {
-    id: "pro-annual",
-    name: "Pro Annual",
-    badge: "Save 25%",
-    price: "$14.99",
-    period: "/per month",
-    tagline: "Flat annual pro subscription ($179/yr) after 30-day trial.",
-    href: "/pro-register",
-    cta: "Get started ↗",
-    featured: false,
-    features: [
-      { text: "All Pro Monthly features included", icon: "check" },
-      { text: "Priority search placement in pro search", icon: "award" },
-      { text: "Featured contractor profile badge", icon: "badgeCheck" },
-      { text: "Dedicated priority support line", icon: "phone" },
-      { text: "Quarterly job request analytics", icon: "trending" },
-    ],
-  },
-];
 

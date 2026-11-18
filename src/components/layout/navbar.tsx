@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/cn";
 import { useAppSelector } from "@/redux/hooks";
+import { useLiveNotifications } from "@/services/client/engagement-api";
 
 const homeownerLinks = [
   { href: "/", label: "Home" },
@@ -29,9 +30,7 @@ export function Navbar() {
 
   const [open, setOpen] = useState(false);
   const notifHref = isPro ? "/pro/notifications" : "/account/notifications";
-  const unreadCount = useAppSelector((state) =>
-    user ? state.features.notifications.filter((n) => !n.read && (n.role === user.role || n.role === "all")).length : 0,
-  );
+  const { unreadCount } = useLiveNotifications(Boolean(user));
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-line/70 shadow-[0_4px_20px_color-mix(in_srgb,var(--ink)_4%,transparent)]">

@@ -1,21 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
   MapPin,
-  Repeat,
   TriangleAlert,
   Wrench,
-  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NativeSelect, TextArea, TextField } from "@/components/ui/field";
 import { EmergencyBanner } from "@/components/shared/emergency-banner";
 import { photos } from "@/lib/media";
-import { categories } from "@/Mockdata";
-import { loginAs } from "@/redux/slices/authSlice";
+import { mapCategory } from "@/lib/api-mappers";
+import { mediaUrl } from "@/utils/mediaUrl";
+import { useGetBannersQuery, useGetCategoriesQuery } from "@/services/client/catalog-api";
+import { useGetJobTabsCountQuery } from "@/services/client/jobs-api";
+import type { Category } from "@/types";
 import { saveDraft } from "@/redux/slices/intakeSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { postJobHref } from "@/lib/role-access";
@@ -42,43 +44,54 @@ function detectEmergency(text: string): boolean {
   return EMERGENCY_PATTERNS.some((pattern) => lower.includes(pattern));
 }
 
-function guessServiceCategory(problem: string): string {
+function guessServiceCategory(problem: string, categories: Category[]): string {
   const p = problem.toLowerCase();
-  if (p.includes("leak") || p.includes("sink") || p.includes("pipe") || p.includes("faucet") || p.includes("drain") || p.includes("toilet") || p.includes("water heater") || p.includes("clog")) {
-    return "plumbing";
+  const keywordMap: Array<{ slug: string; words: string[] }> = [
+    { slug: "plumbing", words: ["leak", "sink", "pipe", "faucet", "drain", "toilet", "water heater", "clog", "plumbing"] },
+    { slug: "electrical", words: ["circuit", "breaker", "outlet", "wiring", "light", "switch", "power", "electrical", "electrician"] },
+    { slug: "hvac", words: ["ac", "air condition", "furnace", "heat", "thermostat", "cooling", "hvac"] },
+    { slug: "roofing", words: ["roof", "shingle", "gutter", "skylight", "roofing"] },
+    { slug: "appliance-repair", words: ["fridge", "refrigerator", "washer", "dryer", "dishwasher", "oven", "stove", "appliance"] },
+    { slug: "landscaping", words: ["tree", "lawn", "grass", "sprinkler", "yard", "landscap"] },
+    { slug: "house-cleaning", words: ["clean", "maid", "housekeep", "cleaning"] },
+    { slug: "handyman", words: ["paint", "drywall", "door", "deck", "shelf", "lock", "fence", "handyman"] },
+  ];
+
+  for (const entry of keywordMap) {
+    if (!entry.words.some((word) => p.includes(word))) continue;
+    const live = categories.find((item) => item.slug === entry.slug || item.name.toLowerCase().includes(entry.slug.split("-")[0]));
+    if (live) return live.slug;
+    if (categories.some((item) => item.slug === entry.slug)) return entry.slug;
   }
-  if (p.includes("circuit") || p.includes("breaker") || p.includes("outlet") || p.includes("wiring") || p.includes("light") || p.includes("switch") || p.includes("power")) {
-    return "electrical";
+
+  for (const category of categories) {
+    const name = category.name.toLowerCase();
+    if (name.length >= 4 && p.includes(name)) return category.slug;
   }
-  if (p.includes("ac") || p.includes("air condition") || p.includes("furnace") || p.includes("heat") || p.includes("thermostat") || p.includes("cooling")) {
-    return "hvac";
-  }
-  if (p.includes("roof") || p.includes("shingle") || p.includes("gutter") || p.includes("skylight")) {
-    return "roofing";
-  }
-  if (p.includes("fridge") || p.includes("refrigerator") || p.includes("washer") || p.includes("dryer") || p.includes("dishwasher") || p.includes("oven") || p.includes("stove")) {
-    return "appliance-repair";
-  }
-  if (p.includes("tree") || p.includes("lawn") || p.includes("grass") || p.includes("sprinkler")) {
-    return "landscaping";
-  }
-  if (p.includes("clean") || p.includes("maid") || p.includes("housekeep")) {
-    return "house-cleaning";
-  }
-  if (p.includes("paint") || p.includes("drywall") || p.includes("door") || p.includes("deck") || p.includes("shelf") || p.includes("lock") || p.includes("fence")) {
-    return "handyman";
-  }
+
   return "";
 }
 
-function buildDraft(problem: string, categorySlug: string, zip: string) {
-  const guessed = categorySlug || guessServiceCategory(problem) || "handyman";
-  const match = categories.find((item) => item.slug === guessed);
+function resolveCategorySlug(
+  selectedSlug: string,
+  problem: string,
+  categories: Category[],
+): string {
+  if (selectedSlug && categories.some((item) => item.slug === selectedSlug || item.id === selectedSlug)) {
+    return selectedSlug;
+  }
+  return guessServiceCategory(problem, categories);
+}
+
+function buildDraft(problem: string, categorySlug: string, location: string, categories: Category[]) {
+  const resolvedSlug = resolveCategorySlug(categorySlug, problem, categories);
+  const match = categories.find((item) => item.slug === resolvedSlug || item.id === resolvedSlug);
+  const zip = fiveDigitZip(location);
   return {
     problem,
-    categorySlug: guessed,
-    zip,
-    title: match ? match.name : "Home service request",
+    categorySlug: match?.slug || resolvedSlug,
+    zip: zip || location.trim(),
+    title: match?.name || "Home service request",
     summary: problem,
     followUps: [
       "What type of property is this?",
@@ -95,6 +108,7 @@ function fiveDigitZip(value?: string) {
 }
 
 export function HomeHero() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const addresses = useAppSelector((state) => state.features.addresses);
@@ -105,16 +119,39 @@ export function HomeHero() {
   const [zip, setZip] = useState(knownZip);
   const [error, setError] = useState("");
   const [showEmergency, setShowEmergency] = useState(false);
-  const [isChangingCategory, setIsChangingCategory] = useState(false);
-  const [preview, setPreview] = useState<ReturnType<typeof buildDraft> | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { data: categoryResponse, isLoading: categoriesLoading } = useGetCategoriesQuery();
+  const { data: bannerResponse } = useGetBannersQuery();
+  const categories = useMemo(
+    () => (categoryResponse?.data || []).map(mapCategory),
+    [categoryResponse],
+  );
+  const banner = useMemo(() => {
+    const raw = bannerResponse?.data;
+    if (Array.isArray(raw)) return raw[0];
+    return raw || null;
+  }, [bannerResponse]);
+  const heroImage = mediaUrl(banner?.image) || photos.hero;
+  const heroHeadline = banner?.headline;
+  const heroDescription = banner?.description;
 
-  const suggested = useMemo(
-    () => categories.find((item) => item.slug === preview?.categorySlug),
-    [preview],
+  useEffect(() => {
+    if (!zip && knownZip) setZip(knownZip);
+  }, [knownZip, zip]);
+
+  // Auto-suggest a trade while the user types, without overriding a manual choice.
+  useEffect(() => {
+    if (categorySlug || problem.trim().length < 8 || categories.length === 0) return;
+    const guessed = guessServiceCategory(problem, categories);
+    if (guessed) setCategorySlug(guessed);
+  }, [problem, categories, categorySlug]);
+
+  const selectedCategory = useMemo(
+    () => categories.find((item) => item.slug === categorySlug || item.id === categorySlug),
+    [categories, categorySlug],
   );
 
-  function handleSummarize() {
-    // 1. Safety check for life-threatening emergencies
+  function handleContinue() {
     if (detectEmergency(problem)) {
       setShowEmergency(true);
       return;
@@ -130,13 +167,31 @@ export function HomeHero() {
       return;
     }
 
+    if (categoriesLoading) {
+      setError("Loading service categories… please try again in a moment.");
+      return;
+    }
+
+    const draft = buildDraft(problem.trim(), categorySlug, zip.trim(), categories);
+    if (!draft.categorySlug) {
+      setError("Select a trade category so we can match the right pros.");
+      return;
+    }
+
     setError("");
-    const draft = buildDraft(problem.trim(), categorySlug, zip.trim());
-    setPreview(draft);
+    setSubmitting(true);
+    setCategorySlug(draft.categorySlug);
     dispatch(saveDraft(draft));
+    router.push(postJobHref(user));
   }
 
   const isPro = user?.role === "pro";
+  const proProfile = useAppSelector((state) => state.features.proProfile);
+  const { data: tabsCountData } = useGetJobTabsCountQuery(undefined, { skip: !isPro });
+  const tabCounts = (tabsCountData?.data ?? {}) as { directRequests?: number; marketplaceLeads?: number };
+  const openJobsCount = (tabCounts.directRequests || 0) + (tabCounts.marketplaceLeads || 0);
+  const specialOffer = proProfile.specialOffer;
+  const marketLabel = proProfile.city ? `${proProfile.city} Market Live` : "Market Live";
 
   return (
     <>
@@ -147,7 +202,7 @@ export function HomeHero() {
       <section className="relative overflow-hidden bg-title text-white min-h-[600px] lg:h-[calc(100vh-139px)] lg:min-h-[580px]">
         <div
           className="absolute inset-0 bg-cover bg-[center_35%] md:bg-[85%_48%]"
-          style={{ backgroundImage: `url(${photos.hero})` }}
+          style={{ backgroundImage: `url(${heroImage})` }}
         />
         <div className="hero-wash absolute inset-0 z-[1]" />
 
@@ -163,11 +218,12 @@ export function HomeHero() {
                 <span className="text-secondary">{user.name.split(" ")[0]}</span>
               </h1>
               <p className="mt-4 max-w-[540px] font-['Inter_Display',Inter,sans-serif] text-[18px] font-normal leading-[25px] tracking-[-0.18px] text-white/85">
-                New homeowner repair requests are waiting in your service area. Quote directly, chat with clients, and keep 100% of your earnings with zero job fees.
+                {heroDescription ||
+                  "New homeowner repair requests are waiting in your service area. Quote directly, chat with clients, and keep 100% of your earnings with zero job fees."}
               </p>
               <div className="mt-7 flex flex-wrap items-center gap-3">
                 <Button href="/pro/jobs" variant="white" size="lg" className="font-semibold text-sm">
-                  View Available Jobs (6) ↗
+                  View Available Jobs{openJobsCount > 0 ? ` (${openJobsCount})` : ""} ↗
                 </Button>
                 <Button href="/pro/profile" variant="ghost" size="lg" className="text-white hover:bg-white/10 border-white/30 text-sm">
                   My Storefront & Offers ↗
@@ -177,11 +233,16 @@ export function HomeHero() {
           ) : (
             <div className="relative z-[1] max-w-xl">
               <h1 className="hero-title text-white !text-white text-[38px] sm:text-[46px] lg:text-[54px] xl:text-[62px] font-[500] leading-[1.08] lg:leading-[58px] xl:leading-[65px] tracking-[-1.8px] lg:tracking-[-2.6px]">
-                Find trusted local pros for{" "}
-                <span className="text-secondary">home repairs</span>
+                {heroHeadline || (
+                  <>
+                    Find trusted local pros for{" "}
+                    <span className="text-secondary">home repairs</span>
+                  </>
+                )}
               </h1>
               <p className="mt-3.5 max-w-[520px] font-['Inter_Display',Inter,sans-serif] text-[16px] sm:text-[17.5px] font-normal leading-[24px] tracking-[-0.18px] text-white/85">
-                Compare upfront bids from background-checked local contractors. Pay them directly when the job is done — with zero platform fees.
+                {heroDescription ||
+                  "Compare upfront bids from background-checked local contractors. Pay them directly when the job is done — with zero platform fees."}
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <Button href="/browse-pros" variant="white" size="lg" className="font-medium text-sm">
@@ -209,7 +270,7 @@ export function HomeHero() {
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Austin Market Live
+                  {marketLabel}
                 </span>
               </div>
 
@@ -220,7 +281,7 @@ export function HomeHero() {
                       Open Requests
                     </span>
                     <span className="mt-1 block font-display text-2xl font-bold text-title">
-                      6 Jobs
+                      {openJobsCount} {openJobsCount === 1 ? "Job" : "Jobs"}
                     </span>
                     <span className="text-[11px] text-emerald-600 font-medium">Ready for bids</span>
                   </div>
@@ -238,17 +299,21 @@ export function HomeHero() {
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5">
                   <div className="flex items-center justify-between">
                     <span className="font-display text-xs font-bold text-title">
-                      Special Offer: $25 OFF Active
+                      {specialOffer.active && specialOffer.discount
+                        ? `Special Offer: ${specialOffer.discount} Active`
+                        : "No special offer yet"}
                     </span>
                     <Link
                       href="/pro/profile"
                       className="text-xs font-semibold text-primary hover:underline"
                     >
-                      Edit Offer
+                      {specialOffer.active ? "Edit Offer" : "Add Offer"}
                     </Link>
                   </div>
                   <p className="mt-1 text-xs text-[#757575]">
-                    Shown to Austin homeowners when browsing your public storefront.
+                    {specialOffer.active && specialOffer.title
+                      ? specialOffer.title
+                      : "Shown to homeowners when browsing your public storefront."}
                   </p>
                 </div>
 
@@ -270,17 +335,6 @@ export function HomeHero() {
                   </Button>
                 </div>
 
-                <div className="border-t border-line/60 pt-3 flex items-center justify-between">
-                  <span className="text-xs text-muted">Need work done at your own home?</span>
-                  <button
-                    type="button"
-                    onClick={() => dispatch(loginAs("homeowner"))}
-                    className="inline-flex items-center gap-1.5 font-display text-xs font-semibold text-primary hover:underline"
-                  >
-                    <Repeat className="h-3 w-3" />
-                    Switch to Homeowner Mode
-                  </button>
-                </div>
               </div>
             </div>
           ) : (
@@ -296,32 +350,6 @@ export function HomeHero() {
               </div>
 
               <div className="mt-3.5 space-y-2.5">
-                {isChangingCategory && (
-                  <div className="relative">
-                    <Wrench className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-                    <NativeSelect
-                      value={categorySlug}
-                      onChange={(event) => {
-                        setCategorySlug(event.target.value);
-                        if (preview) {
-                          setPreview({
-                            ...preview,
-                            categorySlug: event.target.value,
-                          });
-                        }
-                      }}
-                      className="pl-10 text-sm rounded-xl border-line/80 bg-[#f9fafb] focus:bg-white"
-                    >
-                      <option value="">Select a trade (e.g. Plumbing, HVAC, Electrician)</option>
-                      {categories.map((item) => (
-                        <option key={item.id} value={item.slug}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </div>
-                )}
-
                 <div>
                   <TextArea
                     value={problem}
@@ -338,6 +366,24 @@ export function HomeHero() {
                 </div>
 
                 <div className="relative">
+                  <Wrench className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                  <NativeSelect
+                    value={categorySlug}
+                    onChange={(event) => setCategorySlug(event.target.value)}
+                    className="pl-10 text-sm rounded-xl border-line/80 bg-[#f9fafb] focus:bg-white"
+                  >
+                    <option value="">
+                      {categoriesLoading ? "Loading trades..." : "Select a trade (or keep our suggestion)"}
+                    </option>
+                    {categories.map((item) => (
+                      <option key={item.id} value={item.slug}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+
+                <div className="relative">
                   <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                   <TextField
                     value={zip}
@@ -347,15 +393,30 @@ export function HomeHero() {
                   />
                 </div>
 
-                <div className="pt-0.5">
+                <div className="pt-0.5 space-y-2">
                   <Button
                     type="button"
                     size="md"
-                    onClick={handleSummarize}
+                    onClick={handleContinue}
+                    disabled={submitting}
                     className="w-full justify-center rounded-xl h-11 text-sm font-semibold shadow-xs"
                   >
-                    Review My Request ↗
+                    {submitting
+                      ? "Opening request…"
+                      : user?.role === "homeowner"
+                        ? "Continue to post request ↗"
+                        : "Continue — sign in to post ↗"}
                   </Button>
+                  {selectedCategory ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      href={`/browse-pros?category=${selectedCategory.slug}&location=${encodeURIComponent(zip.trim() || knownZip)}`}
+                      className="w-full justify-center text-xs"
+                    >
+                      Or browse {selectedCategory.name} pros first ↗
+                    </Button>
+                  ) : null}
                 </div>
 
                 {error ? (
@@ -363,47 +424,6 @@ export function HomeHero() {
                     <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
                     {error}
                   </p>
-                ) : null}
-
-                {preview ? (
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-[10.5px] font-bold uppercase tracking-wider text-primary">
-                          Recommended trade:
-                        </p>
-                        <p className="mt-0.5 font-display text-[16px] font-semibold text-title">
-                          {suggested?.name ?? "General Home Repair"}
-                        </p>
-                        <p className="mt-0.5 text-xs text-[#757575]">
-                          A few questions, then matching pros you can request a quote from.
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setIsChangingCategory(!isChangingCategory)}
-                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                        {isChangingCategory ? "Done" : "Change"}
-                      </button>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2 border-t border-primary/10 pt-2.5">
-                      <Button size="sm" href={postJobHref(user)} className="flex-1 text-xs">
-                        Continue
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        href={`/browse-pros?category=${preview.categorySlug}&location=${encodeURIComponent(preview.zip)}`}
-                        className="text-xs"
-                      >
-                        Browse {suggested?.name ?? "pros"} ↗
-                      </Button>
-                    </div>
-                  </div>
                 ) : (
                   <p className="text-center text-[11.5px] text-[#757575] pt-0.5">
                     100% Free to post • No spam sales calls • Direct to pro

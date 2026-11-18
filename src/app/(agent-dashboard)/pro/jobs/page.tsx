@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useUrlTab } from "@/hooks/use-url-tab";
 import {
   CalendarCheck,
   Clock,
@@ -16,105 +17,173 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { categories, getCategory, urgencyLabels } from "@/Mockdata";
-import { getAvatar } from "@/lib/avatars";
+import { toast } from "sonner";
+import { mapCategory } from "@/lib/api-mappers";
+import { jobCardSummary } from "@/lib/marketplace";
 import {
-  isSamePro,
-  jobCardSummary,
-  normalizeProId,
-  selectAllQuotes,
-  selectProBookingsGrouped,
-  selectProJobsGrouped,
-} from "@/lib/marketplace";
+  mapProposalItem,
+  unwrapJobRecord,
+  mapJobRequest,
+  unwrapList,
+} from "@/lib/marketplace-mappers";
 import { useRoleAccess } from "@/hooks/use-role-access";
-import { setLeadAction } from "@/redux/slices/featuresSlice";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { useGetMyBookingsQuery } from "@/services/client/marketplace-api";
+import { useGetCategoriesQuery } from "@/services/client/catalog-api";
+import {
+  useGetDirectRequestsQuery,
+  useGetJobTabsCountQuery,
+  useGetMarketplaceLeadsQuery,
+  useGetMyProposalsQuery,
+  useRejectDirectRequestMutation,
+  useRejectMarketplaceLeadMutation,
+} from "@/services/client/jobs-api";
 import { cn } from "@/lib/cn";
-import type { Job } from "@/types";
+import type { Job, Quote } from "@/types";
 
-type MainTab = "direct" | "leads" | "quoted";
 type SortKey = "newest" | "budget-high" | "urgent";
+
+const URGENCY_LABELS: Record<Job["urgency"], string> = {
+  asap: "Urgent",
+  this_week: "This week",
+  two_weeks: "Within 2 weeks",
+  flexible: "Flexible",
+};
+
+function clientInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 export default function ProJobsPage() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
   const { access } = useRoleAccess();
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab") as MainTab | null;
-  const user = useAppSelector((state) => state.auth.user);
-  const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
-
-  const [activeTab, setActiveTab] = useState<MainTab>(
-    tabParam && ["direct", "leads", "quoted"].includes(tabParam)
-      ? tabParam
-      : "direct",
+  const [activeTab, setActiveTab] = useUrlTab(
+    ["direct", "leads", "quoted"] as const,
+    "direct",
   );
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("newest");
 
-  function handleTabChange(tab: MainTab) {
-    setActiveTab(tab);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      if (tab === "direct") {
-        url.searchParams.delete("tab");
-      } else {
-        url.searchParams.set("tab", tab);
-      }
-      window.history.replaceState(null, "", url.toString());
+  const upcomingBookingsQuery = useGetMyBookingsQuery({ tab: "upcoming" });
+  const activeBookingsQuery = useGetMyBookingsQuery({ tab: "active_on_site" });
+  const activeBookingsCount =
+    unwrapList<unknown>(upcomingBookingsQuery.data?.data).length +
+    unwrapList<unknown>(activeBookingsQuery.data?.data).length;
+
+  // Live categories for filter chips
+  const { data: categoryResponse } = useGetCategoriesQuery();
+  const categories = useMemo(
+    () => (categoryResponse?.data || []).map(mapCategory),
+    [categoryResponse],
+  );
+  const categoryBySlug = useMemo(
+    () => new Map(categories.map((cat) => [cat.slug, cat])),
+    [categories],
+  );
+
+  // Debounce search so the leads endpoint isn't hit on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const listParams = useMemo(
+    () => ({
+      searchTerm: debouncedSearch || undefined,
+      category: selectedCategory !== "all" ? categoryBySlug.get(selectedCategory)?.id : undefined,
+      sort:
+        sortBy === "newest"
+          ? "-createdAt"
+          : sortBy === "budget-high"
+            ? "-estimatedBudget"
+            : sortBy === "urgent"
+              ? "urgent"
+              : undefined,
+    }),
+    [debouncedSearch, selectedCategory, sortBy, categoryBySlug],
+  );
+
+  const directQuery = useGetDirectRequestsQuery(listParams);
+  const leadsQuery = useGetMarketplaceLeadsQuery(listParams);
+  const proposalsQuery = useGetMyProposalsQuery(listParams);
+  const tabsCountQuery = useGetJobTabsCountQuery();
+  const [rejectDirectRequest] = useRejectDirectRequestMutation();
+  const [rejectMarketplaceLead] = useRejectMarketplaceLeadMutation();
+
+  const directJobs = useMemo(
+    () =>
+      unwrapList<unknown>(directQuery.data?.data).flatMap((item) => {
+        const raw = unwrapJobRecord(item);
+        return raw ? [mapJobRequest(raw)] : [];
+      }),
+    [directQuery.data],
+  );
+  const leadJobs = useMemo(
+    () =>
+      unwrapList<unknown>(leadsQuery.data?.data).flatMap((item) => {
+        const raw = unwrapJobRecord(item);
+        return raw ? [mapJobRequest(raw)] : [];
+      }),
+    [leadsQuery.data],
+  );
+  const proposals = useMemo(() => {
+    const items = unwrapList<unknown>(proposalsQuery.data?.data).flatMap((item) => {
+      const mapped = mapProposalItem(item);
+      return mapped ? [mapped] : [];
+    });
+    const quoteByJob = new Map<string, Quote>();
+    for (const { quotes } of items) {
+      for (const quote of quotes) if (!quoteByJob.has(quote.jobId)) quoteByJob.set(quote.jobId, quote);
     }
-  }
+    return { jobs: items.map((entry) => entry.job), quoteByJob };
+  }, [proposalsQuery.data]);
 
-  const state = useAppSelector((state) => state);
-  const quotes = useAppSelector(selectAllQuotes);
-  const grouped = useMemo(() => selectProJobsGrouped(state, myProId), [state, myProId]);
-  const bookingsGrouped = useMemo(() => selectProBookingsGrouped(state, myProId), [state, myProId]);
+  const quotedJobIds = proposals.quoteByJob;
+  const openDirectJobs = useMemo(
+    () => directJobs.filter((job) => !quotedJobIds.has(job.id)),
+    [directJobs, quotedJobIds],
+  );
+  const openLeadJobs = useMemo(
+    () => leadJobs.filter((job) => !quotedJobIds.has(job.id)),
+    [leadJobs, quotedJobIds],
+  );
 
+  const counts = (tabsCountQuery.data?.data ?? {}) as {
+    directRequests?: number;
+    marketplaceLeads?: number;
+    myProposals?: number;
+  };
   const tabCounts = {
-    direct: grouped.totalDirect,
-    leads: grouped.totalLeads,
-    quoted: grouped.quotedJobs.length,
+    direct: Math.max(0, (counts.directRequests ?? directJobs.length) - (directJobs.length - openDirectJobs.length)),
+    leads: Math.max(0, (counts.marketplaceLeads ?? leadJobs.length) - (leadJobs.length - openLeadJobs.length)),
+    quoted: counts.myProposals ?? proposals.jobs.length,
   };
 
+  const activeQuery =
+    activeTab === "direct" ? directQuery : activeTab === "leads" ? leadsQuery : proposalsQuery;
+  const isLoading = activeQuery.isLoading;
+  const isError = activeQuery.isError;
+
   const currentList = useMemo(() => {
-    let list: Job[] = [];
-    if (activeTab === "direct") list = grouped.directInquiries;
-    else if (activeTab === "leads") list = grouped.marketplaceLeads;
-    else if (activeTab === "quoted") list = grouped.quotedJobs;
+    if (activeTab === "direct") return openDirectJobs;
+    if (activeTab === "leads") return openLeadJobs;
+    return proposals.jobs;
+  }, [activeTab, openDirectJobs, openLeadJobs, proposals.jobs]);
 
-    return list
-      .filter((job) => {
-        if (selectedCategory !== "all" && job.categorySlug !== selectedCategory) return false;
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase().trim();
-          const categoryName = getCategory(job.categorySlug)?.name.toLowerCase() ?? "";
-          const haystack = `${job.title} ${job.description} ${job.city} ${job.zip} ${job.homeownerName} ${categoryName}`.toLowerCase();
-          if (!haystack.includes(q)) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortBy === "urgent") {
-          const order = { asap: 1, this_week: 2, two_weeks: 3, flexible: 4 };
-          return (order[a.urgency] ?? 9) - (order[b.urgency] ?? 9);
-        }
-        if (sortBy === "budget-high") {
-          const val = (budget?: string) => {
-            if (!budget) return 0;
-            if (budget.includes("3,000")) return 3000;
-            if (budget.includes("1,000")) return 1000;
-            if (budget.includes("500")) return 500;
-            return 100;
-          };
-          return val(b.budget) - val(a.budget);
-        }
-        return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
-      });
-  }, [activeTab, grouped, selectedCategory, searchQuery, sortBy]);
-
-  function handlePass(jobId: string) {
-    dispatch(setLeadAction({ jobId, action: "declined" }));
+  async function handlePass(jobId: string) {
+    try {
+      if (activeTab === "direct") await rejectDirectRequest(jobId).unwrap();
+      else await rejectMarketplaceLead(jobId).unwrap();
+      toast.success("Request passed");
+    } catch {
+      toast.error("Could not pass on this request. Please try again.");
+    }
   }
 
   return (
@@ -138,7 +207,7 @@ export default function ProJobsPage() {
             className="rounded-full border border-line text-xs font-semibold gap-1.5"
           >
             <CalendarCheck className="h-3.5 w-3.5 text-primary" />
-            My Bookings ({bookingsGrouped.upcoming.length + bookingsGrouped.inProgress.length})
+            My Bookings ({activeBookingsCount})
           </Button>
         </div>
       </div>
@@ -159,7 +228,7 @@ export default function ProJobsPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => handleTabChange(tab.id)}
+                onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   "flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap",
                   active
@@ -242,7 +311,25 @@ export default function ProJobsPage() {
       )}
 
       {/* 4. Main List Rendering */}
-      {currentList.length === 0 ? (
+      {isLoading ? (
+        <Card className="rounded-[22px] border border-line/80 bg-white p-10 text-center">
+          <p className="text-sm text-muted">Loading requests…</p>
+        </Card>
+      ) : isError ? (
+        <Card className="rounded-[22px] border border-line/80 bg-white p-10 text-center">
+          <p className="font-display text-base font-bold text-title">
+            We couldn&apos;t load your requests
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-4 rounded-full border border-line"
+            onClick={() => activeQuery.refetch()}
+          >
+            Try again
+          </Button>
+        </Card>
+      ) : currentList.length === 0 ? (
         <Card className="rounded-[22px] border border-line/80 bg-white p-10 text-center">
           <Filter className="mx-auto mb-3 h-8 w-8 text-muted/60" />
           <p className="font-display text-base font-bold text-title">
@@ -257,7 +344,7 @@ export default function ProJobsPage() {
               ? "When homeowners view your business storefront and click 'Request Quote', their direct requests appear here with zero competition."
               : activeTab === "quoted"
               ? "When you submit quotes to leads, you can track proposal statuses here."
-              : "Try adjusting your trade category or search query to find more leads in Austin."}
+              : "Try adjusting your trade category or search query to find more leads in your area."}
           </p>
           <Button
             variant="ghost"
@@ -274,15 +361,39 @@ export default function ProJobsPage() {
       ) : (
         <div className="space-y-4">
           {currentList.map((job) => {
-            const isDirect = isSamePro(job.requestedProId, myProId) || job.visibility === "direct";
-            const myQuote = quotes.find((q) => q.jobId === job.id && isSamePro(q.proId, myProId));
-            const hasQuoted = Boolean(myQuote);
-            const category = getCategory(job.categorySlug);
+            const isDirect = activeTab === "direct" || job.visibility === "direct";
+            const myQuote = proposals.quoteByJob.get(job.id);
+            const hasQuoted = Boolean(myQuote) || activeTab === "quoted";
+            const category = categoryBySlug.get(job.categorySlug);
+
+            const locationLine = [job.city, job.state, job.zip].filter(Boolean).join(", ");
+            const categoryLine = [category?.name, locationLine].filter(Boolean).join(" · ");
+            const timeframeDisplay = job.timeframeLabel || URGENCY_LABELS[job.urgency] || "";
+            const propertyDisplay = job.propertyTypeLabel || job.propertyType?.replace(/_/g, " ") || "";
+            const budgetDisplay = job.budget
+              ? Number.isNaN(Number(job.budget))
+                ? job.budget
+                : `$${job.budget}`
+              : "";
+            const summary = jobCardSummary(job);
+            const messageHref = job.homeownerId
+              ? `/pro/messages?dm=${job.homeownerId}`
+              : `/pro/messages?dm=${encodeURIComponent(job.homeownerName)}`;
+
+            const accepted = Boolean(
+              myQuote?.status === "accepted" ||
+                ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm", "completed", "cancelled", "disputed"].includes(job.status),
+            );
+            const proposalHref = accepted
+              ? `/pro/jobs/${job.id}`
+              : `/pro/jobs/${job.id}/proposal${myQuote ? `?quoteId=${myQuote.id}` : ""}`;
 
             return (
               <Card
                 key={job.id}
-                onClick={() => router.push(`/pro/jobs/${job.id}`)}
+                onClick={() =>
+                  router.push(hasQuoted ? proposalHref : `/pro/jobs/${job.id}`)
+                }
                 className={cn(
                   "group overflow-hidden rounded-2xl border bg-white p-4 sm:p-5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer",
                   isDirect && activeTab === "direct"
@@ -290,16 +401,22 @@ export default function ProJobsPage() {
                     : "border-line/80",
                 )}
               >
-                {/* Header: Client Info + Badges (matches homeowner card visual) */}
+                {/* Header: Client Info + Badges */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-line/80 bg-slate-100 shadow-2xs">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={getAvatar(job.homeownerName)}
-                        alt={job.homeownerName}
-                        className="h-full w-full object-cover"
-                      />
+                    <div className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-line/80 bg-slate-100 shadow-2xs">
+                      {job.homeownerAvatar ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={job.homeownerAvatar}
+                          alt={job.homeownerName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="font-display text-xs font-bold text-title/70">
+                          {clientInitials(job.homeownerName) || "C"}
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -308,23 +425,18 @@ export default function ProJobsPage() {
                         </span>
                         <span className="text-[11px] font-medium text-muted">Client</span>
                       </div>
-                      <p className="text-xs text-muted truncate">
-                        {category ? `${category.name} · ` : ""}{job.city}, {job.state} {job.zip}
-                      </p>
+                      {categoryLine ? (
+                        <p className="text-xs text-muted truncate">{categoryLine}</p>
+                      ) : null}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
                     {hasQuoted ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold">
-                        ✓ Quoted (${myQuote?.amount})
+                        ✓ Quoted{myQuote ? ` ($${myQuote.amount})` : ""}
                       </span>
                     ) : null}
-                    {isDirect && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                        <Inbox className="h-3 w-3" /> Direct
-                      </span>
-                    )}
                     {job.urgency === "asap" ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
                         <Zap className="h-2.5 w-2.5 fill-red-500" /> Urgent
@@ -334,43 +446,43 @@ export default function ProJobsPage() {
                   </div>
                 </div>
 
-                {/* Body: Title, Urgency, Budget + Pro Action Buttons */}
+                {/* Body: Title, meta + actions */}
                 <div className="mt-3.5 pt-3 border-t border-line/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
                     <span className="font-display text-sm sm:text-base font-semibold text-title group-hover:text-primary transition line-clamp-1">
                       {job.title}
                     </span>
                     <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-muted" />
-                        {urgencyLabels[job.urgency] || job.urgency}
-                      </span>
-                      <span>·</span>
-                      <span className="font-semibold text-title">
-                        Budget: {job.budget || "Open estimate"}
-                      </span>
-                      {job.propertyType ? (
+                      {timeframeDisplay ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5 text-muted" />
+                          {timeframeDisplay}
+                        </span>
+                      ) : null}
+                      {budgetDisplay ? (
                         <>
-                          <span>·</span>
-                          <span className="capitalize text-copy font-medium">
-                            {job.propertyType.replace("_", " ")}
-                          </span>
+                          {timeframeDisplay ? <span>·</span> : null}
+                          <span className="font-semibold text-title">Budget: {budgetDisplay}</span>
+                        </>
+                      ) : null}
+                      {propertyDisplay ? (
+                        <>
+                          {timeframeDisplay || budgetDisplay ? <span>·</span> : null}
+                          <span className="text-copy font-medium">{propertyDisplay}</span>
                         </>
                       ) : null}
                     </div>
-                    {jobCardSummary(job) && jobCardSummary(job) !== job.description ? (
-                      <p className="mt-1 text-xs text-muted line-clamp-1">
-                        {jobCardSummary(job)}
-                      </p>
+                    {summary && summary !== job.description ? (
+                      <p className="mt-1 text-xs text-muted line-clamp-1">{summary}</p>
                     ) : null}
                   </div>
 
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-2 shrink-0"
+                    className="flex flex-wrap items-center gap-2 shrink-0"
                   >
                     <Button
-                      href={`/pro/messages?dm=${job.homeownerName}`}
+                      href={messageHref}
                       size="sm"
                       variant="ghost"
                       className="rounded-full text-xs font-semibold text-muted hover:text-title"
@@ -380,7 +492,7 @@ export default function ProJobsPage() {
 
                     {hasQuoted ? (
                       <Button
-                        href={`/pro/jobs/${job.id}`}
+                        href={proposalHref}
                         size="sm"
                         className="rounded-full text-xs font-semibold shadow-xs"
                       >
@@ -393,19 +505,13 @@ export default function ProJobsPage() {
                           size="sm"
                           className="rounded-full text-xs font-semibold shadow-xs"
                         >
-                          {isDirect
-                            ? access.canSubmitQuote
-                              ? "Send Proposal ↗"
-                              : "View Request ↗"
-                            : access.canSubmitQuote
-                            ? "Send Quote ↗"
-                            : "View Lead ↗"}
+                          Send Quote ↗
                         </Button>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => handlePass(job.id)}
+                          onClick={() => void handlePass(job.id)}
                           className="rounded-full text-xs text-muted hover:text-red-600"
                         >
                           Pass
@@ -419,6 +525,7 @@ export default function ProJobsPage() {
           })}
         </div>
       )}
+
     </div>
   );
 }

@@ -15,16 +15,19 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { Field, NativeSelect, TextField } from "@/components/ui/field";
 import { AuthLinks } from "@/components/web-pages/auth-links";
 import { PasswordField } from "@/components/ui/password-field";
-import { categories } from "@/Mockdata";
-import { loginAs } from "@/redux/slices/authSlice";
+import { mapCategory } from "@/lib/api-mappers";
+import { useGetCategoriesQuery } from "@/services/client/catalog-api";
+import { useSignupMutation } from "@/services/client/auth-api";
+import { authToken } from "@/utils/authToken";
+import { logout } from "@/redux/slices/authSlice";
 import {
   saveApplicationDraft,
-  submitApplication,
   updateProProfile,
 } from "@/redux/slices/featuresSlice";
 import { useAppDispatch } from "@/redux/hooks";
@@ -192,6 +195,8 @@ function CompactAttachment({
 }
 
 export default function ProRegisterPage() {
+  const { data: categoryResponse } = useGetCategoriesQuery();
+  const categories = (categoryResponse?.data || []).map(mapCategory);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(empty);
   const [error, setError] = useState("");
@@ -201,6 +206,7 @@ export default function ProRegisterPage() {
   }>({});
   const [checkrOpened, setCheckrOpened] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [signupApi, { isLoading: isSubmitting }] = useSignupMutation();
   const dispatch = useAppDispatch();
   const router = useRouter();
 
@@ -234,7 +240,7 @@ export default function ProRegisterPage() {
     });
   }
 
-  function next() {
+  async function next() {
     setError("");
 
     // Step 0 validation: Account
@@ -291,7 +297,7 @@ export default function ProRegisterPage() {
       return;
     }
 
-    const tradeObj = categories.find((c) => c.slug === form.trade);
+    const tradeObj = categories.find((c) => c.id === form.trade || c.slug === form.trade);
     const tradeTitle = tradeObj ? tradeObj.name : form.trade || "Plumbing";
 
     // 1. Save to application draft
@@ -338,21 +344,44 @@ export default function ProRegisterPage() {
       }),
     );
 
-    dispatch(submitApplication());
-    dispatch(
-      loginAs({
-        role: "pro",
-        profile: {
-          name: form.name.trim() || "Luis Ortega",
-          email: form.email.trim() || "pro@localfix.com",
-          phone: form.phone.trim() || "(512) 555-0144",
-          zip: form.serviceZip.trim() || "78701",
-          city: "Austin",
-          state: "TX",
-        },
-      }),
-    );
-    router.push("/pro/application?applied=1");
+    try {
+      authToken.clearTokens();
+      dispatch(logout());
+
+      const categoryId = tradeObj?.id || form.trade;
+      await signupApi({
+        role: "professional",
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone: form.phone.trim(),
+        password: form.password,
+        confirmPassword: form.password,
+        zipCode: form.serviceZip.trim() || "78701",
+        companyName: form.businessName.trim(),
+        category: categoryId,
+        serviceRadiusInMiles: Number(form.radius) || 25,
+        licenseNumber: form.licenseNumber.trim(),
+        licenseState: form.licenseState.trim().toUpperCase() || "TX",
+        insuranceCarrier: form.insuranceCarrier.trim() || undefined,
+        insuranceCoverage: form.insuranceCoverage || undefined,
+        backgroundCheckConsent: true,
+        agreedToTerms: true,
+      }).unwrap();
+
+      authToken.clearTokens();
+      dispatch(logout());
+
+      toast.success("Application submitted! Please verify your email with the OTP code.");
+
+      const verifyUrl = `/verify-email?email=${encodeURIComponent(form.email.trim().toLowerCase())}&role=pro`;
+      router.push(verifyUrl);
+      return;
+    } catch (err: unknown) {
+      const apiErr = err as { data?: { message?: string }; error?: string };
+      const msg = apiErr?.data?.message || apiErr?.error || "Registration failed. Please check your details.";
+      setError(msg);
+      toast.error(msg);
+    }
   }
 
   return (
@@ -465,7 +494,7 @@ export default function ProRegisterPage() {
                   Select your primary trade
                 </option>
                 {categories.map((item) => (
-                  <option key={item.id} value={item.slug}>
+                  <option key={item.id} value={item.id}>
                     {item.name}
                   </option>
                 ))}
@@ -649,6 +678,7 @@ export default function ProRegisterPage() {
             </label>
           </div>
         ) : null}
+
       </div>
 
       {error ? (
@@ -671,8 +701,8 @@ export default function ProRegisterPage() {
             ← Back
           </Button>
         ) : null}
-        <Button type="button" onClick={next}>
-          {step < 3 ? "Next ↗" : "Submit Application & Finish ↗"}
+        <Button type="button" onClick={next} disabled={isSubmitting}>
+          {isSubmitting ? "Submitting..." : step < 3 ? "Next ↗" : "Submit Application & Continue to Verification ↗"}
         </Button>
       </div>
 

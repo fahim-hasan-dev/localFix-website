@@ -8,7 +8,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field, NativeSelect, TextField } from "@/components/ui/field";
 import { ProCard } from "@/components/shared/pro-card";
 import { BudgetDropdownFilter } from "@/components/shared/budget-filter";
-import { categories, professionals } from "@/Mockdata";
+import { mapCategory, mapProfessional } from "@/lib/api-mappers";
+import { useGetCategoriesQuery, useGetProfessionalsQuery } from "@/services/client/catalog-api";
 import { loginAs } from "@/redux/slices/authSlice";
 import {
   setCategory,
@@ -18,8 +19,8 @@ import {
   setZip,
 } from "@/redux/slices/filterSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { useRoleAccess } from "@/hooks/use-role-access";
 import { postJobHref } from "@/lib/role-access";
-import { getProDistance, parseResponseTimeHours } from "@/lib/geo-distance";
 import { cn } from "@/lib/cn";
 
 const PAGE_SIZE = 8;
@@ -28,10 +29,8 @@ export function BrowseProsClient() {
   const params = useSearchParams();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
-  const applicationStatus = useAppSelector((state) => state.features.applicationStatus ?? "cleared");
-  const membershipActive = useAppSelector((state) => state.marketplace.membershipActive);
-  const membershipCancelled = useAppSelector((state) => state.features.membershipCancelled);
-  const membershipPaused = useAppSelector((state) => state.features.membershipPaused);
+  const { applicationStatus, membershipActive, membershipCancelled, membershipPaused } =
+    useRoleAccess();
 
   const isDemoProLive =
     applicationStatus === "cleared" &&
@@ -45,74 +44,44 @@ export function BrowseProsClient() {
   const [currentPage, setCurrentPage] = useState(1);
   const [prevFilterKey, setPrevFilterKey] = useState("");
   const gridTopRef = useRef<HTMLDivElement>(null);
+  const { data: categoryResponse } = useGetCategoriesQuery();
+  const categories = useMemo(
+    () => (categoryResponse?.data || []).map(mapCategory),
+    [categoryResponse],
+  );
+  const selectedCategory = categories.find((item) => item.slug === category || item.id === category);
+  const locationValue = location.trim();
+  const sortBy =
+    filters.sort === "reviews"
+      ? "most_reviewed"
+      : filters.sort === "nearest"
+        ? "nearest"
+        : filters.sort === "price_low"
+          ? "price_low_to_high"
+          : filters.sort === "price_high"
+            ? "price_high_to_low"
+            : "highest_rated";
+  const professionalQuery = {
+    page: currentPage,
+    limit: PAGE_SIZE,
+    sortBy,
+    ...(filters.query.trim() ? { searchTerm: filters.query.trim() } : {}),
+    ...(selectedCategory?.id ? { category: selectedCategory.id } : {}),
+    ...( /^\d+$/.test(locationValue) ? { zipCode: locationValue } : {}),
+    ...(locationValue && !/^\d+$/.test(locationValue) ? { city: locationValue } : {}),
+    ...(filters.minPrice ? { minBudget: Number(filters.minPrice) } : {}),
+    ...(filters.maxPrice ? { maxBudget: Number(filters.maxPrice) } : {}),
+    ...(filters.minRating ? { minRating: Number(filters.minRating) } : {}),
+  };
+  const { data: professionalResponse, isLoading, isError } = useGetProfessionalsQuery(professionalQuery);
 
   const results = useMemo(() => {
-    const locationQ = location.trim().toLowerCase();
-    const minPrice = filters.minPrice ? Number(filters.minPrice) : null;
-    const maxPrice = filters.maxPrice ? Number(filters.maxPrice) : null;
-    const minRating = filters.minRating ? Number(filters.minRating) : null;
-
-    const list = professionals.filter((pro) => {
-      const matchesCategory = !category || pro.categorySlug === category;
-      const locationHaystack = `${pro.zip} ${pro.city} ${pro.state}`.toLowerCase();
-      const matchesLocation =
-        !locationQ ||
-        locationHaystack.includes(locationQ) ||
-        (/^\d+$/.test(locationQ) && pro.zip.startsWith(locationQ.slice(0, 3)));
-      const haystack = `${pro.name} ${pro.businessName} ${pro.trade} ${pro.bio}`.toLowerCase();
-      const matchesQuery = !filters.query || haystack.includes(filters.query.toLowerCase());
-      const matchesMinPrice = minPrice == null || !Number.isFinite(minPrice) || pro.startingPrice >= minPrice;
-      const matchesMaxPrice = maxPrice == null || !Number.isFinite(maxPrice) || pro.startingPrice <= maxPrice;
-      const matchesPrice = matchesMinPrice && matchesMaxPrice;
-      const matchesRating = minRating == null || !Number.isFinite(minRating) || pro.rating >= minRating;
-      return (
-        matchesCategory &&
-        matchesLocation &&
-        matchesQuery &&
-        matchesPrice &&
-        matchesRating &&
-        pro.clearance === "cleared" &&
-        (pro.id !== "pro-1" || isDemoProLive)
-      );
-    });
-
-    const withDistance = list.map((pro) => ({
-      pro,
-      distance: getProDistance(
-        pro,
-        location,
-        user ? { zip: user.zip, city: user.city } : undefined,
-      ),
+    return (professionalResponse?.data || []).map((item) => ({
+      pro: mapProfessional(item),
+      distance: typeof item.distanceInMiles === "number" ? item.distanceInMiles : undefined,
     }));
-
-    return withDistance.sort((a, b) => {
-      if (filters.sort === "nearest") {
-        return a.distance - b.distance;
-      }
-      if (filters.sort === "recommended") {
-        // Industry-standard blended score: high rating + verified + jobs volume - distance penalty
-        const scoreA =
-          a.pro.rating * 25 +
-          Math.min(a.pro.reviewCount, 100) * 0.2 +
-          Math.min(a.pro.jobsCompleted, 200) * 0.15 -
-          Math.min(a.distance, 100) * 0.2;
-        const scoreB =
-          b.pro.rating * 25 +
-          Math.min(b.pro.reviewCount, 100) * 0.2 +
-          Math.min(b.pro.jobsCompleted, 200) * 0.15 -
-          Math.min(b.distance, 100) * 0.2;
-        return scoreB - scoreA;
-      }
-      if (filters.sort === "reviews") return b.pro.reviewCount - a.pro.reviewCount;
-      if (filters.sort === "jobs") return b.pro.jobsCompleted - a.pro.jobsCompleted;
-      if (filters.sort === "price_low") return a.pro.startingPrice - b.pro.startingPrice;
-      if (filters.sort === "price_high") return b.pro.startingPrice - a.pro.startingPrice;
-      if (filters.sort === "response") {
-        return parseResponseTimeHours(a.pro.responseTime) - parseResponseTimeHours(b.pro.responseTime);
-      }
-      return b.pro.rating - a.pro.rating;
-    });
-  }, [category, filters, location, user, isDemoProLive]);
+  }, [professionalResponse]);
+  const totalCount = professionalResponse?.meta?.total ?? results.length;
 
   // Reset to page 1 whenever search filters change without cascading effect
   const filterKey = `${category}|${location}|${filters.query}|${filters.minPrice}|${filters.maxPrice}|${filters.minRating}|${filters.sort}`;
@@ -123,11 +92,8 @@ export function BrowseProsClient() {
     }
   }
 
-  const totalPages = Math.ceil(results.length / PAGE_SIZE) || 1;
-  const paginatedResults = useMemo(() => {
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    return results.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [results, currentPage]);
+  const totalPages = professionalResponse?.meta?.totalPage || Math.ceil(totalCount / PAGE_SIZE) || 1;
+  const paginatedResults = results;
 
   function handlePageChange(newPage: number) {
     if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
@@ -139,7 +105,7 @@ export function BrowseProsClient() {
     <section className="bg-surface py-6 sm:py-8">
       <div className="container-site">
         {user?.role === "pro" && (
-          <div className="mb-6 rounded-[16px] border border-primary/25 bg-white p-4 sm:p-5 shadow-xs">
+          <div className="mb-6 rounded-2xl border border-primary/25 bg-white p-4 sm:p-5 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start sm:items-center gap-3">
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-white shadow-xs">
@@ -179,7 +145,7 @@ export function BrowseProsClient() {
                 <Button href="/pro/jobs" size="sm" className="font-semibold shadow-xs">
                   Available Jobs Board ↗
                 </Button>
-                <Button href="/browse-pros/pro-1" variant="ghost" size="sm">
+                <Button href={user?.id ? `/browse-pros/${user.id}` : "/browse-pros"} variant="ghost" size="sm">
                   My Storefront ↗
                 </Button>
                 <button
@@ -246,13 +212,17 @@ export function BrowseProsClient() {
               <option value="rated">Highest rated</option>
               <option value="reviews">Most reviews</option>
               <option value="nearest">Nearest (Distance)</option>
+              <option value="price_low">Price: low to high</option>
+              <option value="price_high">Price: high to low</option>
             </NativeSelect>
           </Field>
         </div>
 
         <div ref={gridTopRef} className="scroll-mt-28" />
 
-        {results.length === 0 ? (
+        {isLoading ? <p className="mt-6 text-sm text-muted">Loading professionals...</p> : null}
+        {isError ? <p className="mt-6 text-sm text-error">Professionals could not be loaded.</p> : null}
+        {!isLoading && !isError && results.length === 0 ? (
           <div className="mt-6">
             <EmptyState
               title="No reviewed professionals match this view"
@@ -277,9 +247,9 @@ export function BrowseProsClient() {
                 <p className="text-xs font-medium text-muted order-2 sm:order-1">
                   Showing{" "}
                   <span className="font-semibold text-title">
-                    {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, results.length)}
+                    {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalCount)}
                   </span>{" "}
-                  of <span className="font-semibold text-title">{results.length}</span> professionals
+                  of <span className="font-semibold text-title">{totalCount}</span> professionals
                 </p>
 
                 <nav

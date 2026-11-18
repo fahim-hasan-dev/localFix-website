@@ -1,13 +1,67 @@
 "use client";
 
+import { useState } from "react";
 import { X, Star, ShieldCheck, Clock, CalendarDays } from "lucide-react";
 import Link from "next/link";
-import { getPro } from "@/Mockdata";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { useResolvedPro } from "@/hooks/use-resolved-pro";
 import { selectQuotesForJob } from "@/lib/marketplace";
 import { hireQuote } from "@/redux/slices/marketplaceSlice";
+import { errorMessage } from "@/lib/booking-view";
+import { toApiPaymentMethod } from "@/lib/marketplace-mappers";
+import { useAcceptQuotationMutation } from "@/services/client/marketplace-api";
 import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
 import type { Quote } from "@/types";
+
+function CompareProHeader({ proId }: { proId: string }) {
+  const pro = useResolvedPro(proId);
+  return (
+    <div className="space-y-1">
+      <p className="text-sm font-semibold text-title leading-tight">{pro?.name ?? "Pro"}</p>
+      <p className="text-xs text-muted">{pro?.trade}</p>
+      {pro?.clearance === "cleared" && (
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+          <ShieldCheck className="h-3 w-3" aria-hidden /> Verified
+        </span>
+      )}
+      <ProRatingRow rating={pro?.rating} reviewCount={pro?.reviewCount} />
+    </div>
+  );
+}
+
+function CompareProActions({
+  quote,
+  busy,
+  expired,
+  onAccept,
+}: {
+  quote: Quote;
+  busy: boolean;
+  expired: boolean;
+  onAccept: () => void;
+}) {
+  const pro = useResolvedPro(quote.proId);
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        disabled={expired || busy}
+        onClick={onAccept}
+        className="w-full rounded-full bg-primary py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary transition-all active:scale-[0.99]"
+      >
+        {expired ? "Expired" : busy ? "Accepting…" : "Accept ↗"}
+      </button>
+      {pro && (
+        <Link
+          href={`/browse-pros/${pro.id}`}
+          className="block text-center text-xs font-semibold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-full py-1"
+        >
+          View profile ↗
+        </Link>
+      )}
+    </div>
+  );
+}
 
 const priceLabel = { fixed: "Fixed", estimate: "Estimate", hourly: "Hourly", time_and_materials: "T&M" } as const;
 
@@ -44,9 +98,29 @@ export function QuoteComparePanel({
   const dispatch = useAppDispatch();
   const siblingIds = useAppSelector((state) => selectQuotesForJob(state, jobId).map((item) => item.id));
   const homeownerName = useAppSelector((state) => state.auth.user?.name);
+  const [acceptQuotation] = useAcceptQuotationMutation();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  function accept(quote: Quote) {
-    const pro = getPro(quote.proId);
+  async function accept(quote: Quote) {
+    // The panel has no schedule inputs: default to the pro's proposed date/window and cash.
+    const proposed = quote.proposedSchedule?.slice(0, 10) ?? "";
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    setBusyId(quote.id);
+    setError("");
+    try {
+      await acceptQuotation({
+        id: quote.id,
+        appointmentDate: /^\d{4}-\d{2}-\d{2}$/.test(proposed) ? proposed : tomorrow,
+        paymentMethod: toApiPaymentMethod("cash"),
+        arrivalTimeWindow: quote.availability || "Flexible (Anytime during business hours)",
+      }).unwrap();
+    } catch (err) {
+      setError(errorMessage(err, "This quotation could not be accepted."));
+      setBusyId(null);
+      return;
+    }
+    setBusyId(null);
     dispatch(
       hireQuote({
         jobId,
@@ -62,7 +136,7 @@ export function QuoteComparePanel({
     dispatch(setJobStatus({ jobId, status: "hired" }));
     dispatch(addNotification({
       title: "Quotation accepted",
-      body: `You selected ${pro?.name ?? "the professional"}. Confirm schedule and payment method on the job.`,
+      body: "You selected a professional. Confirm schedule and payment method on the job.",
       href: `/account/jobs/${jobId}`,
       createdAt: "Just now",
       role: "homeowner",
@@ -110,25 +184,11 @@ export function QuoteComparePanel({
                 <th className="w-28 px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-muted" scope="col">
                   Detail
                 </th>
-                {quotes.map((q) => {
-                  const pro = getPro(q.proId);
-                  return (
-                    <th key={q.id} className="px-4 py-4 text-left" scope="col">
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-title leading-tight">
-                          {pro?.name ?? "Pro"}
-                        </p>
-                        <p className="text-xs text-muted">{pro?.trade}</p>
-                        {pro?.clearance === "cleared" && (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                            <ShieldCheck className="h-3 w-3" aria-hidden /> Verified
-                          </span>
-                        )}
-                        <ProRatingRow rating={pro?.rating} reviewCount={pro?.reviewCount} />
-                      </div>
-                    </th>
-                  );
-                })}
+                {quotes.map((q) => (
+                  <th key={q.id} className="px-4 py-4 text-left" scope="col">
+                    <CompareProHeader proId={q.proId} />
+                  </th>
+                ))}
               </tr>
             </thead>
 
@@ -217,30 +277,19 @@ export function QuoteComparePanel({
 
         {/* CTA row � sticky at bottom */}
         <div className="sticky bottom-0 border-t border-line bg-white px-5 py-4">
+          {error ? <p className="mb-3 text-sm font-medium text-error">{error}</p> : null}
           <div className="grid gap-3" style={{ gridTemplateColumns: `7rem repeat(${quotes.length}, 1fr)` }}>
             <span className="text-xs text-muted self-center">Actions</span>
             {quotes.map((q) => {
               const expired = q.status === "expired" || q.status === "rejected" || q.status === "withdrawn";
-              const pro = getPro(q.proId);
               return (
-                <div key={q.id} className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    disabled={expired}
-                    onClick={() => accept(q)}
-                    className="w-full rounded-full bg-primary py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary transition-all active:scale-[0.99]"
-                  >
-                    {expired ? "Expired" : "Accept ↗"}
-                  </button>
-                  {pro && (
-                    <Link
-                      href={`/browse-pros/${pro.id}`}
-                      className="block text-center text-xs font-semibold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-full py-1"
-                    >
-                      View profile ↗
-                    </Link>
-                  )}
-                </div>
+                <CompareProActions
+                  key={q.id}
+                  quote={q}
+                  busy={busyId !== null}
+                  expired={expired}
+                  onAccept={() => accept(q)}
+                />
               );
             })}
           </div>

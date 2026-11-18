@@ -1,8 +1,4 @@
-import { Suspense } from "react";
-import { notFound } from "next/navigation";
-import { PostedBanner } from "@/components/web-pages/posted-banner";
-import { RequestDetail } from "@/components/web-pages/request-detail";
-import { getJob } from "@/Mockdata";
+import { BookingLiveDetail } from "@/components/web-pages/booking-live-detail";
 
 export default async function HomeownerBookingDetailPage({
   params,
@@ -10,21 +6,14 @@ export default async function HomeownerBookingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  if (!id.startsWith("job-local-") && !getJob(id)) notFound();
 
   return (
-    <div className="space-y-4">
-      <Suspense fallback={null}>
-        <PostedBanner />
-      </Suspense>
-      <RequestDetail
-        id={id}
-        backHref="/account/bookings"
-        backLabel="My Bookings"
-        inboxHref="/account/messages"
-        canHire
-        viewer="homeowner"
-      />
-    </div>
+    <BookingLiveDetail
+      id={id}
+      role="homeowner"
+      backHref="/account/bookings"
+      backLabel="My Bookings"
+      messagesHref="/account/messages"
+    />
   );
 }

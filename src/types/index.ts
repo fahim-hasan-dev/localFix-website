@@ -43,9 +43,10 @@ export type ChangeRequestStatus = "pending" | "approved" | "rejected";
 
 export type BookingStatus = "pending_schedule" | "confirmed" | "reschedule_requested";
 
-/** How the homeowner will pay the pro — never collected by Local Fix */
+/** How the homeowner will pay the pro — cash/direct or Stripe checkout */
 export type DirectPaymentMethod =
   | "cash"
+  | "stripe"
   | "bank_transfer"
   | "mobile_banking"
   | "zelle"
@@ -72,6 +73,8 @@ export interface Category {
   summary: string;
   typicalRange: string;
   unit: string;
+  image?: string;
+  icon?: string;
 }
 
 export interface User {
@@ -101,12 +104,16 @@ export interface Professional {
   rating: number;
   reviewCount: number;
   jobsCompleted: number;
+  localJobs?: number;
   responseTime: string;
   bio: string;
   clearance: ClearanceStatus;
   licensed: boolean;
   insured: boolean;
   emergency: boolean;
+  backgroundChecked?: boolean;
+  businessHours?: import("@/lib/business-hours").WeeklyHours | null;
+  recommendationRate?: number | null;
   /** Profile starting price — final job price comes from the offer */
   startingPrice: number;
   /** Short availability note shown on profile */
@@ -114,6 +121,37 @@ export interface Professional {
   /** True if they can take work this week */
   availableThisWeek: boolean;
   avatar?: string;
+  coverImage?: string;
+  isFavorite?: boolean;
+  liveServices?: ProfessionalService[];
+  livePhotos?: ProfessionalPhoto[];
+  liveReviews?: ProfessionalReview[];
+}
+
+export interface ProfessionalService {
+  id: string;
+  name: string;
+  description: string;
+  category?: string;
+  categoryId?: string;
+}
+
+export interface ProfessionalPhoto {
+  id: string;
+  title: string;
+  category: string;
+  image: string;
+  description?: string;
+}
+
+export interface ProfessionalReview {
+  id: string;
+  author: string;
+  avatar?: string;
+  rating: number;
+  text: string;
+  createdAt: string;
+  reply?: string;
 }
 
 export interface IntakeAnswer {
@@ -130,12 +168,19 @@ export interface Job {
   zip: string;
   city: string;
   state: string;
+  street?: string;
   urgency: Urgency;
+  /** Raw timeframe label from the API (preferred for display). */
+  timeframeLabel?: string;
   budget?: string;
   propertyType?: PropertyType;
+  /** Raw property-type label from the API (preferred for display). */
+  propertyTypeLabel?: string;
   status: JobStatus;
   postedAt: string;
   homeownerName: string;
+  homeownerId?: string;
+  homeownerAvatar?: string;
   intakeAnswers?: IntakeAnswer[];
   /** Direct request to one professional. Open jobs omit this. */
   requestedProId?: string;
@@ -171,6 +216,8 @@ export interface Quote {
 }
 
 export interface Booking {
+  /** Booking document id. Actions can also use the job id; the API accepts either. */
+  id?: string;
   jobId: string;
   quoteId: string;
   proId: string;

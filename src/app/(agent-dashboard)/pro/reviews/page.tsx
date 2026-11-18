@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useUrlTab } from "@/hooks/use-url-tab";
 import {
   CheckCircle2,
   Copy,
@@ -13,9 +14,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs } from "@/components/ui/tabs";
 import { TextArea, TextField } from "@/components/ui/field";
-import { replyToReview, addNotification } from "@/redux/slices/featuresSlice";
+import { addNotification } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { getAvatar } from "@/lib/avatars";
+import { errorMessage, formatBookingDate } from "@/lib/booking-view";
+import { mapReviewCard, unwrapList, type ApiReviewItem } from "@/lib/marketplace-mappers";
+import {
+  useDeleteReviewReplyMutation,
+  useGetMyReviewsQuery,
+  useReplyToReviewMutation,
+} from "@/services/client/marketplace-api";
 import { cn } from "@/lib/cn";
 
 function initials(name: string) {
@@ -39,17 +47,73 @@ type FilterType =
 
 export default function ProReviewsPage() {
   const dispatch = useAppDispatch();
-  const reviews = useAppSelector((state) =>
-    state.features.reviews.filter((item) => item.proId === "pro-1")
-  );
-  const proProfile = useAppSelector((state) => state.features.proProfile);
-
+  const user = useAppSelector((state) => state.auth.user);
+  const businessName = useAppSelector((state) => state.features.proProfile.businessName);
   const [replyDraft, setReplyDraft] = useState<Record<string, string>>({});
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
-  const [selectedFilter, setSelectedFilter] = useState<FilterType>("all");
+  const [selectedFilter, setSelectedFilter] = useUrlTab(
+    ["all", "needs-reply", "replied", "5-star", "4-star", "3-star", "2-star", "1-star"] as const,
+    "all",
+  );
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const reviewParams = useMemo(() => {
+    if (selectedFilter === "needs-reply") return { tab: "needs_reply" as const };
+    if (selectedFilter === "replied") return { tab: "replied" as const };
+    const star = selectedFilter.match(/^([1-5])-star$/);
+    if (star) return { rating: Number(star[1]) };
+    return undefined;
+  }, [selectedFilter]);
+
+  // Unfiltered query keeps KPI / star breakdown accurate while list respects filters.
+  const statsQuery = useGetMyReviewsQuery();
+  const reviewsQuery = useGetMyReviewsQuery(reviewParams);
+  const reviewBrand =
+    businessName?.trim() || user?.name?.trim() || "your Local Fix pro";
+  const reviewSlug = reviewBrand
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "your-business";
+  const reviewShareLink = `https://localfix.com/review/${reviewSlug}`;
+  const reviewInviteCopy = `Hi! Thanks for choosing ${reviewBrand} for your repair. If you have 30 seconds, sharing your review on Local Fix helps our family business tremendously: ${reviewShareLink}`;
+  const [replyToReview, { isLoading: replying }] = useReplyToReviewMutation();
+  const [deleteReviewReply] = useDeleteReviewReplyMutation();
+
+  // Response shape: { reviews, summary, tabCounts }
+  const statsPayload = statsQuery.data?.data as
+    | {
+        reviews?: ApiReviewItem[];
+        summary?: Record<string, unknown>;
+        tabCounts?: Record<string, number>;
+      }
+    | ApiReviewItem[]
+    | undefined;
+  const payload = reviewsQuery.data?.data as
+    | {
+        reviews?: ApiReviewItem[];
+        summary?: Record<string, unknown>;
+        tabCounts?: Record<string, number>;
+      }
+    | ApiReviewItem[]
+    | undefined;
+  const summary = Array.isArray(statsPayload) ? undefined : statsPayload?.summary;
+  const tabCounts = Array.isArray(statsPayload) ? undefined : statsPayload?.tabCounts;
+  const allReviews = useMemo(
+    () =>
+      (Array.isArray(statsPayload) ? statsPayload : unwrapList<ApiReviewItem>(statsPayload)).map(
+        mapReviewCard,
+      ),
+    [statsPayload],
+  );
+  const reviews = useMemo(
+    () =>
+      (Array.isArray(payload) ? payload : unwrapList<ApiReviewItem>(payload)).map(
+        mapReviewCard,
+      ),
+    [payload],
+  );
 
   // Quick reply templates for faster pro workflows
   const quickTemplates = [
@@ -65,20 +129,31 @@ export default function ProReviewsPage() {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    if (!reviews.length) {
-      return { avg: 5.0, total: 0, repliedCount: 0, needsReplyCount: 0 };
-    }
-    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
-    const avg = Number((sum / reviews.length).toFixed(1));
-    const repliedCount = reviews.filter((r) => Boolean(r.reply)).length;
-    const needsReplyCount = reviews.filter((r) => !r.reply).length;
-    return { avg, total: reviews.length, repliedCount, needsReplyCount };
-  }, [reviews]);
+    const num = (...values: unknown[]) => {
+      for (const value of values) {
+        if (typeof value === "number" && Number.isFinite(value)) return value;
+      }
+      return undefined;
+    };
+    const sum = allReviews.reduce((acc, r) => acc + r.rating, 0);
+    const computedAvg = allReviews.length ? Number((sum / allReviews.length).toFixed(1)) : 0;
+    const computedReplied = allReviews.filter((r) => Boolean(r.reply)).length;
+    const total = num(summary?.totalReviews, summary?.total, tabCounts?.all) ?? allReviews.length;
+    const needsReply =
+      num(tabCounts?.needs_reply, tabCounts?.needsReply, summary?.needsReplyCount) ??
+      allReviews.length - computedReplied;
+    return {
+      avg: total > 0 ? (num(summary?.averageRating, summary?.avgRating, summary?.average) ?? computedAvg) : 0,
+      total,
+      repliedCount: num(tabCounts?.replied, summary?.repliedCount) ?? computedReplied,
+      needsReplyCount: total > 0 ? Math.min(needsReply, total) : 0,
+    };
+  }, [allReviews, summary, tabCounts]);
 
   // Star Rating Breakdown (5 to 1) for visual distribution
   const breakdown = useMemo(() => {
     const counts: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    reviews.forEach((r) => {
+    allReviews.forEach((r) => {
       const star = Math.min(Math.max(Math.round(r.rating), 1), 5);
       counts[star] = (counts[star] || 0) + 1;
     });
@@ -91,45 +166,38 @@ export default function ProReviewsPage() {
     };
     return ([5, 4, 3, 2, 1] as const).map((star) => {
       const count = counts[star] || 0;
-      const percentage = reviews.length > 0 ? Math.round((count / reviews.length) * 100) : 0;
+      const percentage = allReviews.length > 0 ? Math.round((count / allReviews.length) * 100) : 0;
       return { star, count, percentage, filterKey: starKeys[star] };
     });
-  }, [reviews]);
+  }, [allReviews]);
 
-  // Filter reviews
-  const filteredReviews = useMemo(() => {
-    switch (selectedFilter) {
-      case "needs-reply":
-        return reviews.filter((r) => !r.reply);
-      case "replied":
-        return reviews.filter((r) => Boolean(r.reply));
-      case "5-star":
-        return reviews.filter((r) => r.rating === 5);
-      case "4-star":
-        return reviews.filter((r) => r.rating === 4);
-      case "3-star":
-        return reviews.filter((r) => r.rating === 3);
-      case "2-star":
-        return reviews.filter((r) => r.rating === 2);
-      case "1-star":
-        return reviews.filter((r) => r.rating === 1);
-      default:
-        return reviews;
-    }
-  }, [reviews, selectedFilter]);
+  const filteredReviews = reviews;
 
-  function handlePostReply(reviewId: string) {
+  async function handlePostReply(reviewId: string) {
     const text = replyDraft[reviewId]?.trim();
     if (!text) return;
-    dispatch(replyToReview({ id: reviewId, reply: text }));
-    setReplyDraft((prev) => ({ ...prev, [reviewId]: "" }));
-    setEditingReplyId(null);
-    showToast("Response posted publicly to client review.");
+    try {
+      await replyToReview({ id: reviewId, reply: text }).unwrap();
+      setReplyDraft((prev) => ({ ...prev, [reviewId]: "" }));
+      setEditingReplyId(null);
+      showToast("Response posted publicly to client review.");
+    } catch (error) {
+      showToast(errorMessage(error, "Your response could not be posted."));
+    }
+  }
+
+  async function handleDeleteReply(reviewId: string) {
+    try {
+      await deleteReviewReply(reviewId).unwrap();
+      showToast("Response removed.");
+    } catch (error) {
+      showToast(errorMessage(error, "Your response could not be removed."));
+    }
   }
 
   function handleCopyReviewLink() {
     if (typeof window !== "undefined") {
-      navigator.clipboard.writeText("https://localfix.com/review/ortega-plumbing");
+      navigator.clipboard.writeText(reviewShareLink);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2500);
       showToast("Direct review invite link copied to clipboard!");
@@ -152,7 +220,7 @@ export default function ProReviewsPage() {
           Client Reviews
         </h1>
         <p className="mt-0.5 text-xs sm:text-sm text-muted">
-          Feedback and verified ratings from completed repair jobs in Austin.
+          Feedback and verified ratings from completed repair jobs.
         </p>
       </div>
 
@@ -318,7 +386,7 @@ export default function ProReviewsPage() {
                         {review.author}
                       </p>
                       <p className="text-xs text-muted">
-                        Austin, TX · {review.createdAt}
+                        {formatBookingDate(review.createdAt, "")}
                       </p>
                     </div>
                   </div>
@@ -339,7 +407,7 @@ export default function ProReviewsPage() {
                 {/* Review Body */}
                 <div className="mt-3.5 pl-0 sm:pl-12">
                   <p className="font-sans text-sm sm:text-[15px] leading-relaxed text-copy">
-                    &ldquo;{review.body}&rdquo;
+                    &ldquo;{review.text}&rdquo;
                   </p>
 
                   {/* Public Response Thread */}
@@ -348,10 +416,10 @@ export default function ProReviewsPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="grid h-5 w-5 place-items-center rounded-md bg-primary text-white text-[10px] font-bold">
-                            {proProfile?.contactName?.[0] || "L"}
+                            {user?.name?.[0] || "Y"}
                           </span>
                           <span className="font-display text-xs font-semibold text-title">
-                            {proProfile?.contactName ?? "Luis Ortega"} (You)
+                            {user?.name ?? "You"} (You)
                           </span>
                           <span className="text-[11px] text-muted">· Public response</span>
                         </div>
@@ -364,6 +432,13 @@ export default function ProReviewsPage() {
                           className="text-[11px] font-medium text-primary hover:underline cursor-pointer"
                         >
                           Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReply(review.id)}
+                          className="ml-3 text-[11px] font-medium text-error hover:underline cursor-pointer"
+                        >
+                          Delete
                         </button>
                       </div>
                       <p className="font-sans text-xs sm:text-sm text-copy leading-relaxed pl-7">
@@ -425,7 +500,7 @@ export default function ProReviewsPage() {
                         <Button
                           type="button"
                           size="sm"
-                          disabled={!(replyDraft[review.id] ?? "").trim()}
+                          disabled={replying || !(replyDraft[review.id] ?? "").trim()}
                           onClick={() => handlePostReply(review.id)}
                           className="font-medium text-xs rounded-lg"
                         >
@@ -457,7 +532,7 @@ export default function ProReviewsPage() {
                   <h3 className="font-display text-lg font-bold text-title">
                     Request a Client Review
                   </h3>
-                  <p className="text-xs text-muted">Invite past Austin homeowners to review your work</p>
+                  <p className="text-xs text-muted">Invite past homeowners to review your work</p>
                 </div>
               </div>
               <button
@@ -477,7 +552,7 @@ export default function ProReviewsPage() {
                 <div className="flex items-center gap-2">
                   <TextField
                     readOnly
-                    value="https://localfix.com/review/ortega-plumbing"
+                    value={reviewShareLink}
                     className="font-mono text-xs bg-smoke"
                   />
                   <Button
@@ -498,7 +573,7 @@ export default function ProReviewsPage() {
                   Recommended SMS &amp; Email message:
                 </p>
                 <p className="text-xs text-muted italic bg-white p-3 rounded-lg border border-line/60 leading-relaxed">
-                  &ldquo;Hi! Thanks for choosing Ortega Plumbing for your repair. If you have 30 seconds, sharing your review on Local Fix helps our family business tremendously: https://localfix.com/review/ortega-plumbing&rdquo;
+                  &ldquo;{reviewInviteCopy}&rdquo;
                 </p>
               </div>
 

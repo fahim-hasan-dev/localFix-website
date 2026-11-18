@@ -24,21 +24,35 @@ import {
   updateProProfile,
   type ProPortfolioItem,
 } from "@/redux/slices/featuresSlice";
+import { useUrlTab } from "@/hooks/use-url-tab";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/cn";
+import {
+  useDeleteProjectPhotoMutation,
+  useGetMyProfileQuery,
+  useUpdateProfileMutation,
+  useUpdateProjectPhotoMutation,
+  useUploadProjectPhotoMutation,
+} from "@/services/client/users-api";
+import { useGetCategoriesQuery } from "@/services/client/catalog-api";
+import { apiErrorMessage } from "@/services/client/form-data";
+import { num, refId, str, unwrapRecord } from "@/lib/api-profile";
+import type { ApiProjectPhoto } from "@/lib/api-mappers";
+import { mediaUrl } from "@/utils/mediaUrl";
 import {
   TIME_OPTIONS,
   WEEK_DAYS,
   allDaysMatch,
   applyHoursToDays,
+  hoursPayload,
   normalizeWeeklyHours,
+  weeklyHoursFromApi,
   type DaySchedule,
   type Weekday,
 } from "@/lib/business-hours";
 import { CredentialAttachment } from "@/components/shared/credential-attachment";
 import {
-  defaultInsuranceDoc,
-  defaultLicenseDoc,
+  type CredentialFile,
   fileFromUpload,
   validateCredentialFile,
 } from "@/lib/credential-file";
@@ -62,14 +76,46 @@ const PAYMENT_ALIASES: Record<string, (typeof PAYMENT_METHODS)[number]> = {
 };
 
 function normalizeAcceptedPayments(raw: string[]) {
-  const next = new Set<(typeof PAYMENT_METHODS)[number]>();
+  const next: string[] = [];
   raw.forEach((value) => {
-    const mapped = PAYMENT_ALIASES[value] ?? (PAYMENT_METHODS.includes(value as (typeof PAYMENT_METHODS)[number])
-      ? (value as (typeof PAYMENT_METHODS)[number])
-      : undefined);
-    if (mapped) next.add(mapped);
+    const mapped = PAYMENT_ALIASES[value] ?? value;
+    if (mapped && !next.includes(mapped)) next.push(mapped);
   });
-  return [...next];
+  return next;
+}
+
+function toMonthValue(value: string) {
+  if (/^\d{4}-\d{2}/.test(value)) return value.slice(0, 7);
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+const COVERAGE_OPTIONS = ["$500,000", "$1,000,000", "$2,000,000"];
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+/** Builds a credential record from a certificate URL returned by the API (no invented metadata). */
+function apiCredentialFile(url: string, status: CredentialFile["status"]): CredentialFile {
+  const clean = url.split("?")[0].split("#")[0];
+  const last = clean.split("/").filter(Boolean).pop() ?? "Certificate";
+  let name = last;
+  try {
+    name = decodeURIComponent(last);
+  } catch {
+    /* keep raw name */
+  }
+  return {
+    name,
+    sizeLabel: "",
+    kind: /\.pdf$/i.test(clean) ? "pdf" : "image",
+    uploadedAt: "",
+    status,
+    previewUrl: url,
+  };
 }
 
 export function ProProfileForm() {
@@ -77,9 +123,23 @@ export function ProProfileForm() {
   const user = useAppSelector((state) => state.auth.user);
   const proProfile = useAppSelector((state) => state.features.proProfile);
 
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "hours" | "credentials" | "portfolio"
-  >("overview");
+  const { data: profileResponse, isLoading: profileLoading, isError: profileError, refetch: refetchProfile } =
+    useGetMyProfileQuery();
+  const { data: categoryResponse } = useGetCategoriesQuery();
+  const [updateProfile, { isLoading: saving }] = useUpdateProfileMutation();
+  const [uploadProjectPhoto, { isLoading: uploadingPhoto }] = useUploadProjectPhotoMutation();
+  const [updateProjectPhoto, { isLoading: updatingPhoto }] = useUpdateProjectPhotoMutation();
+  const [deleteProjectPhoto] = useDeleteProjectPhotoMutation();
+  const profile = unwrapRecord(profileResponse?.data);
+  const categories = categoryResponse?.data ?? [];
+  const apiPhotos = Array.isArray(profile?.projectPhotos)
+    ? (profile.projectPhotos as ApiProjectPhoto[])
+    : null;
+
+  const [activeTab, setActiveTab] = useUrlTab(
+    ["overview", "hours", "credentials", "portfolio"] as const,
+    "overview",
+  );
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -87,12 +147,12 @@ export function ProProfileForm() {
   const [formData, setFormData] = useState({
     ...proProfile,
     businessHours: normalizeWeeklyHours(proProfile.businessHours),
-    licenseDoc: proProfile.licenseDoc ?? defaultLicenseDoc(),
-    insuranceDoc: proProfile.insuranceDoc ?? defaultInsuranceDoc(),
-    insuranceExpires: proProfile.insuranceExpires ?? "2027-09",
+    licenseDoc: (proProfile.licenseDoc?.name ? proProfile.licenseDoc : null) as CredentialFile | null,
+    insuranceDoc: (proProfile.insuranceDoc?.name ? proProfile.insuranceDoc : null) as CredentialFile | null,
+    insuranceExpires: proProfile.insuranceExpires || "",
     insuranceCoverage: ["$500,000", "$1,000,000", "$2,000,000"].includes(proProfile.insuranceCoverage)
       ? proProfile.insuranceCoverage
-      : "$1,000,000",
+      : "",
     acceptedPayments: normalizeAcceptedPayments(proProfile.acceptedPayments),
   });
   const [docErrors, setDocErrors] = useState<{ license?: string; insurance?: string; id?: string }>({});
@@ -106,7 +166,77 @@ export function ProProfileForm() {
     formData.avatar || user?.avatar || "",
   );
   const [avatarError, setAvatarError] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [licenseFile, setLicenseFile] = useState<File | null>(null);
+  const [insuranceFile, setInsuranceFile] = useState<File | null>(null);
+  const [categoryId, setCategoryId] = useState("");
+  const [syncedFrom, setSyncedFrom] = useState<string | null>(null);
+  // True once the form has been populated from the live API profile; until then the static seed must not render.
+  const hydratedFromApi = syncedFrom !== null;
 
+  // Hydrate the form once from the live profile (render-time sync, runs once per profile id).
+  const profileId = profile ? str(profile._id) || "profile" : null;
+  if (profile && profileId && syncedFrom !== profileId) {
+    setSyncedFrom(profileId);
+    const liveCategory = profile.category;
+    const liveCategoryName =
+      liveCategory && typeof liveCategory === "object" ? str((liveCategory as { name?: unknown }).name) : "";
+    const rawCoverage = profile.insuranceCoverage;
+    const coverage =
+      typeof rawCoverage === "number" ? `$${rawCoverage.toLocaleString("en-US")}` : str(rawCoverage);
+    const image = mediaUrl(str(profile.profileImage));
+    const hours = weeklyHoursFromApi(profile.businessHours) ?? normalizeWeeklyHours(null);
+    const hoursRecord = asRecord(profile.businessHours);
+    const paymentValues = Array.isArray(profile.acceptedPayments)
+      ? profile.acceptedPayments.map((item) => str(item)).filter(Boolean)
+      : [];
+    setCategoryId(refId(liveCategory));
+    setAvatarPreview(image || user?.avatar || "");
+    setHoursMode(hoursRecord?.mode === "customize" || !allDaysMatch(hours) ? "custom" : "all");
+    const tradeLicense = asRecord(profile.tradeLicense);
+    const liabilityInsurance = asRecord(profile.liabilityInsurance ?? profile.insurance);
+    const licenseCert = mediaUrl(
+      str(tradeLicense?.certificateUrl) || str(profile.tradeLicenseCertificate),
+    );
+    const insuranceCert = mediaUrl(
+      str(liabilityInsurance?.certificateUrl) || str(profile.coiCertificate ?? profile.insuranceCertificate),
+    );
+    // API wins: every API-backed field is overwritten (no static seed fallbacks), so a pro who logs in
+    // after a different pro never sees the seeded demo profile.
+    setFormData((prev) => ({
+      ...prev,
+      contactName: str(profile.name),
+      businessName: str(profile.companyName),
+      email: str(profile.email),
+      phone: str(profile.phone),
+      street: str(profile.streetAddress),
+      city: str(profile.city),
+      state: str(profile.state),
+      zip: str(profile.zipCode),
+      radiusMiles: num(profile.serviceRadiusInMiles, 0),
+      yearsInBusiness: str(profile.yearsOfExperience),
+      bio: str(profile.about),
+      trade: liveCategoryName,
+      licenseNumber: str(tradeLicense?.licenseNumber) || str(profile.licenseNumber),
+      licenseState: str(tradeLicense?.licenseState ?? tradeLicense?.state) || str(profile.licenseState),
+      insuranceCarrier:
+        str(liabilityInsurance?.insuranceCarrier ?? liabilityInsurance?.carrier) || str(profile.insuranceCarrier),
+      insuranceCoverage: coverage,
+      insuranceExpires: toMonthValue(
+        str(liabilityInsurance?.expires ?? liabilityInsurance?.expiresAt) || str(profile.insuranceExpires),
+      ),
+      licenseDoc: licenseCert
+        ? apiCredentialFile(licenseCert, tradeLicense?.isVerified ? "verified" : "review")
+        : null,
+      insuranceDoc: insuranceCert
+        ? apiCredentialFile(insuranceCert, liabilityInsurance?.isVerified ? "verified" : "review")
+        : null,
+      avatar: image,
+      businessHours: hours,
+      emergency: Boolean(hoursRecord?.emergencyDispatchAvailable),
+      acceptedPayments: normalizeAcceptedPayments(paymentValues),
+    }));
+  }
   function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -119,6 +249,7 @@ export function ProProfileForm() {
       return;
     }
     setAvatarError("");
+    setAvatarFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
@@ -139,38 +270,109 @@ export function ProProfileForm() {
     description: "",
   });
   const [photoPreview, setPhotoPreview] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
 
+  // Live project photos from the API (fall back to local portfolio until the profile loads).
+  const portfolio: ProPortfolioItem[] = apiPhotos
+    ? apiPhotos.map((photo, index) => {
+        const categoryName =
+          photo.category && typeof photo.category === "object"
+            ? photo.category.name || ""
+            : categories.find((c) => c._id === photo.category)?.name || "";
+        return {
+          id: photo._id || `photo-${index}`,
+          title: photo.title || categoryName || "Project",
+          category: categoryName,
+          image: mediaUrl(photo.image),
+          description: photo.title || categoryName,
+        };
+      })
+    : formData.portfolio;
+
   if (!user) return null;
+
+  if (!hydratedFromApi) {
+    return profileError ? (
+      <Card className="rounded-2xl border border-line/80 bg-white p-8 text-center">
+        <p className="text-sm font-semibold text-title">We couldn&apos;t load your profile</p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mt-3 rounded-full border border-line"
+          onClick={() => refetchProfile()}
+        >
+          Try again
+        </Button>
+      </Card>
+    ) : (
+      <Card className="rounded-2xl border border-line/80 bg-white p-8 text-center">
+        <p className="text-sm text-muted">{profileLoading ? "Loading your profile…" : "Loading…"}</p>
+      </Card>
+    );
+  }
 
   function showToast(msg: string) {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   }
 
-  function handleSaveAll() {
-    const startingFromServices = formData.services.length
-      ? Math.min(...formData.services.map((service) => service.price ?? formData.startingPrice ?? 95))
-      : formData.startingPrice;
-    const proName = formData.contactName || formData.businessName || "Luis Ortega";
-    const proAvatar = avatarPreview || formData.avatar || "";
-    const proEmail = formData.email || user?.email || "luis.ortega@example.com";
+  async function handleSaveAll() {
+    const proName = formData.contactName || formData.businessName || user?.name || "";
+
+    let res;
+    try {
+      res = await updateProfile({
+        data: {
+          name: proName,
+          phone: formData.phone,
+          streetAddress: formData.street,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zip,
+          companyName: formData.businessName || proName,
+          ...(categoryId ? { category: categoryId } : {}),
+          about: formData.bio,
+          serviceRadiusInMiles: formData.radiusMiles,
+          yearsOfExperience: formData.yearsInBusiness,
+          licenseNumber: formData.licenseNumber,
+          licenseState: formData.licenseState,
+          insuranceCarrier: formData.insuranceCarrier,
+          insuranceCoverage: formData.insuranceCoverage,
+          insuranceExpires: formData.insuranceExpires,
+          acceptedPayments: formData.acceptedPayments,
+          businessHours: hoursPayload(formData.businessHours, hoursMode, formData.emergency),
+          emergencyDispatchAvailable: formData.emergency,
+        },
+        profileImage: avatarFile,
+        tradeLicenseCertificate: licenseFile,
+        coiCertificate: insuranceFile,
+      }).unwrap();
+    } catch (err) {
+      showToast(apiErrorMessage(err, "Could not save your profile. Please try again."));
+      return;
+    }
+    setAvatarFile(null);
+    setLicenseFile(null);
+    setInsuranceFile(null);
+    const savedImage = mediaUrl(str(unwrapRecord(res?.data)?.profileImage));
+    const proAvatar = savedImage || avatarPreview || formData.avatar || "";
 
     dispatch(
       updateProProfile({
         ...formData,
         contactName: proName,
-        businessName: proName,
+        businessName: formData.businessName || proName,
         avatar: proAvatar,
-        email: proEmail,
-        startingPrice: startingFromServices,
-        responseTime: proProfile.responseTime,
+        email: formData.email || user?.email || "",
+        startingPrice: formData.startingPrice,
       }),
     );
     dispatch(
       updateUser({
         name: proName,
-        email: proEmail,
+        email: formData.email || user?.email || "",
         avatar: proAvatar,
         phone: formData.phone,
         street: formData.street,
@@ -237,6 +439,9 @@ export function ProProfileForm() {
     setDocErrors((prev) => ({ ...prev, [kind]: message ?? undefined }));
     if (message) return;
 
+    if (kind === "license") setLicenseFile(file);
+    else if (kind === "insurance") setInsuranceFile(file);
+
     const next = fileFromUpload(file);
     setFormData((prev) => {
       const key = kind === "license" ? "licenseDoc" : kind === "insurance" ? "insuranceDoc" : "idDoc";
@@ -254,23 +459,13 @@ export function ProProfileForm() {
   }
 
 
-  // Payment methods toggle
-  function togglePayment(payment: (typeof PAYMENT_METHODS)[number]) {
-    setFormData((prev) => {
-      const exists = prev.acceptedPayments.includes(payment);
-      const next = exists
-        ? prev.acceptedPayments.filter((item) => item !== payment)
-        : [...prev.acceptedPayments, payment];
-      return { ...prev, acceptedPayments: next };
-    });
-  }
-
   // Photo helpers
   function handlePhotoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const preview = URL.createObjectURL(file);
     setPhotoPreview(preview);
+    setPhotoFile(file);
     if (!photoForm.title) {
       const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
       setPhotoForm((prev) => ({ ...prev, title: cleanName.charAt(0).toUpperCase() + cleanName.slice(1) }));
@@ -281,77 +476,67 @@ export function ProProfileForm() {
     setEditingPhotoIndex(null);
     setPhotoForm({
       title: "",
-      category: "",
+      category: categoryId,
       image: "",
       description: "",
     });
     setPhotoPreview("");
+    setPhotoFile(null);
     setShowPhotoModal(true);
   }
 
   function handleOpenEditPhoto(idx: number) {
-    const item = formData.portfolio[idx];
+    const item = portfolio[idx];
     if (!item) return;
     setEditingPhotoIndex(idx);
     setPhotoForm({
       title: item.title,
-      category: item.category || "",
+      category: apiPhotos ? refId(apiPhotos[idx]?.category) : item.category || "",
       image: item.image,
       description: item.description || "",
     });
     setPhotoPreview(item.image);
+    setPhotoFile(null);
     setShowPhotoModal(true);
   }
 
-  function handleSavePhoto() {
-    const imgSrc = photoPreview || photoForm.image || "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80";
-    const caption = photoForm.title.trim() || "Completed project";
-    const cat = photoForm.category.trim() || "Project";
-    const desc = photoForm.description.trim() || caption;
+  async function handleSavePhoto() {
+    const title = photoForm.title.trim() || "Completed project";
+    const category = photoForm.category || categoryId;
+    const editing = editingPhotoIndex !== null && editingPhotoIndex >= 0;
+    const photoId = editing ? apiPhotos?.[editingPhotoIndex as number]?._id : undefined;
 
-    let updatedPortfolio: ProPortfolioItem[];
-    if (editingPhotoIndex !== null && editingPhotoIndex >= 0) {
-      updatedPortfolio = formData.portfolio.map((p, i) =>
-        i === editingPhotoIndex
-          ? {
-              ...p,
-              title: caption,
-              category: cat,
-              image: imgSrc,
-              description: desc,
-            }
-          : p,
-      );
-      showToast("Project photo updated!");
-    } else {
-      const newPortfolioItem: ProPortfolioItem = {
-        id: `port-${Date.now()}`,
-        title: caption,
-        category: cat,
-        image: imgSrc,
-        description: desc,
-      };
-      updatedPortfolio = [...formData.portfolio, newPortfolioItem];
-      showToast("Photo uploaded to portfolio!");
+    try {
+      if (editing && photoId) {
+        await updateProjectPhoto({ photoId, title, category, image: photoFile }).unwrap();
+        showToast("Project photo updated!");
+      } else {
+        if (!photoFile) {
+          showToast("Choose an image to upload.");
+          return;
+        }
+        await uploadProjectPhoto({ title, category, image: photoFile }).unwrap();
+        showToast("Photo uploaded to portfolio!");
+      }
+    } catch (err) {
+      showToast(apiErrorMessage(err, "Could not save the project photo. Please try again."));
+      return;
     }
 
-    setFormData((prev) => ({
-      ...prev,
-      portfolio: updatedPortfolio,
-    }));
-    dispatch(updateProProfile({ portfolio: updatedPortfolio }));
     setShowPhotoModal(false);
     setPhotoPreview("");
+    setPhotoFile(null);
   }
 
-  function handleRemovePhoto(index: number) {
-    const updatedPortfolio = formData.portfolio.filter((_, i) => i !== index);
-    setFormData((prev) => ({
-      ...prev,
-      portfolio: updatedPortfolio,
-    }));
-    dispatch(updateProProfile({ portfolio: updatedPortfolio }));
-    showToast("Photo removed from portfolio.");
+  async function handleRemovePhoto(index: number) {
+    const photoId = apiPhotos?.[index]?._id;
+    if (!photoId) return;
+    try {
+      await deleteProjectPhoto(photoId).unwrap();
+      showToast("Photo removed from portfolio.");
+    } catch (err) {
+      showToast(apiErrorMessage(err, "Could not remove the photo. Please try again."));
+    }
   }
 
   return (
@@ -376,9 +561,10 @@ export function ProProfileForm() {
         <Button
           type="button"
           onClick={handleSaveAll}
+          disabled={saving}
           className="shadow-xs text-sm font-semibold px-5 shrink-0"
         >
-          Save Changes
+          {saving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
 
@@ -415,7 +601,7 @@ export function ProProfileForm() {
                   <img src={avatarPreview} alt={formData.contactName || "Pro profile"} className="h-full w-full object-cover" />
                 ) : (
                   <div className="grid h-full w-full place-items-center bg-primary/10 text-primary font-bold text-lg font-display">
-                    {(formData.contactName || "Luis Ortega").slice(0, 2).toUpperCase()}
+                    {(formData.contactName || user?.name || "Pro").slice(0, 2).toUpperCase()}
                   </div>
                 )}
               </div>
@@ -445,35 +631,56 @@ export function ProProfileForm() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Full Name">
               <TextField
-                value={formData.contactName || formData.businessName}
+                value={formData.contactName}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({
-                    ...formData,
-                    contactName: e.target.value,
-                    businessName: e.target.value,
-                  })
+                  setFormData({ ...formData, contactName: e.target.value })
                 }
-                placeholder="Luis Ortega"
+                placeholder="Your full name"
                 required
               />
             </Field>
 
-            <Field label="Email Address">
+            <Field label="Business Name">
+              <TextField
+                value={formData.businessName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, businessName: e.target.value })
+                }
+                placeholder="Your business name"
+              />
+            </Field>
+
+            <Field label="Email Address" hint="Email cannot be changed.">
               <TextField
                 type="email"
-                value={formData.email || user?.email || "luis.ortega@example.com"}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                placeholder="luis.ortega@example.com"
-                required
+                value={formData.email || user?.email || ""}
+                disabled
+                placeholder="you@email.com"
               />
             </Field>
 
             <Field label="Trade">
-              <p className="flex min-h-[50px] items-center rounded-[10px] border border-line bg-smoke px-4 text-[16px] text-title">
-                {formData.trade}
-              </p>
+              {categories.length > 0 ? (
+                <NativeSelect
+                  value={categoryId}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                    const next = categories.find((c) => c._id === e.target.value);
+                    setCategoryId(e.target.value);
+                    setFormData({ ...formData, trade: next?.name || formData.trade });
+                  }}
+                >
+                  <option value="">Select a trade</option>
+                  {categories.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              ) : (
+                <p className="flex min-h-[50px] items-center rounded-[10px] border border-line bg-smoke px-4 text-[16px] text-title">
+                  {formData.trade}
+                </p>
+              )}
             </Field>
 
             <Field label="Phone Number">
@@ -698,33 +905,6 @@ export function ProProfileForm() {
               </label>
             </div>
           </Card>
-
-          <Card className="rounded-2xl border border-line/80 bg-white p-6 shadow-2xs space-y-4">
-            <div>
-              <h3 className="font-display text-base font-bold text-title">Accepted payments</h3>
-              <p className="text-xs text-muted">What homeowners can pay you with.</p>
-            </div>
-
-            <div className="grid gap-1 sm:grid-cols-2">
-              {PAYMENT_METHODS.map((method) => {
-                const selected = formData.acceptedPayments.includes(method);
-                return (
-                  <label
-                    key={method}
-                    className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      onChange={() => togglePayment(method)}
-                      className="h-4 w-4 rounded accent-primary"
-                    />
-                    <span className="text-sm text-title">{method}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </Card>
         </div>
       )}
 
@@ -791,9 +971,15 @@ export function ProProfileForm() {
                     setFormData({ ...formData, insuranceCoverage: e.target.value })
                   }
                 >
-                  <option value="$500,000">$500,000</option>
-                  <option value="$1,000,000">$1,000,000</option>
-                  <option value="$2,000,000">$2,000,000</option>
+                  <option value="">Select coverage</option>
+                  {(COVERAGE_OPTIONS.includes(formData.insuranceCoverage) || !formData.insuranceCoverage
+                    ? COVERAGE_OPTIONS
+                    : [formData.insuranceCoverage, ...COVERAGE_OPTIONS]
+                  ).map((amount) => (
+                    <option key={amount} value={amount}>
+                      {amount}
+                    </option>
+                  ))}
                 </NativeSelect>
               </Field>
               <Field label="Expires">
@@ -935,13 +1121,19 @@ export function ProProfileForm() {
                   </Field>
 
                   <Field label="Category">
-                    <TextField
+                    <NativeSelect
                       value={photoForm.category}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                         setPhotoForm({ ...photoForm, category: e.target.value })
                       }
-                      placeholder="e.g. Installations, Repairs, Replacements"
-                    />
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map((c) => (
+                        <option key={c._id} value={c._id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </NativeSelect>
                   </Field>
                 </div>
 
@@ -953,6 +1145,7 @@ export function ProProfileForm() {
                     onClick={() => {
                       setShowPhotoModal(false);
                       setPhotoPreview("");
+                      setPhotoFile(null);
                     }}
                     className="text-xs"
                   >
@@ -961,11 +1154,20 @@ export function ProProfileForm() {
                   <Button
                     type="button"
                     size="sm"
-                    disabled={(!photoPreview && !photoForm.image) || !photoForm.title.trim()}
+                    disabled={
+                      (!photoPreview && !photoForm.image) ||
+                      !photoForm.title.trim() ||
+                      uploadingPhoto ||
+                      updatingPhoto
+                    }
                     onClick={handleSavePhoto}
                     className="text-xs font-semibold px-4"
                   >
-                    {editingPhotoIndex !== null ? "Save Changes" : "Upload Photo"}
+                    {uploadingPhoto || updatingPhoto
+                      ? "Saving..."
+                      : editingPhotoIndex !== null
+                        ? "Save Changes"
+                        : "Upload Photo"}
                   </Button>
                 </div>
               </div>
@@ -973,7 +1175,7 @@ export function ProProfileForm() {
           )}
 
           {/* Photos Grid */}
-          {formData.portfolio.length === 0 ? (
+          {portfolio.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-line/80 p-8 text-center bg-smoke/30">
               <ImageIcon className="mx-auto h-8 w-8 text-muted mb-2" />
               <p className="text-sm font-semibold text-title">No project photos yet</p>
@@ -989,7 +1191,7 @@ export function ProProfileForm() {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-              {formData.portfolio.map((item, idx) => (
+              {portfolio.map((item, idx) => (
                 <div
                   key={item.id || idx}
                   className="group relative aspect-[4/3] rounded-2xl overflow-hidden bg-smoke border border-line shadow-2xs"

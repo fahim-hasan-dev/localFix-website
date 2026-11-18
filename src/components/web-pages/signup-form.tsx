@@ -2,214 +2,109 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, TextField } from "@/components/ui/field";
 import { PasswordField } from "@/components/ui/password-field";
 import { GoogleIcon } from "@/components/ui/google-icon";
 import { AuthLinks } from "@/components/web-pages/auth-links";
-import { loginAs } from "@/redux/slices/authSlice";
-import { setEmailVerified, setPhoneVerified } from "@/redux/slices/featuresSlice";
+import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { cn } from "@/lib/cn";
-
-const DEMO_OTP = "123456";
-const OTP_LEN = 6;
+import { useSignupMutation } from "@/services/client/auth-api";
+import { authToken } from "@/utils/authToken";
+import { logout } from "@/redux/slices/authSlice";
 
 export function SignupForm() {
-  const dispatch = useAppDispatch();
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const search = useSearchParams();
   const nextPath = search.get("next");
   const needsAccountForRequest = Boolean(nextPath?.includes("/account/post-job"));
   const draft = useAppSelector((state) => state.intake.draft);
-  const user = useAppSelector((state) => state.auth.user);
+
+  const [signupApi, { isLoading: isSigningUp }] = useSignupMutation();
 
   const [role, setRole] = useState<"homeowner" | "pro">("homeowner");
-  const [step, setStep] = useState<"details" | "otp">("details");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [zip, setZip] = useState(draft.zip || "");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [otp, setOtp] = useState<string[]>(Array(OTP_LEN).fill(""));
   const [error, setError] = useState("");
-  const [resent, setResent] = useState(false);
-  const inputs = useRef<Array<HTMLInputElement | null>>([]);
-
-  useEffect(() => {
-    if (user) {
-      if (nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")) {
-        router.replace(nextPath);
-      } else {
-        router.replace(user.role === "pro" ? "/pro" : "/account");
-      }
-    }
-  }, [user, nextPath, router]);
-
-  useEffect(() => {
-    if (step === "otp") inputs.current[0]?.focus();
-  }, [step]);
 
   useEffect(() => {
     if (role === "pro") router.push("/pro-register");
   }, [role, router]);
 
-  function finishSignup() {
-    dispatch(
-      loginAs({
-        role: "homeowner",
-        profile: {
-          name: name.trim() || "Alex Mercer",
-          email: email.trim() || "alex@example.com",
-          phone: phone.trim() || "(512) 555-0199",
-          zip: zip.trim() || "78701",
-          city: "Austin",
-          state: "TX",
-        },
-      }),
-    );
-    dispatch(setEmailVerified(true));
-    dispatch(setPhoneVerified(true));
-    if (nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")) {
-      router.push(nextPath);
+  async function submitDetails(event: React.FormEvent) {
+    event.preventDefault();
+    setError("");
+
+    if (!name.trim()) {
+      setError("Full name is required.");
+      toast.error("Full name is required.");
       return;
     }
-    router.push(draft.summary ? "/account/post-job" : "/account");
+    if (!email.trim()) {
+      setError("Email is required.");
+      toast.error("Email is required.");
+      return;
+    }
+    if (!phone.trim()) {
+      setError("Phone number is required.");
+      toast.error("Phone number is required.");
+      return;
+    }
+    if (!zip.trim()) {
+      setError("ZIP code is required.");
+      toast.error("ZIP code is required.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      toast.error("Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    try {
+      authToken.clearTokens();
+      dispatch(logout());
+
+      await signupApi({
+        role: "home_owner",
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        zipCode: zip.trim(),
+        password,
+        confirmPassword: confirm,
+        agreedToTerms: true,
+      }).unwrap();
+
+      authToken.clearTokens();
+      dispatch(logout());
+
+      toast.success("Account created successfully! Please check your email for the OTP code.");
+
+      // Successfully registered — redirect directly to the OTP verification page
+      const verifyUrl = `/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}&role=homeowner${nextPath ? `&next=${encodeURIComponent(nextPath)}` : ""}`;
+      router.push(verifyUrl);
+    } catch (err: unknown) {
+      const apiErr = err as { data?: { message?: string }; error?: string };
+      const msg = apiErr?.data?.message || apiErr?.error || "Registration failed. Please check your details.";
+      setError(msg);
+      toast.error(msg);
+    }
   }
 
   function handleGoogleSignUp() {
-    setError("");
-    dispatch(
-      loginAs({
-        role: "homeowner",
-        profile: {
-          name: "Alex Mercer",
-          email: "alex.mercer@gmail.com",
-          phone: "(512) 555-0199",
-          zip: draft.zip || "78701",
-          city: "Austin",
-          state: "TX",
-        },
-      }),
-    );
-    dispatch(setEmailVerified(true));
-    dispatch(setPhoneVerified(true));
-    if (nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")) {
-      router.push(nextPath);
-      return;
-    }
-    router.push(draft.summary ? "/account/post-job" : "/account");
-  }
-
-  function submitDetails(event: React.FormEvent) {
-    event.preventDefault();
-    setError("");
-    finishSignup();
-  }
-
-  function submitOtp(event: React.FormEvent) {
-    event.preventDefault();
-    setError("");
-    finishSignup();
-  }
-
-  function onOtpChange(index: number, value: string) {
-    const digit = value.replace(/\D/g, "").slice(-1);
-    const next = [...otp];
-    next[index] = digit;
-    setOtp(next);
-    setError("");
-    if (digit && index < OTP_LEN - 1) inputs.current[index + 1]?.focus();
-  }
-
-  function onOtpKeyDown(index: number, event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Backspace" && !otp[index] && index > 0) {
-      inputs.current[index - 1]?.focus();
-    }
-  }
-
-  function onOtpPaste(event: React.ClipboardEvent<HTMLInputElement>) {
-    event.preventDefault();
-    const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LEN);
-    if (!pasted) return;
-    const next = Array(OTP_LEN).fill("");
-    pasted.split("").forEach((char, i) => {
-      next[i] = char;
-    });
-    setOtp(next);
-    inputs.current[Math.min(pasted.length, OTP_LEN) - 1]?.focus();
-  }
-
-  const maskedPhone = phone.replace(/\D/g, "").replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3");
-
-  if (step === "otp") {
-    return (
-      <div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
-          Step 2 of 2
-        </span>
-        <h1 className="mt-3 font-display text-[22px] sm:text-[24px] font-semibold leading-snug tracking-tight text-title">
-          Verify your phone
-        </h1>
-        <p className="mt-1.5 font-sans text-sm leading-relaxed text-[#757575]">
-          Enter the 6-digit code sent to <span className="font-semibold text-title">{maskedPhone || phone}</span>.
-        </p>
-        <p className="mt-1 font-sans text-xs text-[#757575]/80">Demo code: {DEMO_OTP}</p>
-
-        <form className="mt-6 space-y-4" onSubmit={submitOtp}>
-          <div className="flex justify-between gap-2">
-            {otp.map((digit, index) => (
-              <input
-                key={index}
-                ref={(el) => {
-                  inputs.current[index] = el;
-                }}
-                type="text"
-                inputMode="numeric"
-                autoComplete={index === 0 ? "one-time-code" : "off"}
-                maxLength={1}
-                value={digit}
-                onChange={(event) => onOtpChange(index, event.target.value)}
-                onKeyDown={(event) => onOtpKeyDown(index, event)}
-                onPaste={onOtpPaste}
-                className={cn(
-                  "h-12 w-10 rounded-[10px] border border-line bg-white text-center font-display text-lg font-bold text-title outline-none focus:border-primary sm:h-14 sm:w-12",
-                )}
-                aria-label={`Digit ${index + 1}`}
-              />
-            ))}
-          </div>
-          {error ? <p className="text-sm text-error">{error}</p> : null}
-          <Button type="submit" className="w-full">
-            Verify and create account ↗
-          </Button>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <button
-              type="button"
-              className="font-semibold text-muted hover:text-title"
-              onClick={() => {
-                setStep("details");
-                setError("");
-              }}
-            >
-              ← Edit details
-            </button>
-            <button
-              type="button"
-              className="font-semibold text-primary"
-              onClick={() => {
-                setResent(true);
-                setError("");
-              }}
-            >
-              {resent ? "Code resent" : "Resend code"}
-            </button>
-          </div>
-        </form>
-      </div>
-    );
+    setError("Google Sign-in is not configured on this server yet. Please use email registration.");
   }
 
   return (
@@ -245,12 +140,11 @@ export function SignupForm() {
               role="tab"
               aria-selected={active}
               onClick={() => setRole(value)}
-              className={cn(
-                "min-h-[44px] rounded-full font-display text-sm font-bold transition-colors",
+              className={`min-h-[44px] rounded-full font-display text-sm font-bold transition-colors ${
                 active
                   ? "bg-primary text-white shadow-sm"
-                  : "bg-transparent text-title hover:text-primary",
-              )}
+                  : "bg-transparent text-title hover:text-primary"
+              }`}
             >
               {label}
             </button>
@@ -340,8 +234,8 @@ export function SignupForm() {
           </span>
         </label>
         {error ? <p className="text-xs font-medium text-error">{error}</p> : null}
-        <Button type="submit" className="w-full">
-          Continue to OTP ↗
+        <Button type="submit" className="w-full" disabled={isSigningUp}>
+          {isSigningUp ? "Submitting..." : "Continue to Verification ↗"}
         </Button>
       </form>
 

@@ -4,25 +4,13 @@ import { useRouter } from "next/navigation";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Button } from "@/components/ui/button";
 import { ServiceTile } from "@/components/shared/service-tile";
-import { categories } from "@/Mockdata";
-import type { Category } from "@/types";
-
-const featuredSlugs = [
-  "plumbing",
-  "electrical",
-  "hvac",
-  "roofing",
-  "handyman",
-  "appliance-repair",
-  "painting",
-  "landscaping",
-] as const;
+import { mapCategory } from "@/lib/api-mappers";
+import { useGetCategoriesQuery } from "@/services/client/catalog-api";
 
 export function HomeServices() {
   const router = useRouter();
-  const featured = featuredSlugs
-    .map((slug) => categories.find((item) => item.slug === slug))
-    .filter((item): item is Category => Boolean(item));
+  const { data, isLoading } = useGetCategoriesQuery();
+  const featured = (data?.data || []).map(mapCategory);
 
   return (
     <section className="bg-white py-[var(--section-sm)] md:py-[var(--section)]">
@@ -39,6 +27,7 @@ export function HomeServices() {
         </div>
 
         <div className="mt-14 sm:mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {isLoading ? <p className="text-sm text-muted">Loading services...</p> : null}
           {featured.map((category) => (
             <ServiceTile
               key={category.id}

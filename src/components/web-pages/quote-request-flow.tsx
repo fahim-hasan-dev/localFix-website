@@ -1,3 +1,4 @@
+﻿// DEPRECATED / UNUSED: not mounted anywhere. Backed by Mockdata (local demo state). Use /account/post-job (live API) instead.
 "use client";
 
 import { useMemo, useState } from "react";
@@ -393,7 +394,7 @@ export function QuoteRequestFlow() {
             </div>
 
             <div className="mt-5 space-y-4">
-              <Field label="Describe the work">
+              <Field label="Describe the work *">
                 <TextArea
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
@@ -440,7 +441,7 @@ export function QuoteRequestFlow() {
               type="button"
               size="md"
               className="mt-5"
-              disabled={description.trim().length < 8 && !draft.problem}
+              disabled={!description.trim() && !draft.problem}
               onClick={() => setPhase("matches")}
             >
               Continue

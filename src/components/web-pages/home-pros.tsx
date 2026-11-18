@@ -5,11 +5,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Button } from "@/components/ui/button";
 import { ProCard } from "@/components/shared/pro-card";
-import { professionals } from "@/Mockdata";
+import { mapProfessional } from "@/lib/api-mappers";
+import { useGetTopRatedProfessionalsQuery } from "@/services/client/catalog-api";
 import { cn } from "@/lib/cn";
 
 export function HomePros() {
-  const list = professionals.filter((pro) => pro.clearance === "cleared");
+  const { data, isLoading } = useGetTopRatedProfessionalsQuery({ limit: 12 });
+  const list = (data?.data || []).map(mapProfessional);
   const scroller = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [hasOverflow, setHasOverflow] = useState(true);
@@ -95,6 +97,7 @@ export function HomePros() {
             onScroll={updateScrollState}
             className="-mx-1 flex gap-5 overflow-x-auto scroll-smooth px-1 pb-4 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
+            {isLoading ? <p className="px-1 text-sm text-muted">Loading professionals...</p> : null}
             {list.map((pro) => (
               <div
                 key={pro.id}

@@ -70,7 +70,7 @@ export const roleFeatures: Record<
     landsOn: "/pro — Overview, then Application → Membership → Jobs",
     can: [
       "Track application / clearance",
-      "Activate $19.99 membership (30-day free trial after clearance)",
+      "Activate a membership plan (trial after clearance when offered)",
       "See matched open jobs after clearance",
       "Quote and message when membership is active",
       "Unlock homeowner contact when cleared + membership on",

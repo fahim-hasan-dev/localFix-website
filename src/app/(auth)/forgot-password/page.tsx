@@ -1,13 +1,22 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, TextField } from "@/components/ui/field";
 import { PasswordField } from "@/components/ui/password-field";
 import { AuthLinks } from "@/components/web-pages/auth-links";
 import { cn } from "@/lib/cn";
+import {
+  useForgetPasswordMutation,
+  useVerifyResetOtpMutation,
+  useResetPasswordMutation,
+  useResendOtpMutation,
+} from "@/services/client/auth-api";
 
 const OTP_LEN = 6;
+const RESEND_COOLDOWN = 30;
 
 type Step = "email" | "otp" | "password" | "done";
 
@@ -24,42 +33,54 @@ export default function ForgotPasswordPage() {
   const [otp, setOtp] = useState<string[]>(Array(OTP_LEN).fill(""));
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [resetToken, setResetToken] = useState("");
   const [error, setError] = useState("");
-  const [resent, setResent] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [timer, setTimer] = useState(0);
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
+
+  const [forgetPasswordApi, { isLoading: isRequestingCode }] = useForgetPasswordMutation();
+  const [verifyResetOtpApi, { isLoading: isVerifyingOtp }] = useVerifyResetOtpMutation();
+  const [resetPasswordApi, { isLoading: isResettingPassword }] = useResetPasswordMutation();
+  const [resendOtpApi, { isLoading: isResendingOtp }] = useResendOtpMutation();
 
   useEffect(() => {
     if (step === "otp") inputs.current[0]?.focus();
   }, [step]);
 
+  useEffect(() => {
+    if (step !== "otp") return;
+    const interval = setInterval(() => {
+      setTimer((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [step]);
+
   async function requestCode(isResend = false) {
+    if (isResend && timer > 0) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Enter a valid email address.");
-      return false;
+      toast.error("Enter a valid email address.");
+      return;
     }
-    setBusy(true);
     setError("");
+
     try {
-      const response = await fetch("/api/auth/otp/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-      if (!response.ok || !data?.ok) {
-        setError(data?.error || "We could not send a code. Try again.");
-        return false;
+      if (isResend) {
+        await resendOtpApi({ email: email.trim().toLowerCase() }).unwrap();
+        setTimer(RESEND_COOLDOWN);
+        toast.success("New verification code sent to your email.");
+      } else {
+        await forgetPasswordApi({ email: email.trim().toLowerCase() }).unwrap();
+        setOtp(Array(OTP_LEN).fill(""));
+        setTimer(RESEND_COOLDOWN);
+        setStep("otp");
+        toast.success("Verification code sent to your email.");
       }
-      setOtp(Array(OTP_LEN).fill(""));
-      setResent(isResend);
-      setStep("otp");
-      return true;
-    } catch {
-      setError("We could not send a code. Try again.");
-      return false;
-    } finally {
-      setBusy(false);
+    } catch (err: unknown) {
+      const apiErr = err as { data?: { message?: string }; error?: string };
+      const msg = apiErr?.data?.message || apiErr?.error || "We could not send a code. Try again.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -100,41 +121,67 @@ export default function ForgotPasswordPage() {
     const code = otp.join("");
     if (code.length < OTP_LEN) {
       setError("Enter the 6-digit code from your email.");
+      toast.error("Enter the 6-digit code from your email.");
       return;
     }
-    setBusy(true);
     setError("");
+
     try {
-      const response = await fetch("/api/auth/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
-      });
-      const data = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-      if (!response.ok || !data?.ok) {
-        setError(data?.error || "That code is incorrect or expired.");
+      const res = await verifyResetOtpApi({
+        email: email.trim().toLowerCase(),
+        oneTimeCode: Number(code),
+      }).unwrap();
+
+      const token = res.resetToken?.trim() || "";
+      if (!token) {
+        setError("Code verified, but no reset token was returned. Request a new code.");
+        toast.error("Code verified, but no reset token was returned. Request a new code.");
         return;
       }
+      setResetToken(token);
       setStep("password");
-    } catch {
-      setError("That code is incorrect or expired.");
-    } finally {
-      setBusy(false);
+      toast.success("Code verified! Please set your new password.");
+    } catch (err: unknown) {
+      const apiErr = err as { data?: { message?: string }; error?: string };
+      const msg = apiErr?.data?.message || apiErr?.error || "That code is incorrect or expired.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
-  function updatePassword(event: React.FormEvent) {
+  async function updatePassword(event: React.FormEvent) {
     event.preventDefault();
     if (password.length < 6) {
       setError("Password must be at least 6 characters.");
+      toast.error("Password must be at least 6 characters.");
       return;
     }
     if (password !== confirm) {
       setError("Passwords do not match.");
+      toast.error("Passwords do not match.");
+      return;
+    }
+    if (!resetToken) {
+      setError("Your reset session expired. Verify the code again.");
+      toast.error("Your reset session expired. Verify the code again.");
+      setStep("otp");
       return;
     }
     setError("");
-    setStep("done");
+
+    try {
+      await resetPasswordApi({
+        data: { newPassword: password, confirmPassword: confirm },
+        resetToken,
+      }).unwrap();
+      setStep("done");
+      toast.success("Password reset successfully! You can now sign in.");
+    } catch (err: unknown) {
+      const apiErr = err as { data?: { message?: string }; error?: string };
+      const msg = apiErr?.data?.message || apiErr?.error || "Could not reset password. Try again.";
+      setError(msg);
+      toast.error(msg);
+    }
   }
 
   return (
@@ -163,10 +210,11 @@ export default function ForgotPasswordPage() {
               />
             </Field>
             {error ? <p className="text-sm text-error">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Sending code…" : "Send code ↗"}
+            <Button type="submit" className="w-full" disabled={isRequestingCode}>
+              {isRequestingCode ? "Sending code..." : "Send code ↗"}
             </Button>
           </form>
+          <AuthLinks prompt="Remembered your password?" href="/login" label="Back to sign in" />
         </>
       ) : null}
 
@@ -176,8 +224,7 @@ export default function ForgotPasswordPage() {
             Check your email
           </h1>
           <p className="mt-2 text-sm leading-6 text-copy">
-            We sent a 6-digit code to{" "}
-            <span className="font-semibold text-title">{maskEmail(email)}</span>. Enter it here to reset your password.
+            We sent a 6-digit code to <span className="font-semibold text-title">{maskEmail(email)}</span>.
           </p>
           <form className="mt-6 space-y-5" onSubmit={verifyOtp}>
             <div className="flex justify-between gap-2">
@@ -203,30 +250,31 @@ export default function ForgotPasswordPage() {
               ))}
             </div>
             {error ? <p className="text-sm text-error">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Checking…" : "Verify code ↗"}
+            <Button type="submit" className="w-full" disabled={isVerifyingOtp}>
+              {isVerifyingOtp ? "Verifying..." : "Verify code ↗"}
             </Button>
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
               <button
                 type="button"
-                className="font-semibold text-muted hover:text-title"
-                disabled={busy}
+                className="font-semibold text-muted hover:text-title cursor-pointer"
                 onClick={() => {
                   setStep("email");
                   setError("");
                 }}
               >
-                ← Edit email
+                ← Change email
               </button>
               <button
                 type="button"
-                className="font-semibold text-primary"
-                disabled={busy}
-                onClick={() => {
-                  void requestCode(true);
-                }}
+                className="font-semibold text-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isResendingOtp || timer > 0}
+                onClick={() => void requestCode(true)}
               >
-                {resent ? "Code resent" : "Resend code"}
+                {isResendingOtp
+                  ? "Resending..."
+                  : timer > 0
+                    ? `Resend code (${timer}s)`
+                    : "Resend code"}
               </button>
             </div>
           </form>
@@ -236,53 +284,58 @@ export default function ForgotPasswordPage() {
       {step === "password" ? (
         <>
           <h1 className="mt-3 font-display text-[22px] sm:text-[26px] font-semibold leading-snug tracking-tight text-title">
-            Set a new password
+            Set new password
           </h1>
-          <p className="mt-2 text-sm leading-6 text-copy">Choose a password you do not use elsewhere.</p>
+          <p className="mt-2 text-sm leading-6 text-copy">
+            Create a password with at least 6 characters.
+          </p>
           <form className="mt-6 space-y-5" onSubmit={updatePassword}>
             <Field label="New password">
               <PasswordField
                 required
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                placeholder="••••••••••••"
                 autoComplete="new-password"
-                placeholder="Min 6 characters"
               />
             </Field>
-            <Field label="Confirm password">
+            <Field label="Confirm new password">
               <PasswordField
                 required
                 value={confirm}
                 onChange={(event) => setConfirm(event.target.value)}
+                placeholder="••••••••••••"
                 autoComplete="new-password"
-                placeholder="Repeat password"
               />
             </Field>
             {error ? <p className="text-sm text-error">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={busy}>
-              Update password ↗
+            <Button type="submit" className="w-full" disabled={isResettingPassword}>
+              {isResettingPassword ? "Updating password..." : "Update password ↗"}
             </Button>
           </form>
         </>
       ) : null}
 
       {step === "done" ? (
-        <>
-          <h1 className="mt-3 font-display text-[22px] sm:text-[26px] font-semibold leading-snug tracking-tight text-title">
+        <div className="text-center py-4">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+            ✓
+          </div>
+          <h1 className="font-display text-[22px] sm:text-[26px] font-semibold leading-snug tracking-tight text-title">
             Password updated
           </h1>
           <p className="mt-2 text-sm leading-6 text-copy">
-            You can sign in with your new password for {maskEmail(email)}.
+            Your password has been changed successfully. You can now sign in with your new password.
           </p>
           <div className="mt-6">
-            <Button href="/login" className="w-full">
-              Sign in ↗
-            </Button>
+            <Link href="/login" className="inline-block w-full">
+              <Button type="button" className="w-full">
+                Sign in now ↗
+              </Button>
+            </Link>
           </div>
-        </>
+        </div>
       ) : null}
-
-      <AuthLinks prompt="Remembered it?" href="/login" label="Sign in" />
     </div>
   );
 }

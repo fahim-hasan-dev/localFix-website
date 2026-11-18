@@ -13,6 +13,7 @@ import {
   FileCheck,
   KeyRound,
   LayoutDashboard,
+  LifeBuoy,
   MessageSquare,
   PlusCircle,
   ShieldCheck,
@@ -44,6 +45,7 @@ function getSidebarIcon(label: string): LucideIcon {
   if (norm.includes("request") || norm.includes("job") || norm.includes("lead")) return ClipboardList;
   if (norm.includes("message") || norm.includes("inbox")) return MessageSquare;
   if (norm.includes("saved") || norm.includes("favorite")) return Bookmark;
+  if (norm.includes("support")) return LifeBuoy;
   if (norm.includes("notification")) return Bell;
   if (norm.includes("review") || norm.includes("rating")) return Star;
   if (norm.includes("application") || norm.includes("verif") || norm.includes("credential")) return FileCheck;

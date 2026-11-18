@@ -155,6 +155,70 @@ function isWeeklyHours(value: unknown): value is Record<Weekday, unknown> {
   return WEEK_DAYS.every((day) => Boolean((value as Record<string, unknown>)[day.key]));
 }
 
+function fromApiDay(entry: unknown, fallback: DaySchedule): DaySchedule {
+  if (!entry || typeof entry !== "object") return cloneDay(fallback);
+  const raw = entry as {
+    isOpen?: boolean | string;
+    openTime?: string;
+    closeTime?: string;
+  };
+  if (raw.isOpen !== undefined || raw.openTime || raw.closeTime) {
+    const closed = raw.isOpen === false || raw.isOpen === "false";
+    return {
+      status: closed ? "closed" : "open",
+      slots: [{ open: raw.openTime || "8:00 AM", close: raw.closeTime || "6:00 PM" }],
+    };
+  }
+  return fromUnknownDay(entry, fallback);
+}
+
+/** Maps the API businessHours document. Returns null when the profile has no hours. */
+export function weeklyHoursFromApi(raw: unknown): WeeklyHours | null {
+  if (!raw || typeof raw !== "object") return null;
+  const record = raw as {
+    mode?: string;
+    allDays?: unknown;
+    days?: Record<string, unknown>;
+  };
+  const fallback = defaultWeeklyHours();
+  if (record.mode === "all_days" && record.allDays) {
+    const day = fromApiDay(record.allDays, fallback.monday);
+    return WEEK_DAYS.reduce((hours, item) => {
+      hours[item.key] = cloneDay(day);
+      return hours;
+    }, {} as WeeklyHours);
+  }
+  if (record.days && WEEK_DAYS.some((day) => record.days?.[day.key])) {
+    return WEEK_DAYS.reduce((hours, day) => {
+      hours[day.key] = fromApiDay(record.days?.[day.key], fallback[day.key]);
+      return hours;
+    }, {} as WeeklyHours);
+  }
+  if (isWeeklyHours(raw)) return normalizeWeeklyHours(raw);
+  return null;
+}
+
+export function hoursPayload(
+  hours: WeeklyHours,
+  mode: "all" | "custom",
+  emergency: boolean,
+) {
+  const toDay = (day: DaySchedule) => ({
+    isOpen: day.status === "open",
+    openTime: day.slots[0]?.open || "8:00 AM",
+    closeTime: day.slots[0]?.close || "6:00 PM",
+  });
+  const shared = toDay(hours.monday);
+  return {
+    mode: mode === "all" ? "all_days" : "customize",
+    allDays: shared,
+    days: Object.fromEntries(
+      WEEK_DAYS.map((day) => [day.key, mode === "all" ? shared : toDay(hours[day.key])]),
+    ),
+    emergencyDispatchAvailable: emergency,
+  };
+}
+
 export function normalizeWeeklyHours(raw: unknown): WeeklyHours {
   const fallback = defaultWeeklyHours();
   if (isWeeklyHours(raw)) {

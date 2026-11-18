@@ -15,6 +15,8 @@ import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { PasswordField } from "@/components/ui/password-field";
 import { cn } from "@/lib/cn";
+import { apiErrorMessage } from "@/services/client/form-data";
+import { useChangePasswordMutation } from "@/services/client/users-api";
 
 export function AccountPasswordForm() {
   const pathname = usePathname();
@@ -23,6 +25,7 @@ export function AccountPasswordForm() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [changePassword, { isLoading }] = useChangePasswordMutation();
 
   const profileHref = pathname.startsWith("/pro") ? "/pro/profile" : "/account/profile";
 
@@ -31,7 +34,7 @@ export function AccountPasswordForm() {
   const hasNumber = /\d/.test(next);
   const passwordsMatch = next.length > 0 && next === confirm;
 
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (current.length < 6) {
@@ -56,11 +59,21 @@ export function AccountPasswordForm() {
     }
 
     setError("");
-    setSaved(true);
-    setCurrent("");
-    setNext("");
-    setConfirm("");
-    setTimeout(() => setSaved(false), 5000);
+    try {
+      await changePassword({
+        currentPassword: current,
+        newPassword: next,
+        confirmPassword: confirm,
+      }).unwrap();
+      setSaved(true);
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      setTimeout(() => setSaved(false), 5000);
+    } catch (err) {
+      setSaved(false);
+      setError(apiErrorMessage(err, "Could not change your password."));
+    }
   }
 
   return (
@@ -205,8 +218,8 @@ export function AccountPasswordForm() {
           )}
 
           <div className="pt-3 border-t border-line/60 flex items-center justify-start">
-            <Button type="submit" size="sm">
-              Save New Password
+            <Button type="submit" size="sm" disabled={isLoading}>
+              {isLoading ? "Saving..." : "Save New Password"}
             </Button>
           </div>
         </form>

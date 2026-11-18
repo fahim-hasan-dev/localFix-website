@@ -41,12 +41,14 @@ import { WorkOrderReceipt } from "@/components/shared/work-order-receipt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
+import { canHomeownerCancelBooking, checkoutUrlFrom, errorMessage } from "@/lib/booking-view";
 import {
   cleanJobDescription,
   isSamePro,
   jobRequestFacts,
   normalizeProId,
   paymentMethodLabels,
+  selectablePaymentMethods,
   selectBooking,
   selectChangeRequests,
   selectCompletion,
@@ -54,17 +56,23 @@ import {
   selectQuotesForJob,
   splitJobDescription,
 } from "@/lib/marketplace";
-import { getPro } from "@/Mockdata";
+import { toApiPaymentMethod } from "@/lib/marketplace-mappers";
+import { useDeleteJobRequestMutation, useUpdateJobMutation } from "@/services/client/jobs-api";
+import {
+  useCancelBookingMutation,
+  useCompleteBookingWorkMutation,
+  useConfirmBookingCompletionMutation,
+  useCreateReviewMutation,
+  useMarkBookingOnTheWayMutation,
+  useRescheduleBookingMutation,
+  useStartBookingWorkMutation,
+} from "@/services/client/marketplace-api";
 import { getAvatar } from "@/lib/avatars";
+import { useResolvedPro } from "@/hooks/use-resolved-pro";
 import { cn } from "@/lib/cn";
 import {
-  addQuote,
-  confirmBooking,
   deleteJob,
-  homeownerConfirmComplete,
   proMarkComplete,
-  requestReschedule,
-  setPaymentArrangement,
 } from "@/redux/slices/marketplaceSlice";
 import {
   addNotification,
@@ -153,11 +161,22 @@ export function RequestDetail({
   const completion = useAppSelector((state) => selectCompletion(state, id));
   const storedPhotos = useAppSelector((state) => state.features.jobPhotos[id] ?? []);
   const user = useAppSelector((state) => state.auth.user);
-  const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
+  const [deleteJobRequest] = useDeleteJobRequestMutation();
+  const [updateJob, { isLoading: savingEdit }] = useUpdateJobMutation();
+  const [cancelBooking] = useCancelBookingMutation();
+  const [markOnTheWay] = useMarkBookingOnTheWayMutation();
+  const [startWork] = useStartBookingWorkMutation();
+  const [completeWork] = useCompleteBookingWorkMutation();
+  const [rescheduleBooking] = useRescheduleBookingMutation();
+  const [confirmCompletion] = useConfirmBookingCompletionMutation();
+  const [createReview] = useCreateReviewMutation();
+  const myProId = normalizeProId(user?.role === "pro" ? user?.id : "") || "";
   const isProView = viewer === "pro";
   const marketplaceReady = useAppSelector((state) => state.marketplace.hydrated);
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[id]);
   const hiredQuote = quotes.find((quote) => quote.id === hiredQuoteId);
+  const requestedPro = useResolvedPro(job?.requestedProId);
+  const hiredPro = useResolvedPro(hiredQuote?.proId || booking?.proId);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [reviewRating, setReviewRating] = useState<number>(0);
   const [isEditingReview, setIsEditingReview] = useState(false);
@@ -166,36 +185,44 @@ export function RequestDetail({
     job && ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm"].includes(job.status)
   );
 
-  function handleConfirmCancel() {
-    if (!job) return;
+  const bookingTarget = booking?.id || id;
+
+  async function runWorkflow(action: () => Promise<unknown>, success: string) {
+    setWorking(true);
+    setWorkflowError("");
+    try {
+      const result = await action();
+      setSavedMsg(success);
+      return result;
+    } catch (error) {
+      setSavedMsg("");
+      setWorkflowError(errorMessage(error, "That update could not be saved."));
+      return null;
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleConfirmCancel() {
+    if (!job || working) return;
     if (isJobBooked) {
-      dispatch(setJobStatus({ jobId: job.id, status: "cancelled" }));
-      dispatch(
-        addNotification({
-          title: "Booking Cancelled",
-          body: `Your booking for "${job.title}" has been cancelled.`,
-          href: "/account/bookings",
-          createdAt: new Date().toISOString(),
-          role: "homeowner",
-        }),
+      const result = await runWorkflow(
+        () => cancelBooking(bookingTarget).unwrap(),
+        "Booking cancelled.",
       );
-      if (hiredQuote) {
-        dispatch(
-          addNotification({
-            title: "Booking Cancelled by Homeowner",
-            body: `${job.homeownerName} has cancelled the booking for "${job.title}".`,
-            href: `/pro/jobs/${job.id}`,
-            createdAt: new Date().toISOString(),
-            role: "pro",
-          }),
-        );
-      }
-      setSavedMsg("Booking cancelled.");
+      if (!result) return;
+      dispatch(setJobStatus({ jobId: job.id, status: "cancelled" }));
       setShowCancelModal(false);
-    } else {
-      dispatch(deleteJob(job.id));
-      dispatch(
-        addNotification({
+      return;
+    }
+    const result = await runWorkflow(
+      () => deleteJobRequest(job.id).unwrap(),
+      "Request deleted.",
+    );
+    if (!result) return;
+    dispatch(deleteJob(job.id));
+    dispatch(
+      addNotification({
           title: "Request Deleted",
           body: `Your service request "${job.title}" has been deleted.`,
           href: "/account",
@@ -204,11 +231,23 @@ export function RequestDetail({
         }),
       );
       router.push(backHref);
-    }
   }
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [reviewBody, setReviewBody] = useState("");
   const [savedMsg, setSavedMsg] = useState("");
+  const [workflowError, setWorkflowError] = useState("");
+  const [working, setWorking] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editBudget, setEditBudget] = useState("");
+  const [editZip, setEditZip] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editState, setEditState] = useState("");
+  const [editStreet, setEditStreet] = useState("");
+  const [editTimeframe, setEditTimeframe] = useState("");
+  const [editErrors, setEditErrors] = useState<{ headline?: string; description?: string; zip?: string }>({});
+  const [scheduleErrors, setScheduleErrors] = useState<{ date?: string; window?: string }>({});
   const [rescheduleDate, setRescheduleDate] = useState(() => booking?.scheduledDate ?? "");
   const [rescheduleWindow, setRescheduleWindow] = useState(
     () => booking?.arrivalWindow || booking?.scheduledTime || "10:00 AM – 12:00 PM (Late Morning)"
@@ -219,7 +258,7 @@ export function RequestDetail({
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showProCompleteModal, setShowProCompleteModal] = useState(false);
   const [proCompletionNote, setProCompletionNote] = useState("");
-  const [settlePaymentMethod, setSettlePaymentMethod] = useState<DirectPaymentMethod>("cash");
+  const [settlePaymentMethod, setSettlePaymentMethod] = useState("cash");
   const [settlePaid, setSettlePaid] = useState(false);
   const [settleInspected, setSettleInspected] = useState(true);
   const [arrangePay, setArrangePay] = useState<DirectPaymentMethod>(() => booking?.paymentArrangement ?? "cash");
@@ -271,11 +310,24 @@ export function RequestDetail({
     }
   }, [currentDisplayRating]);
 
-  function handleSaveReview() {
+  async function handleSaveReview() {
     if (reviewRating === 0) return;
     const cleanBody =
       reviewBody.trim() ||
       "Great service, arrived on time and completed the work cleanly.";
+
+    if (!existingReview) {
+      const posted = await runWorkflow(
+        () =>
+          createReview({
+            bookingId: bookingTarget,
+            rating: reviewRating,
+            feedback: cleanBody,
+          }).unwrap(),
+        "Review submitted.",
+      );
+      if (!posted) return;
+    }
 
     if (existingReview) {
       dispatch(
@@ -290,7 +342,7 @@ export function RequestDetail({
       dispatch(
         addReview({
           jobId: id,
-          proId: hiredQuote?.proId ?? "pro-1",
+          proId: hiredQuote?.proId ?? myProId,
           author: job?.homeownerName ?? "Homeowner",
           rating: reviewRating,
           body: cleanBody || "Excellent professional service.",
@@ -323,8 +375,50 @@ export function RequestDetail({
     [quotes],
   );
 
-  const requestedPro = job?.requestedProId ? getPro(job.requestedProId) : null;
+  function openEdit() {
+    if (!job) return;
+    setEditTitle(job.title);
+    setEditDescription(cleanJobDescription(job.description, job.intakeAnswers) || job.description);
+    setEditBudget(job.budget || "");
+    setEditZip(job.zip);
+    setEditCity(job.city);
+    setEditState(job.state);
+    setEditStreet(job.street || "");
+    setEditTimeframe(job.timeframeLabel || "");
+    setEditing(true);
+    setWorkflowError("");
+  }
 
+  async function saveEdit() {
+    if (!job) return;
+    const nextErrors: { headline?: string; description?: string; zip?: string } = {};
+    if (!editTitle.trim()) nextErrors.headline = "Enter a headline.";
+    if (!editDescription.trim()) nextErrors.description = "Enter a description.";
+    if (!editZip.trim()) nextErrors.zip = "Enter the ZIP code.";
+    setEditErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+    const budget = Number(String(editBudget).replace(/[^0-9.]/g, ""));
+    const result = await runWorkflow(
+      () =>
+        updateJob({
+          id: job.id,
+          data: {
+            headline: editTitle.trim(),
+            description: editDescription.trim(),
+            timeframe: editTimeframe.trim() || undefined,
+            ...(Number.isFinite(budget) && budget > 0 ? { estimatedBudget: budget } : {}),
+            serviceLocation: {
+              zipCode: editZip.trim(),
+              address: editStreet.trim() || undefined,
+              city: editCity.trim() || undefined,
+              state: editState.trim() || undefined,
+            },
+          },
+        }).unwrap(),
+      "Request updated.",
+    );
+    if (result) setEditing(false);
+  }
 
   if (!marketplaceReady) {
     return (
@@ -356,11 +450,6 @@ export function RequestDetail({
   }
 
   const photosForJob = storedPhotos.length ? storedPhotos : job.photos ?? [];
-  const hiredPro = hiredQuote
-    ? getPro(hiredQuote.proId)
-    : booking?.proId
-      ? getPro(booking.proId)
-      : null;
 
   const isHiredPro = Boolean(
     isProView &&
@@ -423,7 +512,10 @@ export function RequestDetail({
     if (job.description && job.description.trim().length > 0) {
       return job.description.trim();
     }
-    return `${job.title} service requested for property in ${job.city || "Austin"}, ${job.state || "TX"} (${job.zip}).`;
+    const locationBits = [job.city, job.state, job.zip].filter(Boolean).join(", ");
+    return locationBits
+      ? `${job.title} service requested for property in ${locationBits}.`
+      : job.title;
   })();
 
   return (
@@ -446,7 +538,18 @@ export function RequestDetail({
               />
             </label>
           )}
-          {!isProView && job.status !== "completed" && job.status !== "cancelled" && (
+          {!isProView && !isJobBooked && job.status !== "completed" && job.status !== "cancelled" && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => (editing ? setEditing(false) : openEdit())}
+              className="rounded-full border border-line text-xs font-semibold"
+            >
+              {editing ? "Close edit" : "Edit request"}
+            </Button>
+          )}
+          {!isProView && !isJobBooked && job.status !== "completed" && job.status !== "cancelled" ? (
             <Button
               type="button"
               variant="ghost"
@@ -454,19 +557,10 @@ export function RequestDetail({
               onClick={() => setShowCancelModal(true)}
               className="rounded-full text-xs font-semibold text-muted hover:text-error hover:bg-error/10 gap-1.5 cursor-pointer px-3"
             >
-              {isJobBooked ? (
-                <>
-                  <Ban className="h-3.5 w-3.5 text-error" />
-                  <span className="text-error font-medium">Cancel Booking</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-3.5 w-3.5 text-error" />
-                  <span className="text-error font-medium">Delete Request</span>
-                </>
-              )}
+              <Trash2 className="h-3.5 w-3.5 text-error" />
+              <span className="text-error font-medium">Delete Request</span>
             </Button>
-          )}
+          ) : null}
           {isProView ? (
             <Button
               href={`/pro/messages?dm=${job.id}`}
@@ -501,19 +595,43 @@ export function RequestDetail({
             </div>
             <h1 className="font-display text-xl font-semibold text-title sm:text-2xl">{job.title}</h1>
             <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
-              <span className="inline-flex items-center gap-1.5 font-medium text-copy">
-                <MapPin className="h-3.5 w-3.5 text-muted shrink-0" />
-                <span>{job.city}, {job.state} {job.zip}</span>
-              </span>
+              {[job.street, job.city, job.state, job.zip].some(Boolean) ? (
+                <span className="inline-flex items-center gap-1.5 font-medium text-copy">
+                  <MapPin className="h-3.5 w-3.5 text-muted shrink-0" />
+                  <span>
+                    {[job.street, [job.city, job.state].filter(Boolean).join(", "), job.zip]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </span>
+              ) : null}
               {job.postedAt ? (
                 <span className="inline-flex items-center gap-1.5 font-medium text-copy">
                   <CalendarDays className="h-3.5 w-3.5 text-muted shrink-0" />
-                  <span>Posted {job.postedAt}</span>
+                  <span>
+                    Posted{" "}
+                    {Number.isNaN(Date.parse(job.postedAt))
+                      ? job.postedAt
+                      : new Date(job.postedAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                  </span>
                 </span>
               ) : null}
               {isProView ? (
                 <span className="inline-flex items-center gap-1.5 font-medium text-copy">
-                  <User className="h-3.5 w-3.5 text-muted shrink-0" />
+                  {job.homeownerAvatar ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={job.homeownerAvatar}
+                      alt=""
+                      className="h-5 w-5 rounded-full object-cover border border-line/70"
+                    />
+                  ) : (
+                    <User className="h-3.5 w-3.5 text-muted shrink-0" />
+                  )}
                   <span>Client: {job.homeownerName}</span>
                 </span>
               ) : null}
@@ -636,8 +754,10 @@ export function RequestDetail({
               type="button"
               className="text-xs font-semibold text-primary hover:underline cursor-pointer"
               onClick={() => {
-                dispatch(setJobStatus({ jobId: id, status: "getting_quotes" }));
-                setSavedMsg("Reposted.");
+                void runWorkflow(async () => {
+                  await updateJob({ id, data: { status: "awaiting_quotes" } }).unwrap();
+                  dispatch(setJobStatus({ jobId: id, status: "getting_quotes" }));
+                }, "Request reposted.");
               }}
             >
               Repost Request
@@ -645,6 +765,71 @@ export function RequestDetail({
           </div>
         ) : null}
         {savedMsg ? <p className="mt-2 text-xs font-medium text-success">{savedMsg}</p> : null}
+        {workflowError ? <p className="mt-2 text-xs font-medium text-error">{workflowError}</p> : null}
+        {editing && !isProView ? (
+          <Card className="mt-4 rounded-2xl border border-line/80 bg-white p-4 sm:p-5 space-y-3">
+            <h2 className="font-display text-sm font-semibold text-title">Edit request</h2>
+            <Field label="Headline *" error={editErrors.headline}>
+              <TextField
+                value={editTitle}
+                aria-invalid={Boolean(editErrors.headline)}
+                className={editErrors.headline ? "border-error focus:border-error" : undefined}
+                onChange={(event) => {
+                  setEditTitle(event.target.value);
+                  setEditErrors((prev) => ({ ...prev, headline: undefined }));
+                }}
+              />
+            </Field>
+            <Field label="Description *" error={editErrors.description}>
+              <TextArea
+                value={editDescription}
+                rows={4}
+                aria-invalid={Boolean(editErrors.description)}
+                className={editErrors.description ? "border-error focus:border-error" : undefined}
+                onChange={(event) => {
+                  setEditDescription(event.target.value);
+                  setEditErrors((prev) => ({ ...prev, description: undefined }));
+                }}
+              />
+            </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Timeframe">
+                <TextField value={editTimeframe} onChange={(event) => setEditTimeframe(event.target.value)} />
+              </Field>
+              <Field label="Budget">
+                <TextField value={editBudget} onChange={(event) => setEditBudget(event.target.value)} />
+              </Field>
+              <Field label="Street">
+                <TextField value={editStreet} onChange={(event) => setEditStreet(event.target.value)} />
+              </Field>
+              <Field label="City">
+                <TextField value={editCity} onChange={(event) => setEditCity(event.target.value)} />
+              </Field>
+              <Field label="State">
+                <TextField value={editState} onChange={(event) => setEditState(event.target.value)} />
+              </Field>
+              <Field label="ZIP *" error={editErrors.zip}>
+                <TextField
+                  value={editZip}
+                  aria-invalid={Boolean(editErrors.zip)}
+                  className={editErrors.zip ? "border-error focus:border-error" : undefined}
+                  onChange={(event) => {
+                    setEditZip(event.target.value);
+                    setEditErrors((prev) => ({ ...prev, zip: undefined }));
+                  }}
+                />
+              </Field>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+              <Button type="button" size="sm" disabled={savingEdit || working} onClick={saveEdit}>
+                {savingEdit || working ? "Saving…" : "Save changes"}
+              </Button>
+            </div>
+          </Card>
+        ) : null}
       </div>
 
       {/* LIVE OPERATIONAL STATUS CARDS (Only visible to Homeowner or the Assigned Hired Contractor) */}
@@ -924,17 +1109,27 @@ export function RequestDetail({
                   ) : null}
                 </div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field label={booking.scheduledDate ? "New Date" : "Appointment date"}>
+                  <Field label={booking.scheduledDate ? "New date *" : "Appointment date *"} error={scheduleErrors.date}>
                     <TextField
                       type="date"
                       value={rescheduleDate}
-                      onChange={(e) => setRescheduleDate(e.target.value)}
+                      aria-invalid={Boolean(scheduleErrors.date)}
+                      className={scheduleErrors.date ? "border-error focus:border-error" : undefined}
+                      onChange={(e) => {
+                        setRescheduleDate(e.target.value);
+                        setScheduleErrors((prev) => ({ ...prev, date: undefined }));
+                      }}
                     />
                   </Field>
-                  <Field label="2-hour arrival window">
+                  <Field label="Arrival window *" error={scheduleErrors.window}>
                     <NativeSelect
                       value={rescheduleWindow}
-                      onChange={(e) => setRescheduleWindow(e.target.value)}
+                      aria-invalid={Boolean(scheduleErrors.window)}
+                      className={scheduleErrors.window ? "border-error focus:border-error" : undefined}
+                      onChange={(e) => {
+                        setRescheduleWindow(e.target.value);
+                        setScheduleErrors((prev) => ({ ...prev, window: undefined }));
+                      }}
                     >
                       {arrivalWindowsList.map((win) => (
                         <option key={win} value={win}>
@@ -946,10 +1141,10 @@ export function RequestDetail({
                   {!booking.paidAt ? (
                     <Field label="Agreed payment method">
                       <NativeSelect
-                        value={booking.paymentArrangement ?? arrangePay}
+                        value={(booking.paymentArrangement ?? arrangePay) === "stripe" ? "stripe" : "cash"}
                         onChange={(e) => setArrangePay(e.target.value as DirectPaymentMethod)}
                       >
-                        {Object.entries(paymentMethodLabels).map(([value, label]) => (
+                        {selectablePaymentMethods.map(({ value, label }) => (
                           <option key={value} value={value}>
                             {label}
                           </option>
@@ -974,63 +1169,23 @@ export function RequestDetail({
                     type="button"
                     size="sm"
                     variant={booking.scheduledDate ? "ghost" : undefined}
-                    disabled={!rescheduleDate}
+                    disabled={working}
                     onClick={() => {
-                      const chosenPay = booking.paymentArrangement ?? arrangePay;
-                      if (!booking.scheduledDate && hiredQuote) {
-                        dispatch(
-                          confirmBooking({
-                            jobId: id,
-                            quoteId: hiredQuote.id,
-                            proId: hiredQuote.proId,
-                            agreedPrice: hiredQuote.amount,
-                            scheduledDate: rescheduleDate,
-                            scheduledTime: rescheduleWindow,
-                            arrivalWindow: rescheduleWindow,
-                            scopeSnapshot: hiredQuote.scope,
-                            paymentArrangement: chosenPay,
-                          }),
-                        );
-                        dispatch(setJobStatus({ jobId: id, status: "scheduled" }));
-                        dispatch(
-                          addNotification({
-                            title: "Booking confirmed",
-                            body: `${rescheduleDate} · pay the professional directly. Local Fix does not collect this.`,
-                            href: `/account/jobs/${id}`,
-                            createdAt: "Just now",
-                            role: "homeowner",
-                          }),
-                        );
-                        dispatch(
-                          addNotification({
-                            title: "Booking confirmed",
-                            body: `Schedule locked for ${rescheduleDate}.`,
-                            href: `/pro/jobs/${id}`,
-                            createdAt: "Just now",
-                            role: "pro",
-                          }),
-                        );
-                        setSavedMsg("Booking confirmed. Pay the professional directly.");
-                        return;
-                      }
-                      dispatch(
-                        requestReschedule({
-                          jobId: id,
-                          scheduledDate: rescheduleDate,
-                          scheduledTime: rescheduleWindow,
-                          arrivalWindow: rescheduleWindow,
-                        }),
-                      );
-                      if (chosenPay !== booking.paymentArrangement) {
-                        dispatch(
-                          setPaymentArrangement({
-                            jobId: id,
-                            paymentArrangement: chosenPay,
-                          }),
-                        );
-                      }
-                      setSavedMsg("Appointment rescheduled successfully.");
-                      setShowRescheduleForm(false);
+                      const nextErrors: { date?: string; window?: string } = {};
+                      if (!rescheduleDate) nextErrors.date = "Choose an appointment date.";
+                      if (!rescheduleWindow.trim()) nextErrors.window = "Choose an arrival window.";
+                      setScheduleErrors(nextErrors);
+                      if (Object.keys(nextErrors).length) return;
+                      const chosenPay = (booking.paymentArrangement ?? arrangePay) === "stripe" ? "stripe" : "cash";
+                      void runWorkflow(async () => {
+                        await rescheduleBooking({
+                          id: bookingTarget,
+                          appointmentDate: rescheduleDate,
+                          arrivalTimeWindow: rescheduleWindow,
+                          ...(chosenPay ? { paymentMethod: toApiPaymentMethod(chosenPay) } : {}),
+                        }).unwrap();
+                        setShowRescheduleForm(false);
+                      }, "Appointment updated.");
                     }}
                     className="rounded-full border border-line"
                   >
@@ -1044,23 +1199,17 @@ export function RequestDetail({
           {/* Pro & Customer Action Buttons */}
           <div className="mt-5 flex flex-wrap gap-2.5 border-t border-line/60 pt-4">
             {/* Pro Operational Actions */}
-            {isProView && job.status === "scheduled" ? (
+            {isProView && (job.status === "scheduled" || job.status === "hired") ? (
               <>
                 <Button
                   type="button"
                   size="sm"
+                  disabled={working}
                   onClick={() => {
-                    dispatch(setJobStatus({ jobId: id, status: "en_route" }));
-                    dispatch(
-                      addNotification({
-                        title: "Contractor en route",
-                        body: `${hiredPro?.name ?? "Your contractor"} has departed and is en route to your service location.`,
-                        href: `/account/jobs/${id}`,
-                        createdAt: "Just now",
-                        role: "homeowner",
-                      }),
-                    );
-                    setSavedMsg("Status updated: En Route. Homeowner notified.");
+                    void runWorkflow(async () => {
+                      await markOnTheWay(bookingTarget).unwrap();
+                      dispatch(setJobStatus({ jobId: id, status: "en_route" }));
+                    }, "Status updated: on the way.");
                   }}
                   className="rounded-full gap-1.5"
                 >
@@ -1071,18 +1220,12 @@ export function RequestDetail({
                   type="button"
                   size="sm"
                   variant="ghost"
+                  disabled={working}
                   onClick={() => {
-                    dispatch(setJobStatus({ jobId: id, status: "in_progress" }));
-                    dispatch(
-                      addNotification({
-                        title: "Work started on-site",
-                        body: `${hiredPro?.name ?? "Your contractor"} has arrived on-site and started the diagnostic/repair.`,
-                        href: `/account/jobs/${id}`,
-                        createdAt: "Just now",
-                        role: "homeowner",
-                      }),
-                    );
-                    setSavedMsg("Marked in progress.");
+                    void runWorkflow(async () => {
+                      await startWork(bookingTarget).unwrap();
+                      dispatch(setJobStatus({ jobId: id, status: "in_progress" }));
+                    }, "Work started.");
                   }}
                   className="rounded-full gap-1.5 border border-line"
                 >
@@ -1096,18 +1239,12 @@ export function RequestDetail({
               <Button
                 type="button"
                 size="sm"
+                disabled={working}
                 onClick={() => {
-                  dispatch(setJobStatus({ jobId: id, status: "in_progress" }));
-                  dispatch(
-                    addNotification({
-                      title: "Contractor arrived on-site",
-                      body: `${hiredPro?.name ?? "Your contractor"} arrived and started working.`,
-                      href: `/account/jobs/${id}`,
-                      createdAt: "Just now",
-                      role: "homeowner",
-                    }),
-                  );
-                  setSavedMsg("Marked in progress.");
+                  void runWorkflow(async () => {
+                    await startWork(bookingTarget).unwrap();
+                    dispatch(setJobStatus({ jobId: id, status: "in_progress" }));
+                  }, "Work started.");
                 }}
                 className="rounded-full gap-1.5"
               >
@@ -1116,7 +1253,7 @@ export function RequestDetail({
               </Button>
             ) : null}
 
-            {isProView && (job.status === "in_progress" || job.status === "en_route" || job.status === "scheduled") && !completion?.proMarkedAt ? (
+            {isProView && (job.status === "in_progress" || job.status === "en_route") && !completion?.proMarkedAt ? (
               <Button
                 type="button"
                 size="sm"
@@ -1128,8 +1265,8 @@ export function RequestDetail({
               </Button>
             ) : null}
 
-            {/* Homeowner Completion Action */}
-            {canHire && job.status === "awaiting_confirm" ? (
+            {/* Homeowner Completion Action — opens the settlement modal. */}
+            {canHire && (job.status === "awaiting_confirm" || Boolean(completion?.proMarkedAt && !completion.homeownerConfirmedAt)) ? (
               <Button
                 type="button"
                 size="sm"
@@ -1141,8 +1278,8 @@ export function RequestDetail({
               </Button>
             ) : null}
 
-            {/* Homeowner Cancel Booking Action */}
-            {canHire && job.status !== "completed" && job.status !== "cancelled" && isJobBooked ? (
+            {/* Cancel is only allowed while the booking is still scheduled. */}
+            {canHire && isJobBooked && canHomeownerCancelBooking(job.status) && !completion?.proMarkedAt ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -1183,75 +1320,11 @@ export function RequestDetail({
               ) : null}
             </div>
             {sortedQuotes.length === 0 ? (
-              requestedPro ? (
-                <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-line/80 bg-white p-3.5 sm:px-4 sm:py-3.5 shadow-xs">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Link
-                      href={`/browse-pros/${requestedPro.id}`}
-                      title={`View ${requestedPro.name}'s profile`}
-                      className="relative block h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-black/5 transition hover:ring-2 hover:ring-primary/40"
-                    >
-                      {requestedPro.avatar || getAvatar(requestedPro.name, requestedPro.id) ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={requestedPro.avatar || getAvatar(requestedPro.name, requestedPro.id)}
-                          alt={requestedPro.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <span className="grid h-full w-full place-items-center bg-title text-sm font-semibold text-white">
-                          {initials(requestedPro.name)}
-                        </span>
-                      )}
-                    </Link>
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/browse-pros/${requestedPro.id}`}
-                        className="truncate font-display text-sm font-bold text-title hover:text-primary transition-colors hover:underline block"
-                      >
-                        {requestedPro.name}
-                      </Link>
-                      <p className="mt-0.5 text-xs text-muted flex items-center gap-1.5">
-                        <span>★ {requestedPro.rating.toFixed(1)}</span>
-                        <span>•</span>
-                        <span>Starting at ${requestedPro.startingPrice}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between sm:justify-end gap-3 border-t border-line/50 pt-2.5 sm:border-0 sm:pt-0">
-                    <span className="font-display text-base font-bold text-title">
-                      ${requestedPro.startingPrice || 140} fixed
-                    </span>
-                    <Button
-                      onClick={() => {
-                        dispatch(
-                          addQuote({
-                            jobId: job.id,
-                            proId: requestedPro.id,
-                            priceType: "fixed",
-                            amount: requestedPro.startingPrice || 140,
-                            scope: `Full service for ${job.title} based on your project description.`,
-                            availability: job.urgency === "asap" ? "Same day / tomorrow" : "Next 1–3 business days",
-                            estimatedDuration: "2–3 hours",
-                            proposedSchedule: "Tomorrow 10:00 AM – 12:00 PM",
-                            paymentTerms: "Direct to pro upon job completion.",
-                            warranty: "30-day workmanship guarantee",
-                            materialsIncluded: true,
-                            notes: "I have reviewed your request and would be glad to help.",
-                          }),
-                        );
-                      }}
-                      size="sm"
-                      className="rounded-full text-xs font-semibold shadow-2xs"
-                    >
-                      View Quotation →
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-3 text-sm text-muted">Quotes from matched pros will show here.</p>
-              )
+              <p className="mt-3 text-sm text-muted">
+                {requestedPro
+                  ? `Waiting for a quotation from ${requestedPro.name}.`
+                  : "Quotes from matched pros will show here."}
+              </p>
             ) : (
               <div className="mt-3 space-y-2">
                 {sortedQuotes.map((quote) => (
@@ -1265,6 +1338,16 @@ export function RequestDetail({
             )}
           </Card>
         </>
+      ) : null}
+
+      {/* Live reviews are submitted from the booking detail page (booking API id isn't kept in local state). */}
+      {job.status === "completed" && canHire && !isProView && booking ? (
+        <p className="text-xs text-muted">
+          <Link href="/account/bookings" className="font-semibold text-primary hover:underline">
+            Leave a review on your booking
+          </Link>{" "}
+          to submit it to the contractor&apos;s public profile.
+        </p>
       ) : null}
 
       {/* COMPLETED STATUS: HOMEOWNER & PRO VERIFIED REVIEW REFLECTION */}
@@ -1580,22 +1663,16 @@ export function RequestDetail({
             </div>
 
             <div className="mt-4 space-y-3">
-              <Field label="Direct Payment Method Used">
+              <Field label="Payment method" hint="Optional. Defaults to cash if you leave the current choice.">
                 <NativeSelect
                   value={settlePaymentMethod}
-                  onChange={(e) =>
-                    setSettlePaymentMethod(
-                      e.target.value as "zelle" | "card" | "cash" | "check" | "bank_transfer",
-                    )
-                  }
+                  onChange={(e) => setSettlePaymentMethod(e.target.value)}
                 >
-                  <option value="cash">Cash</option>
-                  <option value="bank_transfer">Bank transfer</option>
-                  <option value="mobile_banking">Mobile banking</option>
-                  <option value="zelle">Zelle / instant transfer</option>
-                  <option value="card">Card paid to the professional</option>
-                  <option value="check">Check</option>
-                  <option value="other">Other agreed method</option>
+                  {selectablePaymentMethods.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </NativeSelect>
               </Field>
               <label className="flex items-start gap-2.5 text-xs text-copy cursor-pointer">
@@ -1605,9 +1682,7 @@ export function RequestDetail({
                   onChange={(e) => setSettlePaid(e.target.checked)}
                   className="mt-0.5 rounded border-line text-primary focus:ring-primary"
                 />
-                <span>
-                  I paid the professional directly using this method. Leave unchecked if payment has not happened yet.
-                </span>
+                <span>I paid the professional directly. Optional.</span>
               </label>
 
               <label className="flex items-start gap-2.5 pt-1 text-xs text-copy cursor-pointer">
@@ -1617,9 +1692,7 @@ export function RequestDetail({
                   onChange={(e) => setSettleInspected(e.target.checked)}
                   className="mt-0.5 rounded border-line text-primary focus:ring-primary"
                 />
-                <span>
-                  I have inspected the finished work, tested all repaired fixtures, and confirm 100% satisfaction under the Local Fix Workmanship Guarantee.
-                </span>
+                <span>I inspected the work and I am satisfied. Optional.</span>
               </label>
             </div>
 
@@ -1635,28 +1708,25 @@ export function RequestDetail({
               <Button
                 type="button"
                 size="sm"
-                disabled={!settleInspected}
+                disabled={working}
                 onClick={() => {
-                  dispatch(
-                    homeownerConfirmComplete({
-                      jobId: id,
-                      paymentMethod: settlePaymentMethod,
-                      markPaid: settlePaid,
-                    }),
-                  );
-                  dispatch(setJobStatus({ jobId: id, status: "completed" }));
-                  dispatch(
-                    addNotification({
-                      title: "Job completed & settled",
-                      body: `${job.homeownerName} confirmed the work${settlePaid ? ` and recorded a direct ${settlePaymentMethod.replace("_", " ")} payment` : ""}. Local Fix did not collect funds.`,
-                      href: `/pro/jobs/${id}`,
-                      createdAt: "Just now",
-                      role: "pro",
-                    }),
-                  );
-                  setShowSettleModal(false);
-                  setShowReceiptModal(true);
-                  setSavedMsg("Completion confirmed! Your official receipt is ready.");
+                  void runWorkflow(async () => {
+                    const result = await confirmCompletion({
+                      id: bookingTarget,
+                      paymentMethod: toApiPaymentMethod(settlePaymentMethod),
+                      isPaidDirectly: settlePaymentMethod === "stripe" ? false : settlePaid,
+                      isSatisfactionConfirmed: settleInspected,
+                    }).unwrap();
+                    const checkout = checkoutUrlFrom(result);
+                    if (checkout) {
+                      window.location.assign(checkout);
+                      return result;
+                    }
+                    dispatch(setJobStatus({ jobId: id, status: "completed" }));
+                    setShowSettleModal(false);
+                    setShowReceiptModal(true);
+                    return result;
+                  }, settlePaymentMethod === "stripe" ? "Opening secure checkout…" : "Completion confirmed.");
                 }}
                 className="rounded-full font-semibold"
               >
@@ -1716,25 +1786,22 @@ export function RequestDetail({
               <Button
                 type="button"
                 size="sm"
+                disabled={working}
                 onClick={() => {
-                  dispatch(
-                    proMarkComplete({
-                      jobId: id,
-                      completionNotes: proCompletionNote.trim() || undefined,
-                    }),
-                  );
-                  dispatch(setJobStatus({ jobId: id, status: "awaiting_confirm" }));
-                  dispatch(
-                    addNotification({
-                      title: "Work marked complete",
-                      body: `${hiredPro?.name ?? "Contractor"} finished the job. Inspect and confirm completion to settle.`,
-                      href: `/account/jobs/${id}`,
-                      createdAt: "Just now",
-                      role: "homeowner",
-                    }),
-                  );
-                  setShowProCompleteModal(false);
-                  setSavedMsg("Work marked complete. Waiting for homeowner inspection & confirmation.");
+                  void runWorkflow(async () => {
+                    await completeWork({
+                      id: bookingTarget,
+                      completionNote: proCompletionNote.trim(),
+                    }).unwrap();
+                    dispatch(
+                      proMarkComplete({
+                        jobId: id,
+                        completionNotes: proCompletionNote.trim() || undefined,
+                      }),
+                    );
+                    dispatch(setJobStatus({ jobId: id, status: "awaiting_confirm" }));
+                    setShowProCompleteModal(false);
+                  }, "Work marked complete. Waiting for the homeowner to confirm.");
                 }}
                 className="rounded-full font-semibold"
               >

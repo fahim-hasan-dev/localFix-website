@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -20,8 +20,25 @@ import { Button } from "@/components/ui/button";
 import { TextArea } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
 import { useRoleAccess } from "@/hooks/use-role-access";
-import { getPro, threads as seedThreads } from "@/Mockdata";
 import { getAvatar } from "@/lib/avatars";
+import { mapProfessional } from "@/lib/api-mappers";
+import { errorMessage } from "@/lib/booking-view";
+import {
+  mapChatMessage,
+  mapChatThread,
+  unwrapChats,
+  type ApiChatMessage,
+} from "@/lib/marketplace-mappers";
+import { useAppSelector } from "@/redux/hooks";
+import { useGetProfessionalQuery } from "@/services/client/catalog-api";
+import {
+  useCreateChatMutation,
+  useGetChatsQuery,
+  useGetMessagesQuery,
+  useMarkChatReadMutation,
+  useSendMessageMutation,
+} from "@/services/client/engagement-api";
+import { mediaUrl } from "@/utils/mediaUrl";
 import type { ChatMessage, MessageThread, Professional } from "@/types";
 
 type PendingFile = {
@@ -46,146 +63,253 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatTime(value: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const sameDay = date.toDateString() === new Date().toDateString();
+  return sameDay
+    ? date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 function previewLine(thread: MessageThread, role: "homeowner" | "pro") {
   const mine = role === "homeowner" ? "homeowner" : "pro";
-  const who = thread.lastSender === mine ? "You" : role === "homeowner" ? thread.otherParty : "Maya Chen";
+  const who = thread.lastSender === mine ? "You" : thread.otherParty;
   return `${who}: ${thread.lastMessage}`;
 }
 
-function buildDirectThread(proId: string): MessageThread | null {
-  const pro = getPro(proId);
-  if (!pro) return null;
-  const threadId = `dm-${pro.id}`;
-  return {
-    id: threadId,
-    jobId: `dm:${pro.id}`,
-    jobTitle: `${pro.trade} Inquiry & Estimate`,
-    otherParty: pro.name,
-    proId: pro.id,
-    unread: 0,
-    lastMessage: "Say hello and share photos of the job.",
-    lastSender: "homeowner",
-    updatedAt: "Just now",
-    isDirect: true,
-    messages: [
-      {
-        id: `${threadId}-0`,
-        sender: "pro",
-        senderName: pro.name,
-        body: `Hi — thanks for reaching out. I'm ${pro.name} (${pro.trade}). Share a few details or photos and I’ll follow up.`,
-        sentAt: "Just now",
-        read: true,
-      },
-    ],
-  };
+function unwrapMessages(data: unknown): ApiChatMessage[] {
+  if (Array.isArray(data)) return data as ApiChatMessage[];
+  if (!data || typeof data !== "object") return [];
+  const record = data as Record<string, unknown>;
+  for (const key of ["messages", "items", "results", "data"]) {
+    const value = record[key];
+    if (Array.isArray(value)) return value as ApiChatMessage[];
+  }
+  return [];
+}
+
+function extractChatId(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+  const record = data as { _id?: string; chat?: { _id?: string } };
+  return record._id || record.chat?._id || "";
 }
 
 export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pro" }) {
   const { access } = useRoleAccess();
   const searchParams = useSearchParams();
   const dmProId = searchParams.get("dm");
+  const myUserId = useAppSelector((state) => state.auth.user?.id);
   const fileInput = useRef<HTMLInputElement>(null);
+  const threadPane = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showProDetails, setShowProDetails] = useState(false);
 
-  const [threads, setThreads] = useState(() => {
-    let list =
-      role === "pro"
-        ? seedThreads.map((thread) => ({
-            ...thread,
-            otherParty: "Maya Chen",
-            unread: thread.lastSender === "homeowner" ? Math.max(thread.unread, 1) : 0,
-          }))
-        : seedThreads;
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-    if (role === "homeowner" && dmProId) {
-      const dt = buildDirectThread(dmProId);
-      if (dt && !list.some((t) => t.id === dt.id)) {
-        list = [dt, ...list];
-      }
-    }
-    return list;
-  });
+  const chatsQuery = useGetChatsQuery(
+    debouncedSearch ? { searchTerm: debouncedSearch } : undefined,
+  );
+  const [createChat] = useCreateChatMutation();
+  const [sendMessage, { isLoading: sending }] = useSendMessageMutation();
+  const [markChatRead] = useMarkChatReadMutation();
 
-  const [activeId, setActiveId] = useState(() => {
-    if (role === "homeowner" && dmProId) {
-      return `dm-${dmProId}`;
+  const rawChats = useMemo(() => unwrapChats(chatsQuery.data?.data), [chatsQuery.data]);
+  const threads = useMemo(
+    () => rawChats.map((chat) => mapChatThread(chat, role, myUserId)),
+    [rawChats, role, myUserId],
+  );
+  const avatarByChat = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const chat of rawChats) {
+      const other =
+        (chat.participants || []).find((person) => person._id !== myUserId) ||
+        chat.participants?.[0];
+      if (other?.profileImage) map[chat._id] = mediaUrl(other.profileImage);
     }
-    return threads[0]?.id ?? "";
-  });
+    return map;
+  }, [rawChats, myUserId]);
+
+  function avatarFor(thread: MessageThread | null | undefined) {
+    if (!thread) return "";
+    return avatarByChat[thread.id] || getAvatar(thread.otherParty, thread.proId);
+  }
+
+  // Selection: explicit click wins; otherwise the ?dm= chat; otherwise the first chat.
+  const [selection, setSelection] = useState<{ id: string; dm: string | null } | null>(null);
+  const [createdDm, setCreatedDm] = useState<{ dm: string; chatId: string } | null>(null);
+  const existingDmChat = useMemo(
+    () =>
+      dmProId
+        ? rawChats.find((chat) => (chat.participants || []).some((person) => person._id === dmProId))
+        : undefined,
+    [rawChats, dmProId],
+  );
+  const dmChatId =
+    existingDmChat?._id ?? (createdDm && createdDm.dm === dmProId ? createdDm.chatId : undefined);
+  const activeId =
+    selection && selection.dm === dmProId
+      ? selection.id
+      : dmProId
+        ? (dmChatId ?? "")
+        : (threads[0]?.id ?? "");
+
   const [draft, setDraft] = useState("");
+  const [pendingMessage, setPendingMessage] = useState<{
+    chatId: string;
+    message: ChatMessage;
+  } | null>(null);
   const [file, setFile] = useState<PendingFile | null>(null);
+  const [fileObject, setFileObject] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
-  const [mobileChat, setMobileChat] = useState(() => Boolean(role === "homeowner" && dmProId));
+
+  const dmRequested = useRef<string | null>(null);
+  const chatsReady = chatsQuery.isSuccess;
+  useEffect(() => {
+    if (!dmProId || !chatsReady || existingDmChat) return;
+    if (dmRequested.current === dmProId) return;
+    dmRequested.current = dmProId;
+    createChat({ participant: dmProId })
+      .unwrap()
+      .then((response) => {
+        const chatId = extractChatId(response.data);
+        if (chatId) setCreatedDm({ dm: dmProId, chatId });
+      })
+      .catch((error) => setFileError(errorMessage(error, "Could not start this conversation.")));
+  }, [dmProId, chatsReady, existingDmChat, createChat]);
+
+  const [mobileChat, setMobileChat] = useState(() => Boolean(dmProId));
   const jobBase = role === "pro" ? "/pro/jobs" : "/account/jobs";
-  const mySender = role === "pro" ? "pro" : "homeowner";
-  const myName = role === "pro" ? "Ortega Plumbing" : "Maya Chen";
+  const mySender: "homeowner" | "pro" = role === "pro" ? "pro" : "homeowner";
+  const otherSender: "homeowner" | "pro" = role === "pro" ? "homeowner" : "pro";
   const canSend = role === "homeowner" ? access.canHomeownerMessage : access.canProMessage;
 
   const [prevDmProId, setPrevDmProId] = useState(dmProId);
-  if (dmProId && dmProId !== prevDmProId && role === "homeowner") {
+  if (dmProId && dmProId !== prevDmProId) {
     setPrevDmProId(dmProId);
-    const dt = buildDirectThread(dmProId);
-    if (dt) {
-      if (!threads.some((t) => t.id === dt.id)) {
-        setThreads((list) => [dt, ...list]);
-      }
-      setActiveId(dt.id);
-      setMobileChat(true);
-    }
+    setMobileChat(true);
   }
 
-  const active = useMemo(
-    () => threads.find((thread) => thread.id === activeId) ?? null,
-    [activeId, threads],
+  const messagesQuery = useGetMessagesQuery(
+    { chatId: activeId, limit: 100 },
+    { skip: !activeId },
   );
+  const loadedMessages = useMemo<ChatMessage[] | null>(() => {
+    const data = messagesQuery.currentData?.data;
+    if (data === undefined) return null;
+    return unwrapMessages(data)
+      .map((raw) => {
+        const mapped = mapChatMessage(raw, role, myUserId);
+        const senderId =
+          typeof raw.sender === "object" && raw.sender ? raw.sender._id : (raw.sender as string | undefined);
+        // When the sender id is known, it decides which side the bubble is on.
+        return senderId && myUserId
+          ? { ...mapped, sender: senderId === myUserId ? mySender : otherSender }
+          : mapped;
+      })
+      .sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+  }, [messagesQuery.currentData, role, myUserId, mySender, otherSender]);
+
+  const active = useMemo(() => {
+    const thread = threads.find((item) => item.id === activeId);
+    if (!thread) return null;
+    return { ...thread, messages: loadedMessages ?? thread.messages };
+  }, [activeId, threads, loadedMessages]);
+
+  const visibleMessages = useMemo(() => {
+    const list = active?.messages ?? [];
+    if (!pendingMessage || pendingMessage.chatId !== active?.id) return list;
+    const sentAt = new Date(pendingMessage.message.sentAt).getTime();
+    const arrived = list.some((item) => {
+      if (item.id.startsWith("pending-") || item.sender !== pendingMessage.message.sender) return false;
+      if (item.body !== pendingMessage.message.body) return false;
+      return new Date(item.sentAt).getTime() >= sentAt - 15000;
+    });
+    return arrived ? list : [...list, pendingMessage.message];
+  }, [active, pendingMessage]);
+
+  const latestMessageId = visibleMessages[visibleMessages.length - 1]?.id ?? "";
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const pinToLatest = () => {
+    const pane = threadPane.current;
+    if (!pane) return;
+    pane.scrollTop = pane.scrollHeight;
+  };
+  useLayoutEffect(() => {
+    pinToLatest();
+  }, [activeId, latestMessageId, visibleMessages.length]);
+  useEffect(() => {
+    const pane = threadPane.current;
+    const content = contentRef.current;
+    if (!pane || !content) return;
+    const pin = () => {
+      pane.scrollTop = pane.scrollHeight;
+    };
+    pin();
+    const frame = requestAnimationFrame(() => {
+      pin();
+      requestAnimationFrame(pin);
+    });
+    const observer = new ResizeObserver(pin);
+    observer.observe(content);
+    const timer = window.setTimeout(() => observer.disconnect(), 500);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, [activeId, latestMessageId, visibleMessages.length]);
+
+  // Mark the open chat as read whenever it has unread messages.
+  const activeChatId = active?.id;
+  const activeUnread = active?.unread ?? 0;
+  const markedRead = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!activeChatId || activeUnread <= 0) return;
+    const key = `${activeChatId}:${activeUnread}`;
+    if (markedRead.current.has(key)) return;
+    markedRead.current.add(key);
+    markChatRead(activeChatId);
+  }, [activeChatId, activeUnread, markChatRead]);
 
   // Get active pro information for profile drawer
-  const activePro: Professional | null = useMemo(() => {
-    if (!active) return null;
-    if (active.proId) {
-      const found = getPro(active.proId);
-      if (found) return found;
-    }
-    // Fallback: search by business name
-    return getPro("pro-1") ?? null;
-  }, [active]);
+  const { data: proData } = useGetProfessionalQuery(active?.proId ?? "", {
+    skip: !active?.proId || role !== "homeowner",
+  });
+  const activePro: Professional | null = useMemo(
+    () => (proData?.data ? mapProfessional(proData.data) : null),
+    [proData],
+  );
 
-  const activeContactName = role === "homeowner" && activePro?.name ? activePro.name : (active?.otherParty ?? "");
+  const activeContactName = active?.otherParty ?? "";
+  const hasJob = Boolean(
+    active?.jobId && !active.jobId.startsWith("dm:") && !active.jobId.startsWith("chat:"),
+  );
 
-  const filteredThreads = useMemo(() => {
-    if (!searchQuery.trim()) return threads;
-    const q = searchQuery.toLowerCase();
-    return threads.filter(
-      (t) =>
-        t.otherParty.toLowerCase().includes(q) ||
-        t.jobTitle.toLowerCase().includes(q) ||
-        t.lastMessage.toLowerCase().includes(q),
-    );
-  }, [searchQuery, threads]);
+  const filteredThreads = threads;
 
   function openThread(id: string) {
-    setActiveId(id);
+    setSelection({ id, dm: dmProId });
     setMobileChat(true);
     setFile(null);
+    setFileObject(null);
     setFileError("");
-    setThreads((list) =>
-      list.map((thread) =>
-        thread.id === id
-          ? {
-              ...thread,
-              unread: 0,
-              messages: thread.messages.map((message) => ({ ...message, read: true })),
-            }
-          : thread,
-      ),
-    );
   }
 
   function onFilePick(event: React.ChangeEvent<HTMLInputElement>) {
     const picked = event.target.files?.[0];
     event.target.value = "";
     if (!picked) return;
+    if (!picked.type.startsWith("image/")) {
+      setFileError("Only image attachments are supported.");
+      return;
+    }
     if (picked.size > 10 * 1024 * 1024) {
       setFileError("Keep files under 10 MB.");
       return;
@@ -196,56 +320,59 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
       size: formatSize(picked.size),
       type: picked.type || "file",
     };
-    if (picked.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === "string") {
-          setFile({ ...pending, url: reader.result });
-        }
-      };
-      reader.readAsDataURL(picked);
-      return;
-    }
-    setFile(pending);
+    setFileObject(picked);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setFile({ ...pending, url: reader.result });
+      }
+    };
+    reader.readAsDataURL(picked);
   }
 
-  function sendReply(event: React.FormEvent) {
+  function onDraftKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
     event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  }
+
+  async function sendReply(event: React.FormEvent) {
+    event.preventDefault();
+    if (sending) return;
     if (!canSend) {
       setFileError(access.blockedReason ?? "Messaging is locked for this role state.");
       return;
     }
     const body = draft.trim();
-    if ((!body && !file) || !active) return;
+    if ((!body && !fileObject) || !active) return;
 
-    const message: ChatMessage = {
-      id: `local-${Date.now()}`,
+    const sentFile = file;
+    const sentFileObject = fileObject;
+    const optimistic: ChatMessage = {
+      id: `pending-${Date.now()}`,
       sender: mySender,
-      senderName: myName,
-      body: body || (file ? `Sent ${file.name}` : ""),
-      sentAt: "Just now",
+      senderName: "You",
+      body,
+      sentAt: new Date().toISOString(),
       read: false,
-      attachment: file
-        ? { name: file.name, size: file.size, type: file.type, url: file.url }
+      attachment: sentFile
+        ? { name: sentFile.name, size: sentFile.size, type: sentFile.type, url: sentFile.url }
         : undefined,
     };
-
-    setThreads((list) =>
-      list.map((thread) => {
-        if (thread.id !== active.id) return thread;
-        return {
-          ...thread,
-          messages: [...thread.messages, message],
-          lastMessage: file && !body ? `Attachment: ${file.name}` : body,
-          lastSender: mySender,
-          updatedAt: "Just now",
-          unread: 0,
-        };
-      }),
-    );
+    setPendingMessage({ chatId: active.id, message: optimistic });
     setDraft("");
     setFile(null);
+    setFileObject(null);
     setFileError("");
+    try {
+      await sendMessage({ chatId: active.id, text: body, image: sentFileObject }).unwrap();
+    } catch (error) {
+      setPendingMessage((current) => (current?.message.id === optimistic.id ? null : current));
+      setDraft(body);
+      setFile(sentFile);
+      setFileObject(sentFileObject);
+      setFileError(errorMessage(error, "Your message could not be sent."));
+    }
   }
 
   return (
@@ -289,8 +416,7 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
             <ul className="min-h-0 flex-1 divide-y divide-line/60 overflow-y-auto">
               {filteredThreads.map((thread) => {
                 const selected = thread.id === activeId;
-                const pro = thread.proId ? getPro(thread.proId) : null;
-                const contactName = role === "homeowner" && pro?.name ? pro.name : thread.otherParty;
+                const contactName = thread.otherParty;
 
                 return (
                   <li key={thread.id}>
@@ -306,7 +432,7 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                     >
                       {/* Avatar */}
                       {(() => {
-                        const avatarUrl = getAvatar(contactName, thread.proId);
+                        const avatarUrl = avatarFor(thread);
                         return (
                           <span className="relative block h-11 w-11 shrink-0 overflow-hidden rounded-full bg-smoke shadow-xs ring-1 ring-black/5">
                             {avatarUrl ? (
@@ -336,7 +462,7 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                             {contactName}
                           </span>
                           <span className="shrink-0 text-[11px] text-muted font-medium">
-                            {thread.updatedAt}
+                            {formatTime(thread.updatedAt)}
                           </span>
                         </div>
 
@@ -359,7 +485,13 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
 
               {!filteredThreads.length && (
                 <li className="p-8 text-center text-sm text-muted">
-                  No conversations match your search.
+                  {chatsQuery.isLoading
+                    ? "Loading conversations..."
+                    : chatsQuery.isError
+                      ? "Conversations could not be loaded."
+                      : threads.length === 0
+                        ? "No conversations yet."
+                        : "No conversations match your search."}
                 </li>
               )}
             </ul>
@@ -390,7 +522,7 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
 
                     {/* CLICKABLE PRO AVATAR */}
                     {(() => {
-                      const activeAvatar = getAvatar(activeContactName, active?.proId);
+                      const activeAvatar = avatarFor(active);
                       return (
                         <button
                           type="button"
@@ -432,7 +564,7 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
 
                   {/* Right Header Action Buttons */}
                   <div className="flex items-center gap-2 shrink-0">
-                    {active.jobId && !active.jobId.startsWith("dm:") && (
+                    {hasJob && (
                       <Link
                         href={`${jobBase}/${active.jobId}`}
                         className="inline-flex items-center gap-1.5 rounded-full border border-line/80 bg-white px-3 py-1.5 font-display text-xs font-semibold text-title hover:bg-smoke transition-colors"
@@ -445,8 +577,12 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                 </div>
 
                 {/* Message Bubbles Area */}
-                <div className="min-h-0 w-full min-w-0 flex-1 space-y-3.5 overflow-y-auto bg-surface/30 p-5 md:p-6">
-                  {active.messages.map((message) => {
+                <div
+                  ref={threadPane}
+                  className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overflow-anchor-none bg-surface/30 p-5 md:p-6"
+                >
+                  <div ref={contentRef} className="space-y-3.5">
+                  {visibleMessages.map((message) => {
                     const mine = message.sender === mySender;
                     return (
                       <div
@@ -461,15 +597,21 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                               : "rounded-[18px] rounded-tl-[4px] border border-line/80 bg-white text-title",
                           )}
                         >
-                          {message.body ? (
-                            <p className={cn("text-[14px] leading-relaxed", mine ? "text-white" : "text-title")}>
-                              {message.body}
-                            </p>
-                          ) : null}
-                          {message.attachment ? (
+                          {message.attachment?.url &&
+                          (message.attachment.type.startsWith("image/") ||
+                            message.attachment.type === "image" ||
+                            /\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(message.attachment.url)) ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={message.attachment.url}
+                              alt={message.body || "Sent image"}
+                              className="mb-2 max-h-64 w-full max-w-[260px] rounded-[12px] object-cover"
+                              onLoad={pinToLatest}
+                            />
+                          ) : message.attachment ? (
                             <div
                               className={cn(
-                                "mt-2.5 max-w-[240px] overflow-hidden rounded-[10px]",
+                                "mb-2 max-w-[240px] overflow-hidden rounded-[10px]",
                                 mine ? "bg-white/20" : "bg-smoke",
                               )}
                             >
@@ -479,21 +621,30 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                                   <p className={cn("truncate text-[12px] font-semibold", mine ? "text-white" : "text-title")}>
                                     {message.attachment.name}
                                   </p>
-                                  <p className={cn("text-[11px]", mine ? "text-white/80" : "text-muted")}>
-                                    {message.attachment.size}
-                                  </p>
+                                  {message.attachment.size ? (
+                                    <p className={cn("text-[11px]", mine ? "text-white/80" : "text-muted")}>
+                                      {message.attachment.size}
+                                    </p>
+                                  ) : null}
                                 </div>
                               </div>
                             </div>
                           ) : null}
+                          {message.body ? (
+                            <p className={cn("text-[14px] leading-relaxed", mine ? "text-white" : "text-title")}>
+                              {message.body}
+                            </p>
+                          ) : null}
                           <p className={cn("mt-1.5 text-[11px] leading-none", mine ? "text-white/80" : "text-muted")}>
-                            {message.sentAt}
+                            {formatTime(message.sentAt)}
                             {mine ? ` · ${message.read ? "Seen" : "Sent"}` : ""}
                           </p>
                         </div>
                       </div>
                     );
                   })}
+                  <div ref={bottomRef} />
+                  </div>
                 </div>
 
                 {/* Reply Form Area */}
@@ -501,13 +652,14 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                   <input
                     ref={fileInput}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf,.doc,.docx"
+                    accept="image/jpeg,image/png,image/webp"
                     className="hidden"
                     onChange={onFilePick}
                   />
                   <TextArea
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
+                    onKeyDown={onDraftKeyDown}
                     placeholder={canSend ? `Reply to ${activeContactName || active.otherParty}…` : "Messaging locked"}
                     className="min-h-[70px] rounded-[12px] border-line/80"
                     rows={2}
@@ -531,7 +683,10 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                         type="button"
                         aria-label="Remove file"
                         className="grid h-7 w-7 place-items-center text-muted hover:text-title"
-                        onClick={() => setFile(null)}
+                        onClick={() => {
+                          setFile(null);
+                          setFileObject(null);
+                        }}
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -549,7 +704,7 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                       <Paperclip className="h-4 w-4" />
                       Attach File
                     </Button>
-                    <Button type="submit" size="sm" disabled={!canSend || (!draft.trim() && !file)}>
+                    <Button type="submit" size="sm" disabled={!canSend || sending || (!draft.trim() && !file)}>
                       <Send className="h-4 w-4" />
                       {canSend ? "Send Message" : "Locked"}
                     </Button>
@@ -589,7 +744,7 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                 {/* Profile Identity Card */}
                 <div className="text-center space-y-2">
                   {(() => {
-                    const activeAvatar = getAvatar(activeContactName, active?.proId);
+                    const activeAvatar = avatarFor(active);
                     return (
                       <div className="relative mx-auto h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-smoke shadow-md ring-1 ring-black/5">
                         {activeAvatar ? (
@@ -677,14 +832,14 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                 )}
 
                 {/* Linked Request Details */}
-                <div className="rounded-[12px] border border-line/70 p-3 bg-white">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                    Active Repair Request
-                  </p>
-                  <p className="mt-1 font-display text-xs font-bold text-title truncate">
-                    {active.jobTitle}
-                  </p>
-                  {active.jobId && !active.jobId.startsWith("dm:") && (
+                {hasJob && (
+                  <div className="rounded-[12px] border border-line/70 p-3 bg-white">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      Active Repair Request
+                    </p>
+                    <p className="mt-1 font-display text-xs font-bold text-title truncate">
+                      {active.jobTitle}
+                    </p>
                     <Link
                       href={`${jobBase}/${active.jobId}`}
                       className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
@@ -692,8 +847,8 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                       <span>Open repair estimate</span>
                       <ChevronRight className="h-3 w-3" />
                     </Link>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons at bottom of Details Panel */}
@@ -706,7 +861,7 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
                     <span>View Full Public Profile ↗</span>
                   </Link>
                 )}
-                {active.jobId && !active.jobId.startsWith("dm:") && (
+                {hasJob && (
                   <Link
                     href={`${jobBase}/${active.jobId}`}
                     className="flex w-full items-center justify-center gap-1.5 rounded-full border border-line bg-white px-4 py-2.5 text-xs font-semibold text-title hover:bg-smoke hover:border-primary/40 hover:text-primary transition-colors active:scale-[0.99]"

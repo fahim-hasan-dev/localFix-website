@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Field, TextArea, TextField } from "@/components/ui/field";
 import { PageBanner } from "@/components/layout/page-banner";
 import { photos } from "@/lib/media";
+import { apiErrorMessage } from "@/services/client/form-data";
+import { useSendContactMutation } from "@/services/client/catalog-api";
 
 const socialLinks = [
   {
@@ -56,10 +58,24 @@ const socialLinks = [
 
 export default function ContactPage() {
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+  const [sendContact, { isLoading }] = useSendContactMutation();
 
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSent(true);
+    const form = new FormData(event.currentTarget);
+    setError("");
+    try {
+      await sendContact({
+        name: String(form.get("name") || ""),
+        email: String(form.get("email") || ""),
+        subject: String(form.get("subject") || ""),
+        message: String(form.get("message") || ""),
+      }).unwrap();
+      setSent(true);
+    } catch (err) {
+      setError(apiErrorMessage(err, "Could not send your message."));
+    }
   }
 
   return (
@@ -214,8 +230,9 @@ export default function ContactPage() {
                   <TextArea required name="message" rows={3} placeholder="Provide as much detail as possible..." className="min-h-[100px] resize-y" />
                 </Field>
 
-                <Button type="submit" size="md" className="w-full justify-center rounded-full shadow-xs">
-                  Send Message ↗
+                {error ? <p className="text-sm text-error">{error}</p> : null}
+                <Button type="submit" size="md" className="w-full justify-center rounded-full shadow-xs" disabled={isLoading}>
+                  {isLoading ? "Sending..." : "Send Message ↗"}
                 </Button>
               </form>
             )}

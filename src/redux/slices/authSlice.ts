@@ -1,34 +1,40 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { demoHomeowner, demoProUser } from "@/Mockdata";
+import { authToken } from "@/utils/authToken";
 import type { User, UserRole } from "@/types";
 
-const STORAGE_KEY = "lhf-auth-role";
-const USER_DATA_STORAGE_PREFIX = "lhf-user-data-";
+const CURRENT_USER_KEY = "lhf-current-user";
 
 interface AuthState {
   user: User | null;
   hydrated: boolean;
 }
 
-function userFromRole(role: UserRole) {
-  if (role === "pro") return demoProUser;
-  return demoHomeowner;
+function userFromRole(role: UserRole): User {
+  // Placeholder only until /users/profile hydrates — keep ids empty of demo seeds
+  // when a real JWT is present so dashboards don't show Mockdata as "live".
+  if (role === "pro") return { ...demoProUser, id: "pending-pro", name: "Professional" };
+  return { ...demoHomeowner, id: "pending-homeowner", name: "Homeowner" };
 }
 
-function getStoredUserData(role: UserRole): Partial<User> | null {
+function getStoredUser(): User | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(`${USER_DATA_STORAGE_PREFIX}${role}`);
+    const raw = window.localStorage.getItem(CURRENT_USER_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
-function persistUserData(role: UserRole, user: User) {
+function persistStoredUser(user: User | null): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(`${USER_DATA_STORAGE_PREFIX}${role}`, JSON.stringify(user));
+    if (user) {
+      window.localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+    } else {
+      window.localStorage.removeItem(CURRENT_USER_KEY);
+    }
   } catch {
     /* ignore storage errors */
   }
@@ -39,49 +45,27 @@ const initialState: AuthState = {
   hydrated: false,
 };
 
-function persistRole(role: UserRole | null) {
-  if (typeof window === "undefined") return;
-  try {
-    if (role) {
-      window.localStorage.setItem(STORAGE_KEY, role);
-      document.cookie = `${STORAGE_KEY}=${role}; path=/; max-age=31536000; SameSite=Lax`;
-    } else {
-      window.localStorage.removeItem(STORAGE_KEY);
-      document.cookie = `${STORAGE_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-    }
-  } catch {
-    /* ignore storage errors */
-  }
-}
-
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
     hydrate(state) {
       if (typeof window === "undefined") return;
-      let role = window.localStorage.getItem(STORAGE_KEY) as UserRole | null;
-      if (!role && document.cookie) {
-        const match = document.cookie.match(new RegExp(`(?:^|; )${STORAGE_KEY}=(pro|homeowner)`));
-        if (match) role = match[1] as UserRole;
-      }
-      if (role === "pro" || role === "homeowner") {
-        const base = userFromRole(role);
-        const stored = getStoredUserData(role);
-        state.user = stored ? { ...base, ...stored, id: base.id, role } : base;
+      const token = authToken.getAccessToken();
+      const role = authToken.getRole();
+
+      if (token && role) {
+        const stored = getStoredUser();
+        if (stored) {
+          state.user = stored;
+        } else {
+          const base = userFromRole(role);
+          state.user = { ...base, role };
+        }
       } else {
         state.user = null;
       }
       state.hydrated = true;
-    },
-    loginAs(state, action: PayloadAction<UserRole | { role: UserRole; profile?: Partial<User> }>) {
-      const role = typeof action.payload === "string" ? action.payload : action.payload.role;
-      const profile = typeof action.payload === "string" ? undefined : action.payload.profile;
-      const base = userFromRole(role);
-      state.user = profile ? { ...base, ...profile, id: base.id, role } : base;
-      state.hydrated = true;
-      persistRole(role);
-      if (state.user) persistUserData(role, state.user);
     },
     login(state, action: PayloadAction<User>) {
       const payload = action.payload;
@@ -89,20 +73,39 @@ const authSlice = createSlice({
         payload.role === "pro" && (payload.id === "user-pro-1" || payload.id.startsWith("user-pro-"))
           ? { ...payload, id: payload.id === "user-pro-1" ? "pro-1" : payload.id.replace(/^user-/, "") }
           : payload;
+
       state.user = normalizedUser;
       state.hydrated = true;
-      persistRole(normalizedUser.role);
-      persistUserData(normalizedUser.role, normalizedUser);
+      persistStoredUser(normalizedUser);
+      authToken.setTokens({
+        accessToken: authToken.getAccessToken() || "",
+        role: normalizedUser.role,
+      });
+    },
+    loginAs(state, action: PayloadAction<UserRole | { role: UserRole; profile?: Partial<User> }>) {
+      const role = typeof action.payload === "string" ? action.payload : action.payload.role;
+      const profile = typeof action.payload === "string" ? undefined : action.payload.profile;
+      const base = userFromRole(role);
+      const user = profile ? { ...base, ...profile, id: base.id, role } : base;
+
+      state.user = user;
+      state.hydrated = true;
+      persistStoredUser(user);
+      authToken.setTokens({
+        accessToken: authToken.getAccessToken() || "demo-token",
+        role,
+      });
     },
     updateUser(state, action: PayloadAction<Partial<User>>) {
       if (!state.user) return;
       state.user = { ...state.user, ...action.payload, id: state.user.id, role: state.user.role };
-      persistUserData(state.user.role, state.user);
+      persistStoredUser(state.user);
     },
     logout(state) {
       state.user = null;
       state.hydrated = true;
-      persistRole(null);
+      persistStoredUser(null);
+      authToken.clearTokens();
     },
   },
 });

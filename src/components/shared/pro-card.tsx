@@ -12,6 +12,7 @@ import {
 import { photos } from "@/lib/media";
 import { loginHref } from "@/lib/role-access";
 import { toggleFavorite } from "@/redux/slices/featuresSlice";
+import { useToggleFavoriteMutation } from "@/services/client/engagement-api";
 import { useRoleAccess } from "@/hooks/use-role-access";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import type { Professional } from "@/types";
@@ -31,9 +32,21 @@ export function ProCard({
   const pathname = usePathname();
   const { access } = useRoleAccess();
   const user = useAppSelector((state) => state.auth.user);
-  const isOwner = user?.role === "pro" && (pro.id === "pro-1" || pro.name.toLowerCase() === (user.name || "").toLowerCase());
-  const saved = useAppSelector((state) => state.features.favorites.includes(pro.id));
-  const image = photos.services[pro.categorySlug] || photos.banner;
+  const isOwner =
+    user?.role === "pro" &&
+    Boolean(user.id) &&
+    (pro.id === user.id || pro.name.toLowerCase() === (user.name || "").toLowerCase());
+  const [toggleFavoriteApi] = useToggleFavoriteMutation();
+  const savedLocally = useAppSelector((state) => state.features.favorites.includes(pro.id));
+  const saved = savedLocally || Boolean(pro.isFavorite);
+  const image =
+    pro.avatar ||
+    pro.coverImage ||
+    photos.services[pro.categorySlug] ||
+    photos.banner;
+  const locationLabel = [pro.city, pro.state].filter(Boolean).join(", ");
+  const priceLabel =
+    pro.startingPrice > 0 ? `$${pro.startingPrice}` : "Quote";
   const href = `/browse-pros/${pro.id}`;
 
   function onSave(event: React.MouseEvent) {
@@ -45,6 +58,7 @@ export function ProCard({
     }
     if (!access.canSavePro) return;
     dispatch(toggleFavorite(pro.id));
+    void toggleFavoriteApi({ id: pro.id });
   }
 
   return (
@@ -97,11 +111,13 @@ export function ProCard({
       {/* 2. Card Content Body */}
       <div className="flex flex-1 flex-col p-5 pb-4.5">
         {/* Category Row */}
-        <div className="flex items-center gap-2 text-xs">
-          <span className="inline-flex items-center rounded-full bg-smoke px-2.5 py-1 font-sans text-[11px] font-semibold uppercase tracking-wider text-primary">
-            {pro.trade}
-          </span>
-        </div>
+        {pro.trade ? (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="inline-flex items-center rounded-full bg-smoke px-2.5 py-1 font-sans text-[11px] font-semibold uppercase tracking-wider text-primary">
+              {pro.trade}
+            </span>
+          </div>
+        ) : null}
 
         {/* Pro Name as Main Title with Verified Shield */}
         <h3 className="mt-2.5 font-display text-[17px] font-semibold text-title tracking-tight leading-snug transition-colors group-hover:text-primary flex items-center gap-1.5">
@@ -117,7 +133,7 @@ export function ProCard({
         {/* Location Row (No Company Name) */}
         <p className="mt-1 flex items-center gap-1.5 font-sans text-xs text-muted truncate">
           <MapPin className="h-3 w-3 shrink-0 text-muted" />
-          <span>{pro.city}, {pro.state}</span>
+          <span>{locationLabel || "Location not set"}</span>
           {distance != null && (
             <>
               <span className="text-muted/40">·</span>
@@ -143,10 +159,10 @@ export function ProCard({
         <div className="flex items-center justify-between">
           <div>
             <span className="block text-[11px] font-medium text-muted leading-none">
-              From
+              {pro.startingPrice > 0 ? "From" : "Pricing"}
             </span>
             <span className="mt-1.5 block font-display text-[17px] font-bold text-title leading-none">
-              ${pro.startingPrice}
+              {priceLabel}
             </span>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-smoke px-3.5 py-1.5 text-xs font-semibold text-primary transition-all duration-200 group-hover:bg-primary group-hover:text-white group-hover:shadow-xs">

@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { DashboardSidebar, type SidebarSection } from "@/components/layout/dashboard-sidebar";
-import { normalizeProId, selectProJobsGrouped } from "@/lib/marketplace";
 import { useAppSelector } from "@/redux/hooks";
+import { useUnreadChatCount } from "@/services/client/engagement-api";
+import { useGetJobTabsCountQuery } from "@/services/client/jobs-api";
 
 export default function AgentDashboardLayout({
   children,
@@ -14,7 +15,6 @@ export default function AgentDashboardLayout({
 }) {
   const user = useAppSelector((state) => state.auth.user);
   const hydrated = useAppSelector((state) => state.auth.hydrated);
-  const state = useAppSelector((s) => s);
   const router = useRouter();
 
   useEffect(() => {
@@ -23,12 +23,13 @@ export default function AgentDashboardLayout({
     if (user?.role === "homeowner") router.replace("/account");
   }, [hydrated, router, user]);
 
-  const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
+  const isPro = user?.role === "pro";
+  const unreadChats = useUnreadChatCount(hydrated && isPro);
+  const { data: tabsCountData } = useGetJobTabsCountQuery(undefined, { skip: !hydrated || !isPro });
+  const tabCounts = (tabsCountData?.data ?? {}) as { directRequests?: number; marketplaceLeads?: number };
+  const pendingQuotes = (tabCounts.directRequests || 0) + (tabCounts.marketplaceLeads || 0);
 
   const sections: SidebarSection[] = useMemo(() => {
-    const proJobs = selectProJobsGrouped(state, myProId);
-    const pendingQuotes = proJobs.totalDirect + proJobs.totalLeads;
-
     return [
       {
         title: "Workspace",
@@ -40,7 +41,11 @@ export default function AgentDashboardLayout({
             badge: pendingQuotes > 0 ? pendingQuotes : undefined,
           },
           { href: "/pro/bookings", label: "My Bookings" },
-          { href: "/pro/messages", label: "Messages" },
+          {
+            href: "/pro/messages",
+            label: "Messages",
+            badge: unreadChats > 0 ? unreadChats : undefined,
+          },
         ],
       },
       {
@@ -57,10 +62,11 @@ export default function AgentDashboardLayout({
           { href: "/pro/pricing", label: "Subscription" },
           { href: "/pro/application", label: "Application" },
           { href: "/pro/password", label: "Password" },
+          { href: "/pro/support", label: "Support" },
         ],
       },
     ];
-  }, [state, myProId]);
+  }, [pendingQuotes, unreadChats]);
 
   if (!hydrated || !user || user.role !== "pro") return null;
 

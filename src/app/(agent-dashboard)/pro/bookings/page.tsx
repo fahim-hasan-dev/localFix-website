@@ -1,90 +1,104 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useUrlTab } from "@/hooks/use-url-tab";
 import {
   Calendar,
   Receipt,
   Search,
-  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { getCategory } from "@/Mockdata";
-import { getAvatar } from "@/lib/avatars";
+import { mediaUrl } from "@/utils/mediaUrl";
 import {
-  normalizeProId,
-  selectAllQuotes,
-  selectProBookingsGrouped,
-} from "@/lib/marketplace";
-import { useAppSelector } from "@/redux/hooks";
+  bookingBadgeStatus,
+  BOOKING_TAB_QUERY,
+  bookingCategoryName,
+  formatBookingDate,
+  type BookingListTab,
+} from "@/lib/booking-view";
+import {
+  bookingToJob,
+  unwrapList,
+  type ApiBooking,
+} from "@/lib/marketplace-mappers";
+import { useGetMyBookingsQuery } from "@/services/client/marketplace-api";
 import { cn } from "@/lib/cn";
-import type { Job } from "@/types";
 
-type BookingTab = "all" | "upcoming" | "inProgress" | "history";
+type BookingTab = BookingListTab;
+
+function clientInitials(name: string) {
+  const letters = name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "");
+  return letters.join("") || "C";
+}
+
+type BookingRow = {
+  id: string;
+  raw: ApiBooking;
+  job: ReturnType<typeof bookingToJob>;
+};
+
+function useBookingRows(tab: BookingTab, searchTerm?: string) {
+  const query = useGetMyBookingsQuery({
+    tab: BOOKING_TAB_QUERY[tab],
+    ...(searchTerm ? { searchTerm } : {}),
+  });
+  const rows = useMemo<BookingRow[]>(
+    () =>
+      unwrapList<ApiBooking>(query.data?.data).map((raw) => ({
+        id: raw._id,
+        raw,
+        job: bookingToJob(raw),
+      })),
+    [query.data],
+  );
+  return { rows, isLoading: query.isLoading, isError: query.isError };
+}
 
 export default function ProBookingsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab") as BookingTab | null;
-  const user = useAppSelector((state) => state.auth.user);
-  const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
-  const state = useAppSelector((state) => state);
-  const grouped = useMemo(
-    () => selectProBookingsGrouped(state, myProId),
-    [state, myProId],
-  );
-  const quotes = useAppSelector(selectAllQuotes);
-  const bookings = state.marketplace.bookings;
-  const hiredByJob = state.marketplace.hiredByJob;
-  const reviews = state.features.reviews;
-
-  const [activeTab, setActiveTab] = useState<BookingTab>(
-    tabParam && ["all", "upcoming", "inProgress", "history"].includes(tabParam)
-      ? tabParam
-      : "all",
+  const [activeTab, setActiveTab] = useUrlTab(
+    ["all", "upcoming", "inProgress", "history"] as const,
+    "all",
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [previewEmpty, setPreviewEmpty] = useState(false);
 
-  function handleTabChange(tab: BookingTab) {
-    setActiveTab(tab);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      if (tab === "all") {
-        url.searchParams.delete("tab");
-      } else {
-        url.searchParams.set("tab", tab);
-      }
-      window.history.replaceState(null, "", url.toString());
-    }
-  }
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // One query per lifecycle tab so the tab counters stay accurate.
+  const allTab = useBookingRows("all");
+  const upcomingTab = useBookingRows("upcoming");
+  const inProgressTab = useBookingRows("inProgress");
+  const historyTab = useBookingRows("history");
+  const activeSearchTab = useBookingRows(activeTab, debouncedSearch || undefined);
+  const tabData = {
+    all: allTab,
+    upcoming: upcomingTab,
+    inProgress: inProgressTab,
+    history: historyTab,
+  } satisfies Record<BookingTab, ReturnType<typeof useBookingRows>>;
+  const current = debouncedSearch ? activeSearchTab : tabData[activeTab];
 
   const tabCounts = {
-    all: grouped.all.length,
-    upcoming: grouped.upcoming.length,
-    inProgress: grouped.inProgress.length,
-    history: grouped.history.length,
+    all: allTab.rows.length,
+    upcoming: upcomingTab.rows.length,
+    inProgress: inProgressTab.rows.length,
+    history: historyTab.rows.length,
   };
 
-  const filteredBookings = useMemo(() => {
-    let list: Job[] = [];
-    if (activeTab === "all") list = grouped.all;
-    else if (activeTab === "upcoming") list = grouped.upcoming;
-    else if (activeTab === "inProgress") list = grouped.inProgress;
-    else if (activeTab === "history") list = grouped.history;
-
-    if (!searchQuery.trim()) return list;
-    const q = searchQuery.toLowerCase().trim();
-    return list.filter((job) => {
-      const cat = getCategory(job.categorySlug)?.name.toLowerCase() ?? "";
-      const text = `${job.title} ${job.description} ${job.city} ${job.zip} ${job.homeownerName} ${cat}`.toLowerCase();
-      return text.includes(q);
-    });
-  }, [activeTab, grouped, searchQuery]);
+  const filteredBookings = current.rows;
 
   return (
     <div className="w-full max-w-5xl space-y-6">
@@ -104,7 +118,7 @@ export default function ProBookingsPage() {
           className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted hover:text-primary hover:border-primary/40 transition shadow-2xs cursor-pointer"
           title="Toggle empty state view"
         >
-          <span>{previewEmpty ? "← View Mock Data" : "Preview Empty State"}</span>
+          <span>{previewEmpty ? "← View Live Data" : "Preview Empty State"}</span>
         </button>
       </div>
 
@@ -124,7 +138,7 @@ export default function ProBookingsPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => handleTabChange(tab.id)}
+                onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   "flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap",
                   active
@@ -150,7 +164,7 @@ export default function ProBookingsPage() {
       </div>
 
       {/* 3. Search Filter */}
-      {grouped.all.length > 0 && (
+      {allTab.rows.length > 0 && (
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
@@ -164,7 +178,11 @@ export default function ProBookingsPage() {
       )}
 
       {/* 4. Bookings List */}
-      {grouped.all.length === 0 || previewEmpty ? (
+      {current.isLoading ? (
+        <p className="text-sm text-muted">Loading bookings...</p>
+      ) : current.isError ? (
+        <p className="text-sm text-error">Bookings could not be loaded.</p>
+      ) : allTab.rows.length === 0 || previewEmpty ? (
         <div className="mt-4">
           <EmptyState
             title="No Confirmed Bookings"
@@ -182,46 +200,60 @@ export default function ProBookingsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredBookings.map((job) => {
-            const booking = bookings[job.id];
-            const hiredQuoteId = hiredByJob[job.id];
-            const hiredQuote = quotes.find((quote) => quote.id === hiredQuoteId);
-            const review = reviews.find((r) => r.jobId === job.id);
-            const category = getCategory(job.categorySlug);
-
-            const isCompleted = job.status === "completed";
+          {filteredBookings.map((row) => {
+            const { raw, job } = row;
+            const category = bookingCategoryName(raw);
+            const status = bookingBadgeStatus(raw);
+            const isCompleted = status === "completed";
+            const detailHref = `/pro/bookings/${row.id}`;
+            const homeowner = raw.homeowner;
+            const homeownerId = homeowner?._id;
+            const clientName = homeowner?.name?.trim() || job.homeownerName || "Client";
+            const clientPhoto = mediaUrl(homeowner?.profileImage);
+            const quote = typeof raw.quotation === "object" && raw.quotation ? raw.quotation : null;
+            const agreedAmount = Number(raw.totalAmount || quote?.totalRate || 0);
+            const place =
+              [job.city, job.state, job.zip].filter(Boolean).join(", ") ||
+              [homeowner?.city, homeowner?.state, homeowner?.zipCode].filter(Boolean).join(", ");
+            const categoryLine = [category, place].filter(Boolean).join(" · ");
 
             return (
               <Card
-                key={job.id}
-                onClick={() => router.push(`/pro/bookings/${job.id}`)}
+                key={row.id}
+                onClick={() => router.push(detailHref)}
                 className="group overflow-hidden rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer"
               >
                 {/* Header: Client Info + Status Badge (matches homeowner pro visual) */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-line/80 bg-slate-100 shadow-2xs">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={getAvatar(job.homeownerName)}
-                        alt={job.homeownerName}
-                        className="h-full w-full object-cover"
-                      />
+                    <div className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-line/80 bg-slate-100 shadow-2xs">
+                      {clientPhoto ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={clientPhoto}
+                          alt={clientName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="font-display text-xs font-bold text-title/70">
+                          {clientInitials(clientName)}
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-display text-sm font-bold text-title group-hover:text-primary transition-colors truncate">
-                          {job.homeownerName}
+                          {clientName}
                         </span>
                         <span className="text-[11px] font-medium text-muted">Client</span>
                       </div>
-                      <p className="text-xs text-muted truncate">
-                        {category ? `${category.name} · ` : ""}{job.city}, {job.state} {job.zip}
-                      </p>
+                      {categoryLine ? (
+                        <p className="text-xs text-muted truncate">{categoryLine}</p>
+                      ) : null}
                     </div>
                   </div>
 
-                  <StatusBadge status={job.status} />
+                  <StatusBadge status={status} />
                 </div>
 
                 {/* Job Info + Meta + Operational Pro Actions */}
@@ -233,12 +265,12 @@ export default function ProBookingsPage() {
                     <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5 text-muted" />
-                        {booking?.scheduledDate || hiredQuote?.proposedSchedule || "Coordinated schedule"}
-                        {booking?.arrivalWindow ? ` (${booking.arrivalWindow})` : ""}
+                        {formatBookingDate(raw.appointmentDate, "Coordinated schedule")}
+                        {raw.arrivalTimeWindow ? ` (${raw.arrivalTimeWindow})` : ""}
                       </span>
                       <span>·</span>
                       <span className="font-semibold text-title">
-                        Agreed: ${booking?.agreedPrice || hiredQuote?.amount || 0}
+                        Agreed: ${agreedAmount}
                       </span>
                     </div>
                   </div>
@@ -247,18 +279,20 @@ export default function ProBookingsPage() {
                     onClick={(e) => e.stopPropagation()}
                     className="flex flex-wrap items-center gap-2 shrink-0"
                   >
-                    <Button
-                      href={`/pro/messages?dm=${job.homeownerName}`}
-                      size="sm"
-                      variant="ghost"
-                      className="rounded-full text-xs font-semibold text-muted hover:text-title"
-                    >
-                      Message
-                    </Button>
+                    {homeownerId ? (
+                      <Button
+                        href={`/pro/messages?dm=${homeownerId}`}
+                        size="sm"
+                        variant="ghost"
+                        className="rounded-full text-xs font-semibold text-muted hover:text-title"
+                      >
+                        Message
+                      </Button>
+                    ) : null}
 
                     {isCompleted ? (
                       <Button
-                        href={`/pro/bookings/${job.id}`}
+                        href={detailHref}
                         size="sm"
                         className="rounded-full text-xs font-semibold gap-1.5 shadow-xs"
                       >
@@ -267,7 +301,7 @@ export default function ProBookingsPage() {
                       </Button>
                     ) : (
                       <Button
-                        href={`/pro/bookings/${job.id}`}
+                        href={detailHref}
                         size="sm"
                         className="rounded-full text-xs font-semibold shadow-xs"
                       >
@@ -276,30 +310,6 @@ export default function ProBookingsPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Clean rating line if completed */}
-                {isCompleted && review ? (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="mt-3 pt-2.5 border-t border-line/40 text-xs flex items-center justify-between gap-2 text-muted"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex text-amber-500">
-                        {[...Array(review.rating)].map((_, i) => (
-                          <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-                        ))}
-                      </div>
-                      <span className="font-semibold text-title">{review.rating}.0</span>
-                      <span className="text-muted">Homeowner Rating</span>
-                    </div>
-                    <Link
-                      href={`/pro/bookings/${job.id}`}
-                      className="text-primary font-medium hover:underline text-[11px]"
-                    >
-                      View Review Details ↗
-                    </Link>
-                  </div>
-                ) : null}
               </Card>
             );
           })}

@@ -2,27 +2,22 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, DollarSign, Clock, ShieldCheck, Lock, Briefcase } from "lucide-react";
+import { ShieldCheck, Lock } from "lucide-react";
 import { PageBanner } from "@/components/layout/page-banner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { photos } from "@/lib/media";
 import { loginHref } from "@/lib/role-access";
-import { getCategory } from "@/Mockdata";
-import { selectAllJobs } from "@/lib/marketplace";
 import { useAppSelector } from "@/redux/hooks";
 
 /** Public gate & preview — private job bidding and client contact live on /pro/jobs after clearance + membership. */
 export default function BrowseJobsPage() {
   const user = useAppSelector((state) => state.auth.user);
-  const allJobs = useAppSelector(selectAllJobs);
   const router = useRouter();
 
   useEffect(() => {
     if (user?.role === "pro") router.replace("/pro/jobs");
   }, [router, user]);
-
-  const activeJobs = allJobs.slice(0, 4);
 
   return (
     <>
@@ -43,10 +38,10 @@ export default function BrowseJobsPage() {
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line/70 pb-6">
             <div>
               <h2 className="font-display text-xl font-semibold tracking-tight text-title sm:text-2xl">
-                Recent Homeowner Requests
+                Pro job board access
               </h2>
               <p className="mt-1 text-sm text-muted">
-                Showing live repair requests across the greater Austin metropolitan area.
+                Open and direct requests are available inside the pro dashboard after clearance.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2.5">
@@ -68,61 +63,21 @@ export default function BrowseJobsPage() {
             </div>
           </div>
 
-          {/* Job Preview Grid */}
-          <div className="grid gap-5 md:grid-cols-2">
-            {activeJobs.map((job) => {
-              const cat = getCategory(job.categorySlug);
-              return (
-                <Card key={job.id} className="relative flex flex-col justify-between p-6 transition-all hover:border-line hover:shadow-xs">
-                  <div>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                        <Briefcase className="h-3 w-3" />
-                        {cat?.name ?? job.categorySlug}
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-smoke px-2.5 py-0.5 text-[11px] font-medium text-muted">
-                        <Clock className="h-3 w-3" />
-                        {job.urgency === "asap" ? "Urgent (ASAP)" : "This week"}
-                      </span>
-                    </div>
-
-                    <h3 className="mt-3.5 font-display text-base font-semibold text-title sm:text-lg">
-                      {job.title}
-                    </h3>
-                    <p className="mt-2 line-clamp-2 text-sm text-copy">
-                      {job.description}
-                    </p>
-
-                    <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted">
-                      <span className="flex items-center gap-1 font-medium text-title">
-                        <MapPin className="h-3.5 w-3.5 text-primary" />
-                        {job.city}, TX {job.zip}
-                      </span>
-                      <span className="flex items-center gap-1 font-medium text-title">
-                        <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
-                        Budget: {job.budget || "Itemized Quote"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex items-center justify-between border-t border-line/60 pt-4">
-                    <span className="flex items-center gap-1.5 text-xs text-muted">
-                      <Lock className="h-3.5 w-3.5 text-muted" />
-                      Client contact locked
-                    </span>
-                    <Button
-                      href={loginHref({ role: "pro", next: "/pro/jobs" })}
-                      size="sm"
-                      variant="ghost"
-                      className="text-xs font-semibold"
-                    >
-                      Submit Quote ↗
-                    </Button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          {/* Live requests are private to approved pros — no public job listing (no mock teasers). */}
+          <Card className="flex flex-col items-center gap-3 p-8 text-center">
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-primary/10 text-primary">
+              <Lock className="h-5 w-5" />
+            </span>
+            <h3 className="font-display text-base font-semibold text-title sm:text-lg">
+              Live requests are visible to approved pros
+            </h3>
+            <p className="max-w-md text-sm text-muted">
+              Sign in with your pro account to see open and direct requests in your trade territory and send quotes.
+            </p>
+            <Button href={loginHref({ role: "pro", next: "/pro/jobs" })} size="sm">
+              Sign in to view requests ↗
+            </Button>
+          </Card>
 
           {/* Pro Value Banner */}
           <div className="rounded-2xl border border-line/80 bg-white p-6 shadow-2xs sm:p-8">

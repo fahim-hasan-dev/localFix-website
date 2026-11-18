@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -29,18 +29,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, NativeSelect, TextArea, TextField } from "@/components/ui/field";
-import { categories, getPro, professionals } from "@/Mockdata";
+import { urgencyLabels } from "@/Mockdata";
 import { getAvatar } from "@/lib/avatars";
-import { matchEligiblePros } from "@/lib/matching";
-import { questionsForCategory, type IntakeQuestion, type IntakeChoice } from "@/lib/intake-questions";
-import { cleanFactLabel } from "@/lib/marketplace";
-import { loginAs } from "@/redux/slices/authSlice";
+import { mapCategory, mapProfessional } from "@/lib/api-mappers";
+import { useGetCategoriesQuery, useGetProfessionalQuery } from "@/services/client/catalog-api";
+import { useCreateJobMutation } from "@/services/client/jobs-api";
+import { apiErrorMessage } from "@/services/client/form-data";
 import { clearDraft } from "@/redux/slices/intakeSlice";
-import { addJob } from "@/redux/slices/marketplaceSlice";
-import { addNotification, invitePro, setJobPhotos, setJobStatus } from "@/redux/slices/featuresSlice";
+import { addNotification } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import type { JobVisibility, PropertyType, Urgency } from "@/types";
+import type { PropertyType, Urgency } from "@/types";
 import { cn } from "@/lib/cn";
+
+type RequestField = "category" | "headline" | "description" | "zip" | "property" | "parts";
 
 function initials(name: string) {
   return name
@@ -53,9 +54,8 @@ function initials(name: string) {
 
 const STEPS = [
   { id: 1, label: "Job Details", shortLabel: "Details" },
-  { id: 2, label: "Category Specifics", shortLabel: "Specifications" },
-  { id: 3, label: "When & Where", shortLabel: "Schedule" },
-  { id: 4, label: "Review & Submit", shortLabel: "Review" },
+  { id: 2, label: "When & Where", shortLabel: "Schedule" },
+  { id: 3, label: "Review & Submit", shortLabel: "Review" },
 ];
 
 const MATERIAL_OPTIONS = [
@@ -95,8 +95,21 @@ export default function PostJobPage() {
   );
 }
 
-function createJobId() {
-  return `job-local-${Date.now()}`;
+const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
+  single_family: "Single-Family Home",
+  condo: "Condo / HOA / Townhome",
+  townhome: "Condo / HOA / Townhome",
+  apartment: "Apartment / Multi-Family",
+  commercial: "Commercial / Office Space",
+  other: "Other",
+};
+
+/** Pulls a numeric budget out of free text like "250", "$350–500" or "flexible". */
+function parseBudget(value: string): number | undefined {
+  const numbers = (value.replace(/,/g, "").match(/\d+(?:\.\d+)?/g) ?? [])
+    .map(Number)
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return numbers.length ? Math.max(...numbers) : undefined;
 }
 
 function headlineFromDraft(problem: string, title: string, categoryName?: string) {
@@ -107,9 +120,22 @@ function headlineFromDraft(problem: string, title: string, categoryName?: string
 }
 
 function BookingFlow() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const inviteId = searchParams.get("invite");
-  const invitedPro = inviteId ? getPro(inviteId) : null;
+  const { data: inviteResponse, isLoading: inviteLoading } = useGetProfessionalQuery(inviteId ?? "", {
+    skip: !inviteId,
+  });
+  const invitedPro = useMemo(
+    () => (inviteResponse?.data ? mapProfessional(inviteResponse.data) : null),
+    [inviteResponse],
+  );
+  const { data: categoryResponse, isLoading: categoriesLoading } = useGetCategoriesQuery();
+  const categories = useMemo(
+    () => (categoryResponse?.data || []).map(mapCategory),
+    [categoryResponse],
+  );
+  const [createJob, { isLoading: isSubmitting }] = useCreateJobMutation();
 
   const draft = useAppSelector((state) => state.intake.draft);
   const intakeReady = useAppSelector((state) => state.intake.hydrated);
@@ -121,15 +147,14 @@ function BookingFlow() {
   // 3-Step Streamlined Flow
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
-  const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<RequestField, string>>>({});
 
   // Form State
-  const startingCategory = invitedPro?.categorySlug || draft.categorySlug || "plumbing";
-  const startingCategoryName = categories.find((item) => item.slug === startingCategory)?.name;
   const cameFromHome = Boolean(draft.problem || draft.categorySlug || draft.zip);
-  const [categorySlug, setCategorySlug] = useState(startingCategory);
+  // Empty until the user (or the intake draft) picks one; resolved against live categories below.
+  const [categorySlug, setCategorySlug] = useState(inviteId ? "" : draft.categorySlug || "");
   const [titleInput, setTitleInput] = useState(
-    headlineFromDraft(draft.problem || draft.summary || "", draft.title || "", startingCategoryName),
+    headlineFromDraft(draft.problem || draft.summary || "", draft.title || "", undefined),
   );
   const [descriptionInput, setDescriptionInput] = useState(draft.problem || draft.summary || "");
   const [urgency, setUrgency] = useState<Urgency>("this_week");
@@ -138,116 +163,152 @@ function BookingFlow() {
   const [materialsStatus, setMaterialsStatus] = useState<MaterialsStatus>("contractor");
   const [budget, setBudget] = useState("");
   const [zipInput, setZipInput] = useState(() => {
-    const raw = draft.zip || user?.zip || "78701";
-    const clean = raw.replace(/\D/g, "").slice(0, 5);
-    return clean || "78701";
+    const raw = draft.zip || user?.zip || "";
+    return raw.replace(/\D/g, "").slice(0, 5);
   });
+  const [draftCity, setDraftCity] = useState(() => {
+    const raw = (draft.zip || "").trim();
+    return /\d{5}/.test(raw) ? "" : raw;
+  });
+  // Previews (object URLs) and the real File objects are kept in lockstep.
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [categoryAnswers, setCategoryAnswers] = useState<Record<string, string>>({});
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const appliedDraftRef = useRef(false);
+  const photoUrlsRef = useRef<string[]>([]);
 
-  const categoryQuestions = useMemo(() => {
-    const list = questionsForCategory(categorySlug);
-    return list.filter((q: IntakeQuestion) => q.id !== "when");
-  }, [categorySlug]);
+  useEffect(() => {
+    photoUrlsRef.current = photoUrls;
+  }, [photoUrls]);
+
+  useEffect(() => {
+    return () => {
+      photoUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
+
+  // Live category: explicit choice -> invited pro's category -> first available.
+  const selectedCategory =
+    categories.find((c) => c.slug === categorySlug) ??
+    categories.find((c) => c.slug === invitedPro?.categorySlug) ??
+    categories[0];
+  const selectedCategoryName = selectedCategory?.name ?? "Service";
 
   useEffect(() => {
     if (!intakeReady || appliedDraftRef.current) return;
     if (!(draft.problem || draft.summary || draft.categorySlug)) return;
     appliedDraftRef.current = true;
     queueMicrotask(() => {
-      const nextCategory = invitedPro?.categorySlug || draft.categorySlug || startingCategory;
-      const nextCategoryName = categories.find((item) => item.slug === nextCategory)?.name;
-      setCategorySlug(nextCategory);
+      if (!inviteId && draft.categorySlug) setCategorySlug(draft.categorySlug);
       setTitleInput(
-        headlineFromDraft(draft.problem || draft.summary || "", draft.title || "", nextCategoryName),
+        headlineFromDraft(draft.problem || draft.summary || "", draft.title || "", undefined),
       );
       setDescriptionInput(draft.problem || draft.summary || "");
       if (draft.zip) {
         const cleanZip = draft.zip.replace(/\D/g, "").slice(0, 5);
-        if (cleanZip) setZipInput(cleanZip);
+        if (cleanZip) {
+          setZipInput(cleanZip);
+          setDraftCity("");
+        } else {
+          setDraftCity(draft.zip.trim());
+        }
       }
     });
-  }, [draft, intakeReady, invitedPro, startingCategory]);
+  }, [draft, intakeReady, inviteId]);
 
-  const selectedCategory = categories.find((c) => c.slug === categorySlug) ?? categories[0];
   const activeAddress = addresses.find((a) => a.label?.toLowerCase() === "home") ?? addresses[0];
-  const streetName = activeAddress?.street || user?.street;
-  const cityName = activeAddress?.city || user?.city || "Austin";
-  const stateName = activeAddress?.state || user?.state || "TX";
-  const displayLocation = streetName
-    ? `${streetName}, ${cityName}, ${stateName} ${zipInput}`
-    : `Austin, TX ${zipInput}`;
+  const streetName = activeAddress?.street || user?.street || "";
+  const cityName = activeAddress?.city || user?.city || draftCity || "";
+  const stateName = activeAddress?.state || user?.state || "";
+  const displayLocation = [streetName, cityName, stateName, zipInput].filter(Boolean).join(", ");
 
-  // Simple Step Validations
+  function clearFieldError(key: RequestField) {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
   function validateStep(currentStep: number): boolean {
-    setError("");
+    const next: Partial<Record<RequestField, string>> = {};
     if (currentStep === 1) {
-      if (titleInput.trim().length < 4) {
-        setError("Please enter a short project headline (at least 4 characters).");
-        return false;
-      }
-      if (descriptionInput.trim().length < 10) {
-        setError("Please add a brief description of what you need (at least 10 characters).");
-        return false;
-      }
+      if (!selectedCategory) next.category = "Choose a trade category.";
+      if (!titleInput.trim()) next.headline = "Enter a project headline.";
+      if (!descriptionInput.trim()) next.description = "Enter a description of the work.";
     }
-    // Step 2 is Category Specifics - completely optional and skippable
-    if (currentStep === 3) {
-      if (!/^\d{5}$/.test(zipInput.trim())) {
-        setError("Please enter a valid 5-digit ZIP code.");
-        return false;
+    if (currentStep === 2) {
+      if (!zipInput.trim() && !cityName.trim()) {
+        next.zip = "Enter the service ZIP code or city.";
       }
+      if (!propertyType) next.property = "Choose a property type.";
+      if (!materialsStatus) next.parts = "Choose who supplies the parts.";
+    }
+    setFieldErrors(next);
+    if (Object.keys(next).length) {
+      requestAnimationFrame(() => {
+        document.querySelector("[data-field-error]")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      return false;
     }
     return true;
   }
 
   function handleNext() {
     if (validateStep(step)) {
-      setStep((prev) => Math.min(prev + 1, 4));
+      setFieldErrors({});
+      setStep((prev) => Math.min(prev + 1, 3));
     }
-  }
-
-  function handleSkipCategory() {
-    setError("");
-    setStep(3);
   }
 
   function handleBack() {
     setError("");
+    setFieldErrors({});
     setStep((prev) => Math.max(prev - 1, 1));
   }
 
   function onPhotos(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = [...(event.target.files ?? [])].slice(0, 4 - photoUrls.length);
-    files.forEach((file) => {
-      if (!file.type.startsWith("image/")) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === "string") {
-          setPhotoUrls((prev) => [...prev, reader.result as string].slice(0, 4));
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    const files = [...(event.target.files ?? [])]
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, 4 - photoFiles.length);
+    if (files.length) {
+      setPhotoFiles((prev) => [...prev, ...files].slice(0, 4));
+      setPhotoUrls((prev) => [...prev, ...files.map((file) => URL.createObjectURL(file))].slice(0, 4));
+    }
     event.target.value = "";
   }
 
   function removePhoto(index: number) {
+    const url = photoUrls[index];
+    if (url) URL.revokeObjectURL(url);
     setPhotoUrls((prev) => prev.filter((_, i) => i !== index));
+    setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function handleFinalSubmit() {
+  async function handleFinalSubmit() {
+    if (isSubmitting) return;
     if (!validateStep(1)) {
       setStep(1);
       return;
     }
-    if (!validateStep(3)) {
-      setStep(3);
+    if (!validateStep(2)) {
+      setStep(2);
+      return;
+    }
+    if (!selectedCategory) {
+      setStep(1);
+      setError("Please choose a trade category for this request.");
+      return;
+    }
+    if (inviteId && !invitedPro) {
+      setError(
+        inviteLoading
+          ? "Still loading the professional's details. Please try again in a moment."
+          : "We couldn't load the professional you're inviting. Please go back and try again.",
+      );
       return;
     }
 
-    const jobId = createJobId();
     const timeLabel =
       timeWindow === "morning"
         ? "Morning (8 AM – 12 PM)"
@@ -257,194 +318,54 @@ function BookingFlow() {
             ? "Evening (5 PM – 8 PM)"
             : "Flexible / Anytime";
 
-    const enhancedDescription = descriptionInput.trim();
-    const visibility: JobVisibility = invitedPro ? "direct" : "open";
-    const matches = matchEligiblePros(
-      {
-        categorySlug,
-        zip: zipInput.trim(),
-        city: activeAddress?.city || user?.city || "Austin",
-      },
-      professionals,
-    );
-    const matchedIds = invitedPro ? [invitedPro.id] : matches.map((item) => item.id);
+    const description = descriptionInput.trim();
+    const estimatedBudget = parseBudget(budget);
 
-    if (!user) {
-      dispatch(loginAs("homeowner"));
-    }
-
-    // Only include category answers that were actually chosen by the user
-    const dynamicAnswers = Object.entries(categoryAnswers)
-      .map(([qId, val]) => {
-        const q = categoryQuestions.find((item: IntakeQuestion) => item.id === qId);
-        if (!q || !val) return null;
-        const opt = q.options.find((o: IntakeChoice) => o.value === val);
-        return {
-          id: q.id,
-          label: cleanFactLabel(q.prompt),
-          value: opt?.label ?? val,
-        };
-      })
-      .filter((a): a is { id: string; label: string; value: string } => Boolean(a));
-
-    dispatch(
-      addJob({
-        id: jobId,
-        title: titleInput.trim(),
-        categorySlug,
-        description: enhancedDescription,
-        zip: zipInput.trim(),
-        city: activeAddress?.city || user?.city || "Austin",
-        state: activeAddress?.state || user?.state || "TX",
-        urgency,
-        budget: budget || undefined,
-        propertyType,
-        intakeAnswers: [
-          ...dynamicAnswers,
-          {
-            id: "materials",
-            label: "Parts & materials",
-            value: MATERIAL_OPTIONS.find((item) => item.id === materialsStatus)?.title ?? "Pro brings parts",
+    setError("");
+    try {
+      const response = await createJob({
+        data: {
+          category: selectedCategory.id,
+          headline: titleInput.trim(),
+          description,
+          timeframe: urgencyLabels[urgency],
+          serviceLocation: {
+            zipCode: zipInput.trim(),
+            ...(streetName ? { address: streetName } : {}),
+            ...(cityName ? { city: cityName } : {}),
+            ...(stateName ? { state: stateName } : {}),
           },
-          {
-            id: "timing",
-            label: "Timing",
-            value: timeLabel,
-          },
-        ],
-        homeownerName: user?.name ?? "Homeowner",
-        requestedProId: invitedPro?.id,
-        visibility,
-        photos: photoUrls,
-        matchedProIds: matchedIds,
-      }),
-    );
+          preferredArrivalWindow: timeLabel,
+          propertyType: PROPERTY_TYPE_LABELS[propertyType],
+          partsAndMaterials:
+            MATERIAL_OPTIONS.find((item) => item.id === materialsStatus)?.title ?? "Pro brings parts",
+          ...(estimatedBudget ? { estimatedBudget } : {}),
+          ...(invitedPro ? { professional: invitedPro.id } : {}),
+        },
+        projectPhotos: photoFiles,
+      }).unwrap();
 
-    if (photoUrls.length) {
-      dispatch(setJobPhotos({ jobId, photos: photoUrls }));
-    }
+      const created = response.data as
+        | { _id?: string; id?: string; jobRequest?: { _id?: string } }
+        | undefined;
+      const createdId = created?._id || created?.id || created?.jobRequest?._id;
 
-    if (!invitedPro) {
-      dispatch(setJobStatus({ jobId, status: "active" }));
-    }
-
-    if (invitedPro) {
-      dispatch(invitePro({ jobId, proId: invitedPro.id }));
-      dispatch(setJobStatus({ jobId, status: "active" }));
       dispatch(
         addNotification({
-          title: "Direct quote request received",
-          body: `${user?.name ?? "A homeowner"} asked you to quote "${titleInput.trim()}" in ${zipInput.trim()}.`,
-          href: `/pro/jobs/${jobId}`,
+          title: invitedPro ? "Request sent" : "Job published",
+          body: invitedPro
+            ? `${invitedPro.name} has your details and can send a quotation. Hiring is not confirmed until you accept it.`
+            : "Matching professionals can now send quotations.",
+          href: createdId ? `/account/jobs/${createdId}` : "/account",
           createdAt: "Just now",
-          role: "pro",
+          role: "homeowner",
         }),
       );
-    } else if (matchedIds.includes("pro-1")) {
-      dispatch(
-        addNotification({
-          title: "New matching job",
-          body: `${titleInput.trim()} was posted in ${zipInput.trim()}. Review and send a quotation.`,
-          href: `/pro/jobs/${jobId}`,
-          createdAt: "Just now",
-          role: "pro",
-        }),
-      );
+      dispatch(clearDraft());
+      router.push(createdId ? `/account/jobs/${createdId}?posted=1` : "/account");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Could not post your request. Please try again."));
     }
-
-    dispatch(
-      addNotification({
-        title: invitedPro ? "Request sent" : "Job published",
-        body: invitedPro
-          ? `${invitedPro.name} has your details and can send a quotation. Hiring is not confirmed until you accept it.`
-          : `${matchedIds.length} matching professional${matchedIds.length === 1 ? "" : "s"} can now send quotations.`,
-        href: `/account/jobs/${jobId}`,
-        createdAt: "Just now",
-        role: "homeowner",
-      }),
-    );
-
-    dispatch(clearDraft());
-    setSubmittedJobId(jobId);
-  }
-
-  // Confirmation View
-  if (submittedJobId) {
-    return (
-      <Card className="rounded-[24px] border border-line/80 bg-white p-6 sm:p-10 shadow-sm max-w-xl mx-auto text-center animate-in fade-in zoom-in-95 duration-200">
-        <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-emerald-600 shadow-xs mb-5">
-          <CheckCircle2 className="h-9 w-9 stroke-[2.5]" />
-        </div>
-
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-800 border border-emerald-200/80">
-          Request Sent
-        </span>
-
-        <h1 className="mt-3 font-display text-2xl sm:text-3xl font-bold text-title">
-          {invitedPro ? `Request Sent to ${invitedPro.name}!` : "Your Request is Live!"}
-        </h1>
-
-        <p className="mt-2 text-sm text-[#555] max-w-md mx-auto leading-relaxed">
-          {invitedPro
-            ? `${invitedPro.name} has your details and can send a quotation. Viewing a profile or sending this request is not a booking.`
-            : "Matching professionals can review this job and send quotations. You hire only after you accept one."}
-        </p>
-
-        {/* Work Order Receipt Box */}
-        <div className="mt-6 rounded-2xl border border-line/80 bg-surface/50 p-4 sm:p-5 text-left space-y-3">
-          <div className="flex items-center justify-between border-b border-line/60 pb-3">
-            <span className="text-xs font-medium text-muted">Request Reference</span>
-            <span className="font-mono text-xs font-bold text-title">
-              #{submittedJobId.replace("job-local-", "HF-")}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div>
-              <span className="text-muted block">Service</span>
-              <span className="font-semibold text-title truncate block">{titleInput}</span>
-            </div>
-            <div>
-              <span className="text-muted block">Location</span>
-              <span className="font-semibold text-title">
-                {zipInput} (Austin, TX)
-              </span>
-            </div>
-            <div>
-              <span className="text-muted block">Timeframe</span>
-              <span className="font-semibold text-title capitalize">
-                {urgency === "asap" ? "Emergency / ASAP" : urgency.replace("_", " ")}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted block">Status</span>
-              <span className="font-semibold text-emerald-700">
-                {invitedPro ? "Waiting for a quote" : "Quotations in"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button
-            href="/account"
-            size="lg"
-            className="w-full sm:w-auto font-semibold rounded-full shadow-xs px-6"
-          >
-            View my requests
-          </Button>
-          <Button
-            href={`/account/jobs/${submittedJobId}?posted=1`}
-            variant="ghost"
-            size="lg"
-            className="w-full sm:w-auto rounded-full text-xs font-semibold"
-          >
-            Open this request
-          </Button>
-        </div>
-      </Card>
-    );
   }
 
   return (
@@ -494,25 +415,25 @@ function BookingFlow() {
         </Card>
       ) : null}
 
-      {/* 2. Streamlined 4-Step Progress Indicator */}
+      {/* 2. Streamlined 3-Step Progress Indicator */}
       <div className="rounded-[20px] border border-line/80 bg-white p-4 sm:p-5 shadow-xs">
         <div className="flex items-center justify-between pb-2.5 text-xs">
           <span className="font-display font-bold text-title text-sm sm:text-base">
-            Step {step} of 4: <span className="text-primary">{STEPS[step - 1].label}</span>
+            Step {step} of 3: <span className="text-primary">{STEPS[step - 1].label}</span>
           </span>
-          <span className="font-medium text-muted">{Math.round((step / 4) * 100)}% Completed</span>
+          <span className="font-medium text-muted">{Math.round((step / 3) * 100)}% Completed</span>
         </div>
 
         {/* Animated Progress Bar */}
         <div className="h-2 w-full overflow-hidden rounded-full bg-smoke">
           <div
             className="h-full bg-primary transition-all duration-300 ease-out"
-            style={{ width: `${(step / 4) * 100}%` }}
+            style={{ width: `${(step / 3) * 100}%` }}
           />
         </div>
 
         {/* Step Tabs with responsive touch targets */}
-        <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="mt-3.5 grid grid-cols-3 gap-2">
           {STEPS.map((s) => {
             const isCompleted = s.id < step;
             const isCurrent = s.id === step;
@@ -560,12 +481,19 @@ function BookingFlow() {
                 </p>
               </div>
 
-              <Field label="Trade Category *">
+              <Field label="Trade Category *" error={fieldErrors.category}>
                 <NativeSelect
-                  value={categorySlug}
-                  onChange={(e) => setCategorySlug(e.target.value)}
-                  className="rounded-xl"
+                  value={selectedCategory?.slug ?? ""}
+                  onChange={(e) => {
+                    setCategorySlug(e.target.value);
+                    clearFieldError("category");
+                  }}
+                  disabled={categoriesLoading || categories.length === 0}
+                  className={cn("rounded-xl", fieldErrors.category && "border-error focus:border-error")}
                 >
+                  {categories.length === 0 ? (
+                    <option value="">{categoriesLoading ? "Loading categories…" : "No categories available"}</option>
+                  ) : null}
                   {categories.map((item) => (
                     <option key={item.id} value={item.slug}>
                       {item.name}
@@ -574,24 +502,30 @@ function BookingFlow() {
                 </NativeSelect>
               </Field>
 
-              <Field label="Project Headline *">
+              <Field label="Project Headline *" error={fieldErrors.headline}>
                 <TextField
                   value={titleInput}
-                  onChange={(e) => setTitleInput(e.target.value)}
+                  onChange={(e) => {
+                    setTitleInput(e.target.value);
+                    clearFieldError("headline");
+                  }}
                   placeholder="e.g. Leaking kitchen faucet"
-                  required
-                  className="rounded-xl"
+                  aria-invalid={Boolean(fieldErrors.headline)}
+                  className={cn("rounded-xl", fieldErrors.headline && "border-error focus:border-error")}
                 />
               </Field>
 
-              <Field label="Detailed Work Description *">
+              <Field label="Detailed Work Description *" error={fieldErrors.description}>
                 <TextArea
                   value={descriptionInput}
-                  onChange={(e) => setDescriptionInput(e.target.value)}
+                  onChange={(e) => {
+                    setDescriptionInput(e.target.value);
+                    clearFieldError("description");
+                  }}
                   placeholder="Describe what needs to be fixed or installed, any symptoms, and any specific requests..."
-                  className="min-h-[110px] rounded-xl text-sm"
+                  aria-invalid={Boolean(fieldErrors.description)}
+                  className={cn("min-h-[110px] rounded-xl text-sm", fieldErrors.description && "border-error focus:border-error")}
                   rows={4}
-                  required
                 />
               </Field>
 
@@ -654,96 +588,8 @@ function BookingFlow() {
               </div>
             )}
 
-            {/* STEP 2: CATEGORY SPECIFICS (DEDICATED STEP WITH SKIP OPTION) */}
+            {/* STEP 2: WHEN & WHERE */}
             {step === 2 && (
-              <div className="space-y-6 animate-in fade-in duration-150">
-                <div className="border-b border-line/60 pb-3 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="font-display text-xl font-bold text-title">
-                      {selectedCategory.name} Specifications
-                    </h2>
-                    <p className="mt-0.5 text-xs text-muted">
-                      Common details to help contractors give accurate upfront estimates. Answer or skip.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSkipCategory}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer rounded-lg bg-primary/5 px-3 py-1.5"
-                  >
-                    Skip this step ↗
-                  </button>
-                </div>
-
-                {categoryQuestions.length > 0 ? (
-                  <div className="grid gap-3.5 sm:grid-cols-2">
-                    {categoryQuestions.map((q: IntakeQuestion, qIndex: number) => {
-                      const activeVal = categoryAnswers[q.id];
-                      return (
-                        <div
-                          key={q.id}
-                          className="rounded-xl border border-line/70 bg-white p-4 shadow-2xs space-y-3 transition hover:border-line"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <label className="text-xs font-bold text-title flex items-center gap-1.5">
-                              <span className="grid h-4.5 w-4.5 place-items-center rounded bg-smoke text-[10px] font-bold text-muted">
-                                Q{qIndex + 1}
-                              </span>
-                              <span>{q.prompt.replace(/\?$/, "")}</span>
-                            </label>
-                            {activeVal ? (
-                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md shrink-0">
-                                Selected
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-muted shrink-0">Optional</span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {q.options.map((opt: IntakeChoice) => {
-                              const isSelected = activeVal === opt.value;
-                              return (
-                                <button
-                                  key={opt.value}
-                                  type="button"
-                                  onClick={() =>
-                                    setCategoryAnswers((prev) => ({
-                                      ...prev,
-                                      [q.id]: isSelected ? "" : opt.value,
-                                    }))
-                                  }
-                                  className={cn(
-                                    "inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer min-h-[34px]",
-                                    isSelected
-                                      ? "border-primary bg-primary text-white shadow-2xs font-semibold"
-                                      : "border-line bg-white text-title hover:bg-smoke hover:border-slate-300"
-                                  )}
-                                >
-                                  {isSelected && <Check className="h-3 w-3 mr-1.5 stroke-[2.5]" />}
-                                  {opt.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-dashed border-line/80 bg-surface/30 p-8 text-center space-y-2">
-                    <p className="text-sm font-medium text-title">
-                      No additional specifications required for {selectedCategory.name}.
-                    </p>
-                    <p className="text-xs text-muted">
-                      You can click Continue or Skip to set your schedule and location.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* STEP 3: WHEN & WHERE */}
-            {step === 3 && (
               <div className="space-y-7 animate-in fade-in duration-150">
                 <div className="border-b border-line/60 pb-3">
                   <h2 className="font-display text-xl font-bold text-title">
@@ -757,7 +603,7 @@ function BookingFlow() {
                 {/* 1. Primary Decision: Urgency / Timeframe (Visual Hero) */}
                 <div className="space-y-2.5">
                   <label className="block text-sm font-semibold text-title">
-                    When would you like this done?
+                    When would you like this done? <span className="text-error">*</span>
                   </label>
                   <div className="grid gap-3 sm:grid-cols-3">
                     {[
@@ -826,7 +672,7 @@ function BookingFlow() {
                   {/* Service Location */}
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-title">
-                      Service Location <span className="text-xs font-normal text-muted">(ZIP Code)</span>
+                      Service ZIP code <span className="text-error">*</span>
                     </label>
                     <div className="relative">
                       <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
@@ -836,18 +682,31 @@ function BookingFlow() {
                         onChange={(e) => {
                           const val = e.target.value.replace(/\D/g, "").slice(0, 5);
                           setZipInput(val);
+                          clearFieldError("zip");
                         }}
                         placeholder="e.g. 78701"
                         maxLength={5}
-                        required
-                        className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-3 font-mono text-sm font-semibold tracking-wider text-title outline-none transition-colors placeholder:text-muted focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
+                        aria-invalid={Boolean(fieldErrors.zip)}
+                        className={cn(
+                          "w-full h-11 rounded-xl border bg-white pl-10 pr-3 font-mono text-sm font-semibold tracking-wider text-title outline-none transition-colors placeholder:text-muted focus:ring-1.5 shadow-2xs",
+                          fieldErrors.zip
+                            ? "border-error focus:border-error focus:ring-error/20"
+                            : "border-line focus:border-primary focus:ring-primary/20",
+                        )}
                       />
                     </div>
+                    {fieldErrors.zip ? (
+                      <p data-field-error="" className="text-xs font-medium text-error">
+                        {fieldErrors.zip}
+                      </p>
+                    ) : null}
                     {(activeAddress?.street || user?.street) ? (
                       <p className="text-[11px] text-muted flex items-center gap-1 mt-1">
                         <span>Linked address:</span>
                         <span className="font-medium text-title truncate">
-                          {activeAddress?.street || user?.street}, {activeAddress?.city || user?.city || "Austin"}
+                          {[activeAddress?.street || user?.street, activeAddress?.city || user?.city, activeAddress?.state || user?.state]
+                            .filter(Boolean)
+                            .join(", ")}
                         </span>
                       </p>
                     ) : null}
@@ -880,14 +739,23 @@ function BookingFlow() {
                   {/* Property Type (Dropdown) */}
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-title">
-                      Property Type
+                      Property Type <span className="text-error">*</span>
                     </label>
                     <div className="relative">
                       <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
                       <select
                         value={propertyType}
-                        onChange={(e) => setPropertyType(e.target.value as PropertyType)}
-                        className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-9 text-sm font-medium text-title outline-none transition-colors appearance-none cursor-pointer focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
+                        onChange={(e) => {
+                          setPropertyType(e.target.value as PropertyType);
+                          clearFieldError("property");
+                        }}
+                        aria-invalid={Boolean(fieldErrors.property)}
+                        className={cn(
+                          "w-full h-11 rounded-xl border bg-white pl-10 pr-9 text-sm font-medium text-title outline-none transition-colors appearance-none cursor-pointer focus:ring-1.5 shadow-2xs",
+                          fieldErrors.property
+                            ? "border-error focus:border-error focus:ring-error/20"
+                            : "border-line focus:border-primary focus:ring-primary/20",
+                        )}
                       >
                         <option value="single_family">Single-Family Home</option>
                         <option value="condo">Condo / HOA / Townhome</option>
@@ -896,19 +764,33 @@ function BookingFlow() {
                       </select>
                       <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
                     </div>
+                    {fieldErrors.property ? (
+                      <p data-field-error="" className="text-xs font-medium text-error">
+                        {fieldErrors.property}
+                      </p>
+                    ) : null}
                   </div>
 
                   {/* Parts & Materials (Dropdown) */}
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-title">
-                      Parts &amp; Materials
+                      Parts &amp; Materials <span className="text-error">*</span>
                     </label>
                     <div className="relative">
                       <Package className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
                       <select
                         value={materialsStatus}
-                        onChange={(e) => setMaterialsStatus(e.target.value as MaterialsStatus)}
-                        className="w-full h-11 rounded-xl border border-line bg-white pl-10 pr-9 text-sm font-medium text-title outline-none transition-colors appearance-none cursor-pointer focus:border-primary focus:ring-1.5 focus:ring-primary/20 shadow-2xs"
+                        onChange={(e) => {
+                          setMaterialsStatus(e.target.value as MaterialsStatus);
+                          clearFieldError("parts");
+                        }}
+                        aria-invalid={Boolean(fieldErrors.parts)}
+                        className={cn(
+                          "w-full h-11 rounded-xl border bg-white pl-10 pr-9 text-sm font-medium text-title outline-none transition-colors appearance-none cursor-pointer focus:ring-1.5 shadow-2xs",
+                          fieldErrors.parts
+                            ? "border-error focus:border-error focus:ring-error/20"
+                            : "border-line focus:border-primary focus:ring-primary/20",
+                        )}
                       >
                         <option value="contractor">Pro supplies parts (Fittings &amp; hardware)</option>
                         <option value="on_site">I have parts (Pieces already on-site)</option>
@@ -916,6 +798,11 @@ function BookingFlow() {
                       </select>
                       <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
                     </div>
+                    {fieldErrors.parts ? (
+                      <p data-field-error="" className="text-xs font-medium text-error">
+                        {fieldErrors.parts}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -946,8 +833,8 @@ function BookingFlow() {
               </div>
             )}
 
-            {/* STEP 4: REVIEW & CONFIRM */}
-            {step === 4 && (
+            {/* STEP 3: REVIEW & CONFIRM */}
+            {step === 3 && (
               <div className="space-y-4 animate-in fade-in duration-150">
                 <div className="border-b border-line/60 pb-3 flex items-center justify-between gap-3">
                   <div>
@@ -1013,7 +900,7 @@ function BookingFlow() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="inline-flex items-center rounded-md bg-white border border-line/70 px-2.5 py-0.5 text-xs font-semibold text-title/80 shadow-2xs">
-                          {selectedCategory.name}
+                          {selectedCategoryName}
                         </span>
                         {photoUrls.length > 0 && (
                           <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted">
@@ -1112,37 +999,6 @@ function BookingFlow() {
                     ) : null}
                   </div>
 
-                  {/* Answered Category Specifics (Only rendered if user answered) */}
-                  {Object.keys(categoryAnswers).some((k) => categoryAnswers[k]) ? (
-                    <div className="border-t border-line/60 pt-3 flex flex-wrap items-center gap-2 text-xs">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted mr-1">
-                        Specifics:
-                      </span>
-                      {categoryQuestions
-                        .filter((q: IntakeQuestion) => categoryAnswers[q.id])
-                        .map((q: IntakeQuestion) => {
-                          const selectedVal = categoryAnswers[q.id];
-                          const opt = q.options.find((o: IntakeChoice) => o.value === selectedVal);
-                          return (
-                            <span
-                              key={q.id}
-                              className="inline-flex items-center gap-1 rounded-md bg-white border border-line/80 px-2.5 py-1 text-xs text-title font-medium shadow-2xs"
-                            >
-                              <span className="text-muted">{cleanFactLabel(q.prompt)}:</span>
-                              <span className="font-semibold">{opt?.label ?? selectedVal}</span>
-                            </span>
-                          );
-                        })}
-                      <button
-                        type="button"
-                        onClick={() => setStep(2)}
-                        className="text-xs font-semibold text-primary hover:underline ml-auto cursor-pointer"
-                      >
-                        Edit specs
-                      </button>
-                    </div>
-                  ) : null}
-
                   {/* Attached Photos (Only rendered if user attached photos) */}
                   {photoUrls.length > 0 && (
                     <div className="border-t border-line/60 pt-3">
@@ -1182,7 +1038,7 @@ function BookingFlow() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setStep(3)}
+                      onClick={() => setStep(2)}
                       className="font-semibold text-primary hover:underline cursor-pointer"
                     >
                       Edit schedule &amp; address
@@ -1224,19 +1080,7 @@ function BookingFlow() {
               )}
 
               <div className="flex items-center gap-2.5">
-                {step === 2 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="md"
-                    onClick={handleSkipCategory}
-                    className="rounded-full text-xs font-semibold text-muted hover:text-title cursor-pointer px-4"
-                  >
-                    Skip this step ↗
-                  </Button>
-                )}
-
-                {step < 4 ? (
+                {step < 3 ? (
                   <Button
                     type="button"
                     size="md"
@@ -1250,12 +1094,15 @@ function BookingFlow() {
                     type="button"
                     size="md"
                     onClick={handleFinalSubmit}
+                    disabled={isSubmitting || (Boolean(inviteId) && inviteLoading)}
                     className="rounded-full gap-2 font-semibold shadow-sm bg-primary hover:bg-primary-hover px-7 cursor-pointer"
                   >
                     <Send className="h-4 w-4" />
-                    {invitedPro
-                      ? `Send Request to ${invitedPro.name}`
-                      : "Post Request & Get Quotes"}
+                    {isSubmitting
+                      ? "Sending…"
+                      : invitedPro
+                        ? `Send Request to ${invitedPro.name}`
+                        : "Post Request & Get Quotes"}
                   </Button>
                 )}
               </div>

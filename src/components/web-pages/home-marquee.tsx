@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
+import { mapCategory, slugify } from "@/lib/api-mappers";
+import { useGetCategoriesQuery, useGetMarqueesQuery } from "@/services/client/catalog-api";
 
 export interface MarqueeItemData {
   label: string;
@@ -23,62 +25,35 @@ export const defaultTickerItems: MarqueeItemData[] = [
   { label: "Lawn & Yard Care", href: "/browse-pros?category=landscaping" },
 ];
 
-const STORAGE_KEY = "homefix_marquee_cms";
-
-function getCmsConfig() {
-  if (typeof window === "undefined") {
-    return { isEnabled: true, items: defaultTickerItems, speed: "normal" as const };
-  }
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed.isEnabled === false) {
-        return { isEnabled: false, items: [], speed: "normal" as const };
-      }
-      let items = defaultTickerItems;
-      if (Array.isArray(parsed.items)) {
-        const active = parsed.items.filter((item: { isActive?: boolean }) => item.isActive !== false);
-        if (active.length > 0) {
-          items = active.map((item: { label: string; href: string }) => ({ label: item.label, href: item.href }));
-        }
-      }
-      const speed =
-        parsed.speed === "slow" || parsed.speed === "normal" || parsed.speed === "fast"
-          ? parsed.speed
-          : ("normal" as const);
-      return { isEnabled: true, items, speed };
-    }
-  } catch {
-    // fallback to default
-  }
-  return { isEnabled: true, items: defaultTickerItems, speed: "normal" as const };
-}
-
 export function HomeMarquee() {
-  const [items, setItems] = useState<MarqueeItemData[]>(() => getCmsConfig().items);
-  const [isEnabled, setIsEnabled] = useState(() => getCmsConfig().isEnabled);
-  const [speed, setSpeed] = useState<"slow" | "normal" | "fast">(() => getCmsConfig().speed);
+  const marquees = useGetMarqueesQuery();
+  const categories = useGetCategoriesQuery();
 
-  useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) {
-        const config = getCmsConfig();
-        setIsEnabled(config.isEnabled);
-        setItems(config.items);
-        setSpeed(config.speed);
-      }
-    };
+  const items = useMemo<MarqueeItemData[]>(() => {
+    const fromMarquees = (marquees.data?.data ?? [])
+      .filter((item) => item?.keyword && item.isEnabled !== false)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((item) => ({
+        label: item.keyword,
+        href: `/browse-pros?category=${slugify(item.keyword)}`,
+      }));
 
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+    if (fromMarquees.length > 0) return fromMarquees;
 
-  if (!isEnabled || items.length === 0) {
-    return null;
-  }
+    const fromCategories = (categories.data?.data ?? [])
+      .filter((category) => category?.name)
+      .map((category) => {
+        const mapped = mapCategory(category);
+        return {
+          label: mapped.name,
+          href: `/browse-pros?category=${mapped.slug}`,
+        };
+      });
 
-  const animationDuration = speed === "slow" ? "48s" : speed === "fast" ? "18s" : "28s";
+    return fromCategories.length > 0 ? fromCategories : defaultTickerItems;
+  }, [marquees.data, categories.data]);
+
+  if (items.length === 0) return null;
 
   return (
     <div
@@ -88,36 +63,23 @@ export function HomeMarquee() {
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#0a42aa] to-transparent sm:w-28" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#0178be] to-transparent sm:w-28" />
 
-      <div className="flex animate-marquee select-none items-center" style={{ animationDuration }}>
-        {items.map((item, index) => (
-          <div key={`set-1-${index}`} className="flex shrink-0 items-center">
-            <Link
-              href={item.href}
-              className="inline-flex items-center px-5 font-display text-[16px] font-semibold tracking-tight text-white/95 transition-all hover:scale-105 hover:text-white sm:px-7 sm:text-[17px]"
-            >
-              {item.label}
-            </Link>
-            <span
-              className="inline-block h-2 w-2 shrink-0 rounded-full bg-white/90 shadow-[0_0_8px_rgba(255,255,255,0.8)]"
-              aria-hidden
-            />
-          </div>
-        ))}
-
-        {items.map((item, index) => (
-          <div key={`set-2-${index}`} className="flex shrink-0 items-center">
-            <Link
-              href={item.href}
-              className="inline-flex items-center px-5 font-display text-[16px] font-semibold tracking-tight text-white/95 transition-all hover:scale-105 hover:text-white sm:px-7 sm:text-[17px]"
-            >
-              {item.label}
-            </Link>
-            <span
-              className="inline-block h-2 w-2 shrink-0 rounded-full bg-white/90 shadow-[0_0_8px_rgba(255,255,255,0.8)]"
-              aria-hidden
-            />
-          </div>
-        ))}
+      <div className="flex animate-marquee select-none items-center" style={{ animationDuration: "28s" }}>
+        {[1, 2].map((set) =>
+          items.map((item, index) => (
+            <div key={`set-${set}-${index}`} className="flex shrink-0 items-center">
+              <Link
+                href={item.href}
+                className="inline-flex items-center px-5 font-display text-[16px] font-semibold tracking-tight text-white/95 transition-all hover:scale-105 hover:text-white sm:px-7 sm:text-[17px]"
+              >
+                {item.label}
+              </Link>
+              <span
+                className="inline-block h-2 w-2 shrink-0 rounded-full bg-white/90 shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                aria-hidden
+              />
+            </div>
+          )),
+        )}
       </div>
     </div>
   );

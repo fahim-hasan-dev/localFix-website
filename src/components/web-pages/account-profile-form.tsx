@@ -9,6 +9,10 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { updateUser } from "@/redux/slices/authSlice";
 import { updateAddress } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { useGetMyProfileQuery, useUpdateProfileMutation } from "@/services/client/users-api";
+import { apiErrorMessage } from "@/services/client/form-data";
+import { str, unwrapRecord } from "@/lib/api-profile";
+import { mediaUrl } from "@/utils/mediaUrl";
 
 const OTP_LEN = 6;
 
@@ -16,10 +20,15 @@ export function AccountProfileForm() {
   const user = useAppSelector((state) => state.auth.user);
   const dispatch = useAppDispatch();
   const fileInput = useRef<HTMLInputElement>(null);
+  const { data: profileResponse } = useGetMyProfileQuery();
+  const [updateProfile, { isLoading: saving }] = useUpdateProfileMutation();
+  const profile = unwrapRecord(profileResponse?.data);
   const [customAvatar, setCustomAvatar] = useState<string | null>(null);
-  const avatar = customAvatar ?? user?.avatar ?? "";
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const avatar = customAvatar ?? (mediaUrl(str(profile?.profileImage)) || user?.avatar) ?? "";
   const [saved, setSaved] = useState(false);
   const [savedMsg, setSavedMsg] = useState("Profile changes saved.");
+  const [saveError, setSaveError] = useState("");
   const [photoError, setPhotoError] = useState("");
 
   // Email Change with OTP state
@@ -59,6 +68,7 @@ export function AccountProfileForm() {
       return;
     }
     setPhotoError("");
+    setAvatarFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") setCustomAvatar(reader.result);
@@ -168,7 +178,7 @@ export function AccountProfileForm() {
     otpInputs.current[Math.min(pasted.length, OTP_LEN) - 1]?.focus();
   }
 
-  function submitProfile(event: React.FormEvent<HTMLFormElement>) {
+  async function submitProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const name = String(data.get("name") ?? current.name).trim();
@@ -178,11 +188,35 @@ export function AccountProfileForm() {
     const state = String(data.get("state") ?? current.state ?? "").trim();
     const zip = String(data.get("zip") ?? current.zip ?? "").trim();
 
+    setSaveError("");
+    let res;
+    try {
+      res = await updateProfile({
+        data: {
+          name: name || current.name,
+          phone,
+          streetAddress: street,
+          city,
+          state,
+          zipCode: zip,
+        },
+        profileImage: avatarFile,
+      }).unwrap();
+    } catch (err) {
+      setSaveError(apiErrorMessage(err, "Could not save your profile. Please try again."));
+      return;
+    }
+
+    const updated = unwrapRecord(res?.data);
+    const savedImage = mediaUrl(str(updated?.profileImage));
+    if (avatarFile) setAvatarFile(null);
+    if (savedImage) setCustomAvatar(null);
+
     dispatch(
       updateUser({
         name: name || current.name,
         phone,
-        avatar: avatar || current.avatar,
+        avatar: savedImage || avatar || current.avatar,
         street,
         city,
         state,
@@ -224,7 +258,12 @@ export function AccountProfileForm() {
           <h2 className="font-display text-base font-semibold text-title">Personal information</h2>
         </div>
 
-        <form id="profile-form" className="space-y-6" onSubmit={submitProfile}>
+        <form
+          id="profile-form"
+          key={profile ? `loaded-${str(profile._id)}-${str(profile.updatedAt)}` : "initial"}
+          className="space-y-6"
+          onSubmit={submitProfile}
+        >
           {/* Avatar and Photo Upload (No duplicate button) */}
           <div className="flex items-center gap-4 pb-5 border-b border-line/60">
             <div
@@ -270,39 +309,26 @@ export function AccountProfileForm() {
             <Field label="Full name" className="sm:col-span-2">
               <TextField
                 name="name"
-                defaultValue={current.name}
+                defaultValue={str(profile?.name) || current.name}
                 required
                 autoComplete="name"
                 placeholder="e.g. Maya Chen"
               />
             </Field>
 
-            <Field label="Email address">
+            <Field label="Email address" hint="Email cannot be changed.">
               <div className="relative flex items-center">
                 <TextField
                   type="email"
                   value={current.email}
-                  readOnly
-                  className="bg-smoke/40 text-title font-medium pr-28 cursor-default"
+                  disabled
+                  className="pr-24"
                 />
-                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
                     <Check className="h-3 w-3" />
                     Verified
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEmailModal(true);
-                      setEmailStep("email");
-                      setNewEmail("");
-                      setOtp(Array(OTP_LEN).fill(""));
-                      setOtpError("");
-                    }}
-                    className="rounded-lg px-2 py-0.5 text-xs font-semibold text-primary hover:bg-primary/10 transition cursor-pointer"
-                  >
-                    Change
-                  </button>
                 </div>
               </div>
             </Field>
@@ -311,7 +337,7 @@ export function AccountProfileForm() {
               <TextField
                 name="phone"
                 type="tel"
-                defaultValue={current.phone}
+                defaultValue={str(profile?.phone) || current.phone}
                 placeholder="(512) 555-0142"
                 autoComplete="tel"
               />
@@ -328,7 +354,7 @@ export function AccountProfileForm() {
               <Field label="Street address" className="sm:col-span-2">
                 <TextField
                   name="street"
-                  defaultValue={current.street || "418 West 5th Street"}
+                  defaultValue={str(profile?.streetAddress) || current.street || ""}
                   autoComplete="street-address"
                   placeholder="e.g. 418 West 5th Street"
                   required
@@ -338,7 +364,7 @@ export function AccountProfileForm() {
               <Field label="City">
                 <TextField
                   name="city"
-                  defaultValue={current.city || "Austin"}
+                  defaultValue={str(profile?.city) || current.city || ""}
                   autoComplete="address-level2"
                   placeholder="e.g. Austin"
                   required
@@ -349,7 +375,7 @@ export function AccountProfileForm() {
                 <Field label="State">
                   <TextField
                     name="state"
-                    defaultValue={current.state || "TX"}
+                    defaultValue={str(profile?.state) || current.state || ""}
                     autoComplete="address-level1"
                     placeholder="TX"
                     required
@@ -358,7 +384,7 @@ export function AccountProfileForm() {
                 <Field label="ZIP Code">
                   <TextField
                     name="zip"
-                    defaultValue={current.zip || "78701"}
+                    defaultValue={str(profile?.zipCode) || current.zip || ""}
                     autoComplete="postal-code"
                     placeholder="78701"
                     required
@@ -371,9 +397,15 @@ export function AccountProfileForm() {
 
         {/* Bottom Save Action Bar */}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-line/60 pt-4">
-          <Button type="submit" form="profile-form" size="sm" className="rounded-full">
-            Save personal details
+          <Button type="submit" form="profile-form" size="sm" className="rounded-full" disabled={saving}>
+            {saving ? "Saving..." : "Save personal details"}
           </Button>
+          {saveError ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-error">
+              <AlertCircle className="h-4 w-4" />
+              {saveError}
+            </span>
+          ) : null}
           {saved ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success animate-in fade-in">
               <Check className="h-4 w-4" />

@@ -1,14 +1,9 @@
-import { notFound } from "next/navigation";
-import { ProJobLead } from "@/components/web-pages/pro-job-lead";
-import { getJob } from "@/Mockdata";
+"use client";
 
-export default async function ProJobDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  if (!id.startsWith("job-local-") && !getJob(id)) notFound();
+import { useParams } from "next/navigation";
+import { ProLiveJobDetail } from "@/components/web-pages/pro-live-job";
 
-  return <ProJobLead jobId={id} />;
+export default function ProJobDetailPage() {
+  const params = useParams<{ id: string }>();
+  return <ProLiveJobDetail jobId={params.id} />;
 }

@@ -60,7 +60,7 @@ export function CredentialAttachment({
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-title">{file.name}</p>
             <p className="text-xs text-muted">
-              {file.kind === "pdf" ? "PDF" : "Image"} · {file.sizeLabel} · {file.uploadedAt}
+              {[file.kind === "pdf" ? "PDF" : "Image", file.sizeLabel, file.uploadedAt].filter(Boolean).join(" · ")}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">

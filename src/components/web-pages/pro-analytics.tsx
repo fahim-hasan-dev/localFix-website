@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useUrlTab } from "@/hooks/use-url-tab";
 import {
   TrendingUp,
   Users,
@@ -13,150 +14,185 @@ import {
 import { Card } from "@/components/ui/card";
 import { Tabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/cn";
+import {
+  useGetProfessionalAnalyticsQuery,
+  useGetProfessionalHistoryQuery,
+} from "@/services/client/marketplace-api";
 
-export type YearlyMetrics = {
+export type MonthlyPoint = {
+  month: string;
+  income: number;
+  clients: number;
+  jobs: number;
+};
+
+export type AnalyticsMetrics = {
   totalRevenue: number;
   completedJobs: number;
   totalClients: number;
-  repeatClients: number;
-  avgTicket: number;
+  rating: number;
+  reviewCount: number;
   growthRate: string;
-  monthly: Array<{
-    month: string;
-    income: number;
-    clients: number;
-    jobs: number;
-  }>;
-};
-
-export const yearlyData: Record<number, YearlyMetrics> = {
-  2026: {
-    totalRevenue: 38450,
-    completedJobs: 45,
-    totalClients: 38,
-    repeatClients: 13,
-    avgTicket: 854,
-    growthRate: "+18.4%",
-    monthly: [
-      { month: "Jan", income: 2400, clients: 3, jobs: 3 },
-      { month: "Feb", income: 2850, clients: 3, jobs: 4 },
-      { month: "Mar", income: 3400, clients: 4, jobs: 4 },
-      { month: "Apr", income: 3200, clients: 4, jobs: 4 },
-      { month: "May", income: 4100, clients: 5, jobs: 5 },
-      { month: "Jun", income: 4350, clients: 4, jobs: 5 },
-      { month: "Jul", income: 4600, clients: 5, jobs: 5 },
-      { month: "Aug", income: 5200, clients: 6, jobs: 6 },
-      { month: "Sep", income: 3950, clients: 4, jobs: 4 },
-      { month: "Oct", income: 3100, clients: 4, jobs: 3 },
-      { month: "Nov", income: 1300, clients: 2, jobs: 2 },
-      { month: "Dec", income: 0, clients: 0, jobs: 0 },
-    ],
-  },
-  2025: {
-    totalRevenue: 36200,
-    completedJobs: 43,
-    totalClients: 35,
-    repeatClients: 10,
-    avgTicket: 841,
-    growthRate: "+24.8%",
-    monthly: [
-      { month: "Jan", income: 1900, clients: 2, jobs: 2 },
-      { month: "Feb", income: 2200, clients: 3, jobs: 3 },
-      { month: "Mar", income: 2700, clients: 3, jobs: 3 },
-      { month: "Apr", income: 2800, clients: 3, jobs: 4 },
-      { month: "May", income: 3400, clients: 4, jobs: 4 },
-      { month: "Jun", income: 3900, clients: 4, jobs: 5 },
-      { month: "Jul", income: 4200, clients: 5, jobs: 5 },
-      { month: "Aug", income: 4500, clients: 5, jobs: 5 },
-      { month: "Sep", income: 3300, clients: 3, jobs: 4 },
-      { month: "Oct", income: 2800, clients: 3, jobs: 3 },
-      { month: "Nov", income: 2400, clients: 3, jobs: 3 },
-      { month: "Dec", income: 2100, clients: 2, jobs: 2 },
-    ],
-  },
-  2024: {
-    totalRevenue: 29000,
-    completedJobs: 35,
-    totalClients: 28,
-    repeatClients: 6,
-    avgTicket: 828,
-    growthRate: "+31.2%",
-    monthly: [
-      { month: "Jan", income: 1200, clients: 2, jobs: 2 },
-      { month: "Feb", income: 1500, clients: 2, jobs: 2 },
-      { month: "Mar", income: 2100, clients: 2, jobs: 3 },
-      { month: "Apr", income: 2300, clients: 3, jobs: 3 },
-      { month: "May", income: 2800, clients: 3, jobs: 3 },
-      { month: "Jun", income: 3200, clients: 4, jobs: 4 },
-      { month: "Jul", income: 3600, clients: 4, jobs: 4 },
-      { month: "Aug", income: 3900, clients: 4, jobs: 4 },
-      { month: "Sep", income: 2700, clients: 3, jobs: 3 },
-      { month: "Oct", income: 2200, clients: 3, jobs: 2 },
-      { month: "Nov", income: 1800, clients: 2, jobs: 2 },
-      { month: "Dec", income: 1700, clients: 2, jobs: 2 },
-    ],
-  },
+  monthly: MonthlyPoint[];
 };
 
 export type PeriodOption = "this_month" | "this_year" | "all_time";
 
-export const periodData: Record<PeriodOption, YearlyMetrics> = {
-  this_month: {
-    totalRevenue: 3100,
-    completedJobs: 4,
-    totalClients: 4,
-    repeatClients: 2,
-    avgTicket: 775,
-    growthRate: "+12.4%",
-    monthly: [
-      { month: "Wk 1", income: 750, clients: 1, jobs: 1 },
-      { month: "Wk 2", income: 950, clients: 1, jobs: 1 },
-      { month: "Wk 3", income: 850, clients: 1, jobs: 1 },
-      { month: "Wk 4", income: 550, clients: 1, jobs: 1 },
-    ],
-  },
-  this_year: yearlyData[2026],
-  all_time: {
-    totalRevenue: 103650,
-    completedJobs: 123,
-    totalClients: 101,
-    repeatClients: 29,
-    avgTicket: 842,
-    growthRate: "+28.5%",
-    monthly: [
-      { month: "2023", income: 18500, clients: 20, jobs: 24 },
-      { month: "2024", income: 29000, clients: 28, jobs: 35 },
-      { month: "2025", income: 36200, clients: 35, jobs: 43 },
-      { month: "2026", income: 38450, clients: 38, jobs: 45 },
-    ],
-  },
+type ApiRecord = Record<string, unknown>;
+
+type HistoryRow = {
+  id: string;
+  client: string;
+  service: string;
+  date: string;
+  amount: string;
 };
 
-const recentCompletedJobs = [
-  { id: "comp-1", client: "Maya Chen", service: "Kitchen sink leak", date: "Oct 14, 2026", amount: "$280" },
-  { id: "comp-2", client: "Jordan Hale", service: "Pipe diagnostics", date: "Sep 28, 2026", amount: "$450" },
-  { id: "comp-3", client: "Elena Ruiz", service: "Supply line reseal", date: "Sep 15, 2026", amount: "$320" },
-  { id: "comp-4", client: "Sam Okonkwo", service: "Water heater valve", date: "Aug 29, 2026", amount: "$520" },
-  { id: "comp-5", client: "David Miller", service: "Garbage disposal", date: "Aug 12, 2026", amount: "$240" },
-];
+function asRecord(value: unknown): ApiRecord | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as ApiRecord) : null;
+}
 
-type AnalyticsTab = "overview" | "jobs";
+function num(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function str(value: unknown): string {
+  return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
+
+function firstNumber(record: ApiRecord, keys: string[]): number {
+  for (const key of keys) {
+    if (record[key] !== undefined && record[key] !== null) return num(record[key]);
+  }
+  return 0;
+}
+
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function monthLabel(value: unknown): string {
+  const raw = str(value);
+  if (!raw) return "";
+  if (/^\d{1,2}$/.test(raw)) return MONTH_ABBR[Number(raw) - 1] ?? raw;
+  return raw.length > 5 && !Number.isNaN(Date.parse(raw))
+    ? new Date(raw).toLocaleDateString("en-US", { month: "short" })
+    : raw;
+}
+
+function mapMonthly(source: unknown): MonthlyPoint[] {
+  let entries: Array<[string, unknown]> = [];
+  if (Array.isArray(source)) {
+    entries = source.map((item, index) => [String(index), item]);
+  } else if (asRecord(source)) {
+    entries = Object.entries(source as ApiRecord);
+  }
+  return entries
+    .map(([key, item]): MonthlyPoint | null => {
+      const record = asRecord(item);
+      if (!record) {
+        // `{ Jan: 1200 }` style maps
+        return typeof item === "number" ? { month: monthLabel(key), income: item, clients: 0, jobs: 0 } : null;
+      }
+      const month = monthLabel(record.month ?? record.label ?? record.name ?? record.period ?? key);
+      return {
+        month,
+        income: firstNumber(record, ["income", "earnings", "amount", "revenue", "total"]),
+        clients: firstNumber(record, ["clients", "clientCount", "totalClients"]),
+        jobs: firstNumber(record, ["jobs", "completedJobs", "jobCount", "bookings"]),
+      };
+    })
+    .filter((item): item is MonthlyPoint => Boolean(item && item.month));
+}
+
+function mapAnalytics(data: unknown): AnalyticsMetrics {
+  const payload = asRecord(data) ?? {};
+  const stats = asRecord(payload.stats) ?? payload;
+  const growth = stats.growthRate ?? stats.growth ?? payload.growthRate;
+  const growthText = typeof growth === "number" ? `${growth >= 0 ? "+" : ""}${growth}%` : str(growth);
+  return {
+    totalRevenue: firstNumber(stats, ["earnings", "totalEarnings", "totalRevenue"]),
+    completedJobs: firstNumber(stats, ["completedJobs", "jobsCompleted"]),
+    totalClients: firstNumber(stats, ["clients", "totalClients"]),
+    rating: firstNumber(stats, ["rating", "averageRating", "avgRating"]),
+    reviewCount: firstNumber(stats, ["reviewsCount", "totalReviews", "reviewCount", "reviews"]),
+    growthRate: growthText,
+    monthly: mapMonthly(
+      payload.monthlyIncomeOverview ?? stats.monthlyIncomeOverview ?? payload.monthlyIncome ?? stats.monthlyIncome,
+    ),
+  };
+}
+
+function formatHistoryDate(value: unknown) {
+  const raw = str(value);
+  if (!raw) return "";
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime())
+    ? raw
+    : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function mapHistory(data: unknown): HistoryRow[] {
+  let list: unknown[] = [];
+  if (Array.isArray(data)) list = data;
+  else {
+    const record = asRecord(data);
+    if (record) {
+      for (const key of ["history", "items", "jobs", "bookings", "data", "results"]) {
+        if (Array.isArray(record[key])) {
+          list = record[key] as unknown[];
+          break;
+        }
+      }
+    }
+  }
+  return list
+    .map((item, index): HistoryRow | null => {
+      const record = asRecord(item);
+      if (!record) return null;
+      const job = asRecord(record.jobRequest) ?? asRecord(record.job);
+      const homeowner = asRecord(record.homeowner) ?? asRecord(record.client);
+      const amount = firstNumber(record, ["totalAmount", "amount", "earnings", "income", "price"]);
+      return {
+        id: str(record._id || record.id) || String(index),
+        client: str(homeowner?.name || record.clientName || record.client) || "Client",
+        service: str(job?.title || record.title || record.service || record.serviceName) || "Completed job",
+        date: formatHistoryDate(record.completedAt ?? record.homeownerCompletedAt ?? record.date ?? record.updatedAt ?? record.createdAt),
+        amount: `$${amount.toLocaleString()}`,
+      };
+    })
+    .filter((item): item is HistoryRow => Boolean(item));
+}
+
+function niceMax(value: number) {
+  if (value <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  return Math.ceil(value / magnitude) * magnitude;
+}
 
 export function ProAnalytics() {
-  const [activeTab, setActiveTab] = useState<AnalyticsTab>("overview");
+  const [activeTab, setActiveTab] = useUrlTab(["overview", "jobs"] as const, "overview");
   const [period, setPeriod] = useState<PeriodOption>("this_year");
   const [hoveredIncomeMonth, setHoveredIncomeMonth] = useState<number | null>(null);
   const [hoveredClientsMonth, setHoveredClientsMonth] = useState<number | null>(null);
 
-  const activeData = periodData[period] ?? periodData.this_year;
+  const analyticsQuery = useGetProfessionalAnalyticsQuery({ period });
+  const historyQuery = useGetProfessionalHistoryQuery({ period });
 
-  const maxIncome = Math.max(...activeData.monthly.map((m) => m.income), 6000);
-  const maxClients = Math.max(...activeData.monthly.map((m) => m.clients), 8);
+  const activeData = useMemo(() => mapAnalytics(analyticsQuery.data?.data), [analyticsQuery.data]);
+  const history = useMemo(() => mapHistory(historyQuery.data?.data), [historyQuery.data]);
+
+  const incomeMax = niceMax(Math.max(...activeData.monthly.map((m) => m.income), 0));
+  const clientsMax = Math.max(Math.ceil(Math.max(...activeData.monthly.map((m) => m.clients), 0)), 1);
+  const maxIncome = incomeMax;
+  const maxClients = clientsMax;
+  const peakIncome = Math.max(...activeData.monthly.map((m) => m.income), 0);
+  const peakClients = Math.max(...activeData.monthly.map((m) => m.clients), 0);
 
   const activeIncomeItem =
-    hoveredIncomeMonth !== null ? activeData.monthly[hoveredIncomeMonth] : null;
+    hoveredIncomeMonth !== null ? activeData.monthly[hoveredIncomeMonth] ?? null : null;
   const activeClientsItem =
-    hoveredClientsMonth !== null ? activeData.monthly[hoveredClientsMonth] : null;
+    hoveredClientsMonth !== null ? activeData.monthly[hoveredClientsMonth] ?? null : null;
+  const hasMonthly = activeData.monthly.length > 0;
 
   return (
     <div className="space-y-6">
@@ -190,6 +226,9 @@ export function ProAnalytics() {
         </div>
       </div>
 
+      {analyticsQuery.isLoading ? <p className="text-sm text-muted">Loading analytics...</p> : null}
+      {analyticsQuery.isError ? <p className="text-sm text-error">Analytics could not be loaded.</p> : null}
+
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE KPI CARDS (Standardized, uncluttered, executive sizes)       */}
       {/* ========================================================================= */}
@@ -207,10 +246,12 @@ export function ProAnalytics() {
             <span className="truncate font-display text-2xl font-bold tracking-tight text-title">
               ${activeData.totalRevenue.toLocaleString()}
             </span>
-            <span className="inline-flex shrink-0 items-center text-xs font-semibold text-emerald-600">
-              <TrendingUp className="mr-0.5 h-3 w-3" />
-              {activeData.growthRate}
-            </span>
+            {activeData.growthRate ? (
+              <span className="inline-flex shrink-0 items-center text-xs font-semibold text-emerald-600">
+                <TrendingUp className="mr-0.5 h-3 w-3" />
+                {activeData.growthRate}
+              </span>
+            ) : null}
           </div>
         </Card>
 
@@ -253,10 +294,14 @@ export function ProAnalytics() {
           </div>
           <div className="mt-3 flex items-baseline justify-between gap-2">
             <span className="flex items-center gap-1 font-display text-2xl font-bold tracking-tight text-title">
-              4.8
+              {activeData.rating ? activeData.rating.toFixed(1) : "—"}
               <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-500" />
             </span>
-            <span className="shrink-0 text-xs text-muted">36 reviews</span>
+            {activeData.reviewCount ? (
+              <span className="shrink-0 text-xs text-muted">
+                {activeData.reviewCount} review{activeData.reviewCount === 1 ? "" : "s"}
+              </span>
+            ) : null}
           </div>
         </Card>
       </div>
@@ -266,6 +311,9 @@ export function ProAnalytics() {
       {/* ========================================================================= */}
       {activeTab === "overview" && (
         <div className="space-y-6 animate-in fade-in duration-200">
+          {!analyticsQuery.isLoading && !analyticsQuery.isError && !hasMonthly ? (
+            <p className="text-xs text-muted">No income data for this period yet.</p>
+          ) : null}
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Income Trend Chart */}
             <Card className="p-5 sm:p-6">
@@ -294,9 +342,9 @@ export function ProAnalytics() {
 
                   {/* Grid Lines */}
                   <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-40">
-                    <div className="border-b border-dashed border-line text-[10px] text-muted">$5,000</div>
-                    <div className="border-b border-dashed border-line text-[10px] text-muted">$3,500</div>
-                    <div className="border-b border-dashed border-line text-[10px] text-muted">$2,000</div>
+                    <div className="border-b border-dashed border-line text-[10px] text-muted">${maxIncome.toLocaleString()}</div>
+                    <div className="border-b border-dashed border-line text-[10px] text-muted">${Math.round((maxIncome * 2) / 3).toLocaleString()}</div>
+                    <div className="border-b border-dashed border-line text-[10px] text-muted">${Math.round(maxIncome / 3).toLocaleString()}</div>
                     <div className="border-b border-line text-[10px] text-muted">$0</div>
                   </div>
 
@@ -305,7 +353,7 @@ export function ProAnalytics() {
                     {activeData.monthly.map((item, idx) => {
                       const heightPercent = Math.max((item.income / maxIncome) * 100, 3);
                       const isHovered = hoveredIncomeMonth === idx;
-                      const isPeak = item.income === Math.max(...activeData.monthly.map((m) => m.income));
+                      const isPeak = item.income > 0 && item.income === peakIncome;
 
                       return (
                         <div
@@ -377,9 +425,9 @@ export function ProAnalytics() {
 
                   {/* Grid Lines */}
                   <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-40">
-                    <div className="border-b border-dashed border-line text-[10px] text-muted">8 Clients</div>
-                    <div className="border-b border-dashed border-line text-[10px] text-muted">5 Clients</div>
-                    <div className="border-b border-dashed border-line text-[10px] text-muted">3 Clients</div>
+                    <div className="border-b border-dashed border-line text-[10px] text-muted">{maxClients} Clients</div>
+                    <div className="border-b border-dashed border-line text-[10px] text-muted">{Math.round((maxClients * 2) / 3)} Clients</div>
+                    <div className="border-b border-dashed border-line text-[10px] text-muted">{Math.round(maxClients / 3)} Clients</div>
                     <div className="border-b border-line text-[10px] text-muted">0</div>
                   </div>
 
@@ -388,7 +436,7 @@ export function ProAnalytics() {
                     {activeData.monthly.map((item, idx) => {
                       const heightPercent = Math.max((item.clients / maxClients) * 100, 3);
                       const isHovered = hoveredClientsMonth === idx;
-                      const isPeak = item.clients === Math.max(...activeData.monthly.map((m) => m.clients));
+                      const isPeak = item.clients > 0 && item.clients === peakClients;
 
                       return (
                         <div
@@ -444,8 +492,13 @@ export function ProAnalytics() {
       {/* ========================================================================= */}
       {activeTab === "jobs" && (
         <Card className="overflow-hidden rounded-xl p-0 hover:shadow-xs">
+          {historyQuery.isLoading ? <p className="px-6 py-4 text-sm text-muted">Loading history...</p> : null}
+          {historyQuery.isError ? <p className="px-6 py-4 text-sm text-error">History could not be loaded.</p> : null}
+          {!historyQuery.isLoading && !historyQuery.isError && history.length === 0 ? (
+            <p className="px-6 py-4 text-sm text-muted">No completed jobs for this period yet.</p>
+          ) : null}
           <ul className="divide-y divide-line/70">
-            {recentCompletedJobs.map((job) => (
+            {history.map((job) => (
               <li
                 key={job.id}
                 className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-6 py-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_7rem_4.5rem]"

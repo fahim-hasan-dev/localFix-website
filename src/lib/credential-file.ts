@@ -39,32 +39,33 @@ export function fileFromUpload(file: File): CredentialFile {
   };
 }
 
+/** Empty placeholders kept for form defaults — no demo filenames. */
 export function defaultLicenseDoc(): CredentialFile {
   return {
-    name: "TX-M-42981-Master-Plumber-Certificate.pdf",
-    sizeLabel: "1.2 MB",
+    name: "",
+    sizeLabel: "",
     kind: "pdf",
-    uploadedAt: "Sep 29, 2026",
-    status: "verified",
+    uploadedAt: "",
+    status: "needed",
   };
 }
 
 export function defaultInsuranceDoc(): CredentialFile {
   return {
-    name: "Next-General-Liability-COI-2026.pdf",
-    sizeLabel: "840 KB",
+    name: "",
+    sizeLabel: "",
     kind: "pdf",
-    uploadedAt: "Sep 29, 2026",
-    status: "verified",
+    uploadedAt: "",
+    status: "needed",
   };
 }
 
 export function defaultIdDoc(): CredentialFile {
   return {
-    name: "TX-DL-Luis-Ortega-Front.jpg",
-    sizeLabel: "2.4 MB",
+    name: "",
+    sizeLabel: "",
     kind: "image",
-    uploadedAt: "Sep 29, 2026",
-    status: "verified",
+    uploadedAt: "",
+    status: "needed",
   };
 }

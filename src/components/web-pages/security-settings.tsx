@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Check,
-  CheckCircle2,
   KeyRound,
   Laptop,
   Mail,
@@ -16,31 +15,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { logout } from "@/redux/slices/authSlice";
-import { setTwoFactor } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { cn } from "@/lib/cn";
-
+import { useDeleteMyAccountMutation } from "@/services/client/users-api";
+import { apiErrorMessage } from "@/services/client/form-data";
 export function SecuritySettings({ role }: { role: "homeowner" | "pro" }) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
-  const twoFactorOn = useAppSelector((state) => state.features.twoFactorOn);
+  const [deleteMyAccount, { isLoading: deleting }] = useDeleteMyAccountMutation();
 
   const [deleteArmed, setDeleteArmed] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [sessionsCleared, setSessionsCleared] = useState(false);
-  const [twoFactorFeedback, setTwoFactorFeedback] = useState("");
 
   const passwordHref = role === "pro" ? "/pro/password" : "/account/password";
 
-  function handleToggle2FA() {
-    const nextState = !twoFactorOn;
-    dispatch(setTwoFactor(nextState));
-    setTwoFactorFeedback(
-      nextState
-        ? "Two-factor authentication enabled. A verification code will be sent to your phone on new logins."
-        : "Two-factor authentication turned off.",
-    );
-    setTimeout(() => setTwoFactorFeedback(""), 4000);
+  async function handleDeleteAccount() {
+    if (!deletePassword) {
+      setDeleteError("Enter your account password to confirm deletion.");
+      return;
+    }
+    setDeleteError("");
+    try {
+      await deleteMyAccount({ password: deletePassword }).unwrap();
+      dispatch(logout());
+      router.push("/");
+    } catch (err) {
+      setDeleteError(apiErrorMessage(err, "Could not delete your account."));
+    }
   }
 
   function handleClearOtherSessions() {
@@ -59,13 +62,6 @@ export function SecuritySettings({ role }: { role: "homeowner" | "pro" }) {
           Manage password, two-factor authentication, and active sessions.
         </p>
       </div>
-
-      {twoFactorFeedback && (
-        <div className="flex items-center gap-2 rounded-[14px] border border-primary/20 bg-primary/5 p-4 text-sm text-primary animate-in fade-in">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <span>{twoFactorFeedback}</span>
-        </div>
-      )}
 
       {/* ============================================================ */}
       {/* CARD 1: SIGN-IN & AUTHENTICATION                             */}
@@ -110,14 +106,9 @@ export function SecuritySettings({ role }: { role: "homeowner" | "pro" }) {
                 Two-Factor Authentication (2FA)
               </p>
               <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                  twoFactorOn
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    : "bg-surface text-muted border border-line",
-                )}
+                className="rounded-full border border-line bg-surface px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted"
               >
-                {twoFactorOn ? "Active" : "Off"}
+                Coming soon
               </span>
             </div>
             <p className="font-sans text-xs text-muted leading-relaxed">
@@ -127,20 +118,14 @@ export function SecuritySettings({ role }: { role: "homeowner" | "pro" }) {
 
           <button
             type="button"
-            onClick={handleToggle2FA}
-            className={cn(
-              "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none self-start sm:self-auto",
-              twoFactorOn ? "bg-primary" : "bg-line",
-            )}
+            disabled
+            title="Two-factor authentication is coming soon"
+            className="relative inline-flex h-6 w-11 shrink-0 cursor-not-allowed rounded-full border-2 border-transparent bg-line opacity-60 focus:outline-none self-start sm:self-auto"
             role="switch"
-            aria-checked={twoFactorOn}
+            aria-checked={false}
+            aria-disabled="true"
           >
-            <span
-              className={cn(
-                "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
-                twoFactorOn ? "translate-x-5" : "translate-x-0",
-              )}
-            />
+            <span className="pointer-events-none inline-block h-5 w-5 translate-x-0 transform rounded-full bg-white shadow-md ring-0" />
           </button>
         </div>
 
@@ -281,26 +266,41 @@ export function SecuritySettings({ role }: { role: "homeowner" | "pro" }) {
               Delete Account
             </Button>
           ) : (
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              <Button
-                type="button"
-                size="sm"
-                className="bg-error hover:bg-red-700 text-white"
-                onClick={() => {
-                  dispatch(logout());
-                  router.push("/");
-                }}
-              >
-                Confirm Delete
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setDeleteArmed(false)}
-              >
-                Cancel
-              </Button>
+            <div className="flex w-full flex-col gap-2 self-start sm:w-auto sm:self-auto">
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(event) => setDeletePassword(event.target.value)}
+                placeholder="Confirm with your password"
+                autoComplete="current-password"
+                disabled={deleting}
+                className="w-full rounded-[10px] border border-red-200 bg-white px-3 py-2 text-xs text-title outline-none focus:border-red-400 sm:w-64"
+              />
+              {deleteError ? <p className="text-xs text-error">{deleteError}</p> : null}
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-error hover:bg-red-700 text-white"
+                  disabled={deleting}
+                  onClick={handleDeleteAccount}
+                >
+                  {deleting ? "Deleting..." : "Confirm Delete"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={deleting}
+                  onClick={() => {
+                    setDeleteArmed(false);
+                    setDeletePassword("");
+                    setDeleteError("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           )}
         </div>

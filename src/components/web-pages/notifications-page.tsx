@@ -1,17 +1,40 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/cn";
-import { markAllNotificationsRead, markNotificationRead } from "@/redux/slices/featuresSlice";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { useLiveNotifications, useReadAllNotificationsMutation, useReadNotificationMutation } from "@/services/client/engagement-api";
 
 export function NotificationsPage({ role }: { role: "homeowner" | "pro" }) {
-  const dispatch = useAppDispatch();
-  const notes = useAppSelector((state) =>
-    state.features.notifications.filter((item) => item.role === role || item.role === "all"),
-  );
-  const unread = notes.filter((item) => !item.read).length;
+  const {
+    items: notes,
+    unreadCount,
+    isLoading,
+    isError,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useLiveNotifications(true);
+  const [readAll] = useReadAllNotificationsMutation();
+  const [readOne] = useReadNotificationMutation();
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  void role;
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasNextPage) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: "240px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasNextPage, fetchNextPage, notes.length]);
 
   return (
     <div className="w-full max-w-5xl space-y-6">
@@ -20,9 +43,9 @@ export function NotificationsPage({ role }: { role: "homeowner" | "pro" }) {
           <h1 className="font-display text-[22px] sm:text-[26px] font-semibold text-title tracking-tight">
             Notifications
           </h1>
-          {unread > 0 ? (
+          {unreadCount > 0 ? (
             <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary border border-primary/20">
-              {unread} unread
+              {unreadCount} unread
             </span>
           ) : (
             <span className="inline-flex items-center rounded-full bg-smoke px-2.5 py-0.5 text-xs font-semibold text-muted border border-line">
@@ -30,10 +53,10 @@ export function NotificationsPage({ role }: { role: "homeowner" | "pro" }) {
             </span>
           )}
         </div>
-        {unread > 0 ? (
+        {unreadCount > 0 ? (
           <button
             type="button"
-            onClick={() => dispatch(markAllNotificationsRead(role))}
+            onClick={() => void readAll()}
             className="font-display text-xs font-semibold text-primary hover:underline self-start sm:self-auto"
           >
             Mark all as read
@@ -41,11 +64,14 @@ export function NotificationsPage({ role }: { role: "homeowner" | "pro" }) {
         ) : null}
       </div>
 
-      {notes.length === 0 ? (
+      {isLoading ? <p className="text-sm text-muted">Loading notifications...</p> : null}
+      {isError ? <p className="text-sm text-error">Notifications could not be loaded.</p> : null}
+      {!isLoading && !isError && notes.length === 0 ? (
         <div className="mt-5">
           <EmptyState title="No notifications" description="Quotes and messages show up here." />
         </div>
-      ) : (
+      ) : null}
+      {notes.length > 0 ? (
         <ul className="mt-4 overflow-hidden rounded-[14px] border border-line bg-white">
           {notes.map((note, index) => (
             <li
@@ -68,7 +94,7 @@ export function NotificationsPage({ role }: { role: "homeowner" | "pro" }) {
                   <Link
                     href={note.href}
                     onClick={() => {
-                      if (!note.read) dispatch(markNotificationRead(note.id));
+                      if (!note.read) void readOne(note.id);
                     }}
                     className="font-display text-sm font-bold leading-5 text-title hover:text-primary"
                   >
@@ -81,7 +107,7 @@ export function NotificationsPage({ role }: { role: "homeowner" | "pro" }) {
                   <Link
                     href={note.href}
                     onClick={() => {
-                      if (!note.read) dispatch(markNotificationRead(note.id));
+                      if (!note.read) void readOne(note.id);
                     }}
                     className="font-semibold text-primary"
                   >
@@ -90,7 +116,7 @@ export function NotificationsPage({ role }: { role: "homeowner" | "pro" }) {
                   {!note.read ? (
                     <button
                       type="button"
-                      onClick={() => dispatch(markNotificationRead(note.id))}
+                      onClick={() => void readOne(note.id)}
                       className="font-semibold text-muted hover:text-title"
                     >
                       Mark read
@@ -101,7 +127,19 @@ export function NotificationsPage({ role }: { role: "homeowner" | "pro" }) {
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
+      {hasNextPage ? (
+        <div ref={sentinelRef} className="flex justify-center py-3">
+          <button
+            type="button"
+            onClick={() => void fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="font-display text-xs font-semibold text-primary hover:underline disabled:opacity-60"
+          >
+            {isFetchingNextPage ? "Loading more..." : "Load more"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

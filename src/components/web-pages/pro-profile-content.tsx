@@ -22,21 +22,14 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { photos } from "@/lib/media";
-import { getAvatar } from "@/lib/avatars";
-import {
-  tradeDefaultServices,
-  tradeDefaultReviews,
-  getProGallery,
-} from "@/lib/pro-extras";
 import { loginHref } from "@/lib/role-access";
 import { toggleFavorite } from "@/redux/slices/featuresSlice";
+import { useToggleFavoriteMutation } from "@/services/client/engagement-api";
 import { useRoleAccess } from "@/hooks/use-role-access";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import type { Professional } from "@/types";
 import { cn } from "@/lib/cn";
 import {
-  defaultWeeklyHours,
   groupWeeklyHours,
   normalizeWeeklyHours,
   todayWeekday,
@@ -57,10 +50,9 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   const router = useRouter();
   const pathname = usePathname();
   const { access, applicationStatus, membershipActive, membershipCancelled, membershipPaused, user } = useRoleAccess();
-  const saved = useAppSelector((state) => state.features.favorites.includes(pro.id));
-  const seedReviews = useAppSelector((state) =>
-    state.features.reviews.filter((item) => item.proId === pro.id)
-  );
+  const [toggleFavoriteApi] = useToggleFavoriteMutation();
+  const savedLocally = useAppSelector((state) => state.features.favorites.includes(pro.id));
+  const saved = savedLocally || Boolean(pro.isFavorite);
   const completions = useAppSelector((state) => state.marketplace.completions);
   const hiredByJob = useAppSelector((state) => state.marketplace.hiredByJob);
   const extraQuotes = useAppSelector((state) => state.marketplace.extraQuotes);
@@ -73,12 +65,10 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
         const quote = extraQuotes.find((q) => q.id === quoteId);
         if (quote && quote.proId === pro.id) {
           extra++;
-        } else if (pro.id === "pro-1") {
-          extra++;
         }
       }
     }
-    return (pro.jobsCompleted || 65) + extra;
+    return (pro.jobsCompleted || 0) + extra;
   }, [completions, hiredByJob, extraQuotes, pro.id, pro.jobsCompleted]);
 
   const [activeTab, setActiveTab] = useState<"about" | "services" | "photos" | "reviews">("about");
@@ -89,67 +79,31 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
   const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
   const [bioExpanded, setBioExpanded] = useState(false);
 
-  const proProfile = useAppSelector((state) => state.features.proProfile);
-  const isDemoPro = pro.id === "pro-1";
-
-  const defaultBio =
-    pro.categorySlug === "house-cleaning"
-      ? "We’re a full-time, professional cleaning team serving both residential and commercial clients. Our experience includes recurring home cleanings, Airbnb turnovers, apartment move-in/move-out services, and office or commercial property cleaning."
-      : pro.bio && pro.bio.length > 50
-      ? pro.bio
-      : "We’re a full-time, professional team serving both residential and commercial clients across the Austin metro area. Our experience includes recurring property care, urgent service calls, certified diagnostics, and complete installation services with guaranteed workmanship.";
-
-  const effectiveBio = isDemoPro && proProfile?.bio ? proProfile.bio : defaultBio;
+  const effectiveBio = pro.bio?.trim() || "";
   const isBioLong = effectiveBio.length > 420;
-  const effectiveBusinessName = isDemoPro && proProfile?.contactName ? proProfile.contactName : pro.name;
-  const effectiveYearsInBusiness = isDemoPro && proProfile?.yearsInBusiness ? proProfile.yearsInBusiness : pro.yearsInBusiness;
-  const effectiveStartingPrice = isDemoPro && proProfile?.startingPrice ? proProfile.startingPrice : pro.startingPrice;
-
-  const replyTime = useMemo(() => {
-    if (pro.emergency) return "~15 mins";
-    const lower = (pro.responseTime || "").toLowerCase();
-    if (lower.includes("min")) {
-      const match = lower.match(/\d+/);
-      return match ? `~${match[0]} mins` : "~15 mins";
-    }
-    if (/\b1\s*hour/.test(lower) || lower.includes("under 1")) return "~15 mins";
-    if (/\b2\s*hour/.test(lower)) return "~20 mins";
-    if (/\b3\s*hour/.test(lower)) return "~25 mins";
-    if (/\b4\s*hour/.test(lower)) return "~30 mins";
-    const idNum = pro.id.replace(/\D/g, "");
-    const num = idNum ? parseInt(idNum, 10) : 1;
-    const mins = [15, 20, 15, 20, 25, 15][num % 6] || 15;
-    return `~${mins} mins`;
-  }, [pro.id, pro.responseTime, pro.emergency]);
-
-  const categoryServices = tradeDefaultServices[pro.categorySlug] ?? tradeDefaultServices.plumbing ?? [];
-  const displayServices = isDemoPro && proProfile?.services?.length ? proProfile.services : categoryServices;
-
-  const businessHours = normalizeWeeklyHours(
-    isDemoPro && proProfile?.businessHours ? proProfile.businessHours : defaultWeeklyHours(),
-  );
-  const hourGroups = groupWeeklyHours(businessHours);
-  const todayHours = businessHours[todayWeekday()];
-  const openToday = todayHours.status === "open";
-
-  const similarJobsCount = Math.max(7, Math.round(pro.jobsCompleted * 0.12));
-
-  const cover = photos.services[pro.categorySlug] ?? photos.banner;
+  const displayName = pro.businessName || pro.name;
+  const yearsLabel = pro.yearsInBusiness
+    ? pro.yearsInBusiness.toLowerCase().includes("year")
+      ? pro.yearsInBusiness
+      : `${pro.yearsInBusiness} in business`
+    : "";
+  const businessHours = pro.businessHours ? normalizeWeeklyHours(pro.businessHours) : null;
+  const hourGroups = businessHours ? groupWeeklyHours(businessHours) : [];
+  const todayHours = businessHours ? businessHours[todayWeekday()] : null;
+  const openToday = todayHours?.status === "open";
+  const localJobs = pro.localJobs ?? 0;
+  const verificationBits = [
+    pro.licensed ? "State licensed" : null,
+    pro.insured ? "Insured" : null,
+    pro.backgroundChecked ? "Background cleared" : null,
+  ].filter((item): item is string => Boolean(item));
+  const displayServices = pro.liveServices ?? [];
+  const cover = pro.coverImage || "";
   const profilePath = `/browse-pros/${pro.id}`;
+  const isOwnStorefront =
+    user?.role === "pro" && Boolean(user.id) && pro.id === user.id;
 
-  const proPortfolio = proProfile?.portfolio;
-  const galleryPhotos = useMemo(() => {
-    if (isDemoPro && proPortfolio && proPortfolio.length > 0) {
-      return proPortfolio.map((p, idx) => ({
-        id: p.id || `${pro.id}-portfolio-${idx + 1}`,
-        title: p.title,
-        category: p.category || "Project",
-        image: p.image,
-        description: p.description || p.title,
-      }));
-    }
-    return getProGallery(pro.id, pro.categorySlug);
-  }, [pro.id, pro.categorySlug, isDemoPro, proPortfolio]);
+  const galleryPhotos = pro.livePhotos ?? [];
 
   const photoCategories = useMemo(() => {
     const set = new Set<string>();
@@ -200,6 +154,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
     }
     if (!access.canSavePro) return;
     dispatch(toggleFavorite(pro.id));
+    void toggleFavoriteApi({ id: pro.id });
   }
 
   function onShare() {
@@ -217,53 +172,18 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
     }
   }
 
-  // Realistic trade-verified reviews
-  const tradeReviewGen = tradeDefaultReviews[pro.categorySlug] ?? tradeDefaultReviews.plumbing;
-  const defaultReviews = useMemo(
-    () => tradeReviewGen(pro.name, pro.city),
-    [tradeReviewGen, pro.name, pro.city]
-  );
-
   const allReviews = useMemo(() => {
-    type ReviewEntry = {
-      id: string;
-      author: string;
-      avatar?: string;
-      location: string;
-      date: string;
-      rating: number;
-      tag: "punctual" | "fair-price" | "clean-work";
-      project: string;
-      text: string;
-      reply?: string;
-    };
-
-    const userMapped: ReviewEntry[] = seedReviews.map((r, i) => ({
-      id: r.id,
-      author: r.author,
-      avatar: r.avatar || getAvatar(r.author),
-      location: `${pro.city}, ${pro.state}`,
-      date: r.createdAt ? r.createdAt : `${i + 1} month ago`,
-      rating: r.rating,
-      tag: (i % 2 === 0 ? "clean-work" : "fair-price") as "clean-work" | "fair-price" | "punctual",
-      project: `${pro.trade} Service`,
-      text: r.body,
-      reply: r.reply ?? undefined,
+    return (pro.liveReviews ?? []).map((review) => ({
+      id: review.id,
+      author: review.author,
+      avatar: review.avatar || "",
+      location: [pro.city, pro.state].filter(Boolean).join(", "),
+      date: review.createdAt,
+      rating: review.rating,
+      text: review.text,
+      reply: review.reply,
     }));
-
-    // Merge so seedReviews (e.g. Elena Ruiz) are first, followed by verified default reviews
-    const combined: ReviewEntry[] = [...userMapped];
-    for (const def of defaultReviews) {
-      if (!combined.some((item) => item.text.trim() === def.text.trim() || item.id === def.id)) {
-        combined.push({
-          ...def,
-          avatar: def.avatar || getAvatar(def.author),
-          location: def.location || `${pro.city}, ${pro.state}`,
-        });
-      }
-    }
-    return combined;
-  }, [seedReviews, defaultReviews, pro.city, pro.state, pro.trade]);
+  }, [pro.city, pro.state, pro.liveReviews]);
 
   const dynamicRating = useMemo(() => {
     if (!allReviews.length) return pro.rating;
@@ -337,12 +257,14 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
     <div className="min-h-screen bg-white pb-20">
       {/* 1. REFINED COMPACT COVER HERO WITH EMBEDDED BREADCRUMB */}
       <section className="relative h-32 sm:h-40 md:h-44 w-full overflow-hidden bg-gradient-to-r from-title via-slate-900 to-primary">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={cover}
-          alt={pro.name}
-          className="h-full w-full object-cover object-center opacity-30 mix-blend-overlay"
-        />
+        {cover ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={cover}
+            alt={displayName}
+            className="h-full w-full object-cover object-center opacity-30 mix-blend-overlay"
+          />
+        ) : null}
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/20 to-black/50" />
 
         {/* Embedded Breadcrumb inside cover */}
@@ -371,7 +293,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
       {/* 3. PROFILE IDENTITY HEADER */}
       <section className="border-b border-line/60 bg-white">
         <div className="container-site relative pb-6 pt-0">
-          {isDemoPro && user?.role === "pro" && (applicationStatus !== "cleared" || !membershipActive || membershipCancelled || membershipPaused) && (
+          {isOwnStorefront && user?.role === "pro" && (applicationStatus !== "cleared" || !membershipActive || membershipCancelled || membershipPaused) && (
             <div className="mb-4 mt-3 rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-xs sm:text-sm text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
               <div className="flex items-start gap-2.5">
                 <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -397,10 +319,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-5">
               <div className="relative -mt-10 sm:-mt-12 shrink-0">
                 {(() => {
-                  const storefrontAvatar =
-                    pro.avatar ||
-                    (isDemoPro && proProfile?.avatar) ||
-                    getAvatar(effectiveBusinessName, pro.id);
+                  const storefrontAvatar = pro.avatar || "";
                   return (
                     <span
                       suppressHydrationWarning
@@ -410,34 +329,36 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={storefrontAvatar}
-                          alt={effectiveBusinessName}
+                          alt={displayName}
                           className="h-full w-full object-cover"
                         />
                       ) : (
                         <span className="grid h-full w-full place-items-center bg-gradient-to-br from-primary to-blue-700 font-display text-2xl sm:text-3xl font-bold text-white">
-                          {initials(effectiveBusinessName)}
+                          {initials(displayName || "Pro")}
                         </span>
                       )}
                     </span>
                   );
                 })()}
+                {pro.backgroundChecked || pro.licensed ? (
                 <span
-                  title="Screened & Verified Professional"
+                  title="Screened professional"
                   className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-emerald-600 text-white shadow-xs ring-2 ring-white z-10"
                 >
                   <ShieldCheck className="h-3.5 w-3.5" />
                 </span>
+                ) : null}
               </div>
 
               <div className="space-y-1 pt-1 sm:pt-2">
                 <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-title leading-tight">
-                  {effectiveBusinessName}
+                  {displayName}
                 </h1>
 
                 {/* Clean, Non-repetitive Meta Line */}
                 <div className="font-sans text-xs sm:text-sm text-copy flex flex-wrap items-center gap-2">
                   <span className="font-medium text-primary">
-                    {pro.trade} Specialist
+                    {pro.trade || "Home services"}
                   </span>
                   <span className="text-muted/60">·</span>
                   <button
@@ -452,7 +373,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                   <span className="text-muted/60">·</span>
                   <span className="inline-flex items-center text-muted">
                     <MapPin className="h-3.5 w-3.5 mr-1 shrink-0 text-muted" />
-                    {pro.city}, {pro.state}
+                    {[pro.city, pro.state].filter(Boolean).join(", ") || "Location not listed"}
                   </span>
                 </div>
               </div>
@@ -539,7 +460,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                     isBioLong && !bioExpanded && "line-clamp-3 sm:line-clamp-4"
                   )}
                 >
-                  {effectiveBio}
+                  {effectiveBio || "This professional has not added a bio yet."}
                 </p>
                 {isBioLong && (
                   <button
@@ -579,44 +500,46 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                   </div>
 
                   {/* Local Jobs */}
+                  {localJobs > 0 ? (
                   <div className="flex items-start gap-2.5">
                     <MapPin className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
                     <div>
                       <p className="font-display text-sm font-semibold text-title">
-                        {similarJobsCount} local jobs
+                        {localJobs} local jobs
                       </p>
-                      <p className="text-xs text-muted">Completed near {pro.city}</p>
+                      <p className="text-xs text-muted">Completed near {pro.city || "their area"}</p>
                     </div>
                   </div>
+                  ) : null}
 
                   {/* Background Checked & License */}
+                  {verificationBits.length > 0 ? (
                   <div className="flex items-start gap-2.5">
                     <ShieldCheck className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
                     <div>
                       <p className="font-display text-sm font-semibold text-title flex items-center gap-1.5">
-                        Verified &amp; Licensed
+                        {verificationBits[0]}
                         <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[2.5]" />
                       </p>
                       <p className="text-xs text-muted">
-                        State licensed · Fully insured · Background cleared
+                        {verificationBits.join(" · ")}
                       </p>
                     </div>
                   </div>
+                  ) : null}
 
                   {/* Years in Business */}
+                  {yearsLabel ? (
                   <div className="flex items-start gap-2.5">
                     <Calendar className="h-4 w-4 text-zinc-500 mt-0.5 shrink-0" />
                     <div>
                       <p className="font-display text-sm font-semibold text-title">
-                        {effectiveYearsInBusiness
-                          ? effectiveYearsInBusiness.includes("year")
-                            ? effectiveYearsInBusiness
-                            : `${effectiveYearsInBusiness} in business`
-                          : "1+ years in business"}
+                        {yearsLabel}
                       </p>
                       <p className="text-xs text-muted">Trade experience</p>
                     </div>
                   </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -639,10 +562,11 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                         openToday ? "bg-emerald-500" : "bg-zinc-400",
                       )}
                     />
-                    {openToday ? "Open today" : "Closed today"}
+                    {openToday ? "Open today" : businessHours ? "Closed today" : "Hours not listed"}
                   </span>
                 </div>
 
+                {hourGroups.length > 0 ? (
                 <div className="space-y-0 text-xs">
                   {hourGroups.map((group) => (
                     <div
@@ -662,6 +586,9 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                     </div>
                   ))}
                 </div>
+                ) : (
+                  <p className="text-xs text-muted">Hours have not been added yet.</p>
+                )}
               </div>
             </div>
           </section>
@@ -675,7 +602,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 Services offered
               </h2>
               <p className="mt-0.5 text-xs sm:text-sm text-muted">
-                All services backed by guaranteed upfront estimates · Zero hidden travel fees
+                Services listed by {displayName || "this professional"}.
               </p>
             </div>
 
@@ -848,16 +775,28 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1 text-amber-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-500" />
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={cn(
+                          "h-4 w-4",
+                          star <= Math.round(dynamicRating)
+                            ? "fill-amber-400 text-amber-500"
+                            : "text-line",
+                        )}
+                      />
                     ))}
                   </div>
                   <p className="text-xs font-semibold text-title">
-                    Based on {dynamicReviewCount} verified ratings
+                    {dynamicReviewCount > 0
+                      ? `Based on ${dynamicReviewCount} verified ratings`
+                      : "No reviews yet"}
                   </p>
-                  <p className="text-[11px] text-emerald-700 font-medium">
-                    100% of homeowners recommend
-                  </p>
+                  {dynamicReviewCount > 0 && pro.recommendationRate != null ? (
+                    <p className="text-[11px] text-emerald-700 font-medium">
+                      {pro.recommendationRate}% of homeowners recommend
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -961,10 +900,10 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <span suppressHydrationWarning className="relative block h-10 w-10 shrink-0 overflow-hidden rounded-full bg-smoke border border-line/60 shadow-2xs">
-                        {rev.avatar || getAvatar(rev.author) ? (
+                        {rev.avatar ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img
-                            src={rev.avatar || getAvatar(rev.author)}
+                            src={rev.avatar}
                             alt={rev.author}
                             className="h-full w-full object-cover"
                           />
@@ -1023,15 +962,19 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                 <div className="min-w-0">
                   <div className="flex items-baseline gap-2">
                     <span className="font-display text-[26px] font-semibold leading-none tracking-tight text-title">
-                      ${effectiveStartingPrice}
+                      {pro.startingPrice > 0 ? `$${pro.startingPrice}` : "Quote"}
                     </span>
-                    <span className="font-sans text-sm text-muted">starting estimate</span>
+                    <span className="font-sans text-sm text-muted">
+                      {pro.startingPrice > 0 ? "starting estimate" : "on request"}
+                    </span>
                   </div>
                 </div>
+                {pro.responseTime ? (
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50 px-2.5 py-1 font-sans text-xs font-medium text-emerald-800">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Replies in {replyTime}
+                  {pro.responseTime}
                 </span>
+                ) : null}
               </div>
             </div>
 
@@ -1042,7 +985,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                   Service area
                 </span>
                 <span className="font-display text-sm font-medium text-title text-right">
-                  {pro.city}, {pro.state}
+                  {[pro.city, pro.state].filter(Boolean).join(", ") || "Not listed"}
                 </span>
               </div>
 
@@ -1052,7 +995,7 @@ export function ProProfileContent({ pro }: { pro: Professional }) {
                   Availability
                 </span>
                 <span className="font-display text-sm font-medium text-right text-emerald-700">
-                  {pro.availableThisWeek ? "Available this week" : "Book 3–5 days"}
+                  {pro.availabilityNote || (pro.availableThisWeek ? "Available this week" : "Not listed")}
                 </span>
               </div>
             </div>

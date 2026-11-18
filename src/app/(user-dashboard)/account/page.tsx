@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -13,64 +13,105 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { getCategory, getPro, urgencyLabels } from "@/Mockdata";
-import {
-  jobCardSummary,
-  selectAllJobs,
-  selectAllQuotes,
-} from "@/lib/marketplace";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { deleteJob } from "@/redux/slices/marketplaceSlice";
-import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
+import { urgencyLabels } from "@/Mockdata";
+import { jobCardSummary } from "@/lib/marketplace";
+import { mapCategory } from "@/lib/api-mappers";
+import { mapBooking, mapJobRequest, unwrapList, type ApiJobRequest } from "@/lib/marketplace-mappers";
+import { useGetCategoriesQuery } from "@/services/client/catalog-api";
+import { useDeleteJobRequestMutation, useGetMyJobRequestsQuery } from "@/services/client/jobs-api";
+import { apiErrorMessage } from "@/services/client/form-data";
+import { useAppDispatch } from "@/redux/hooks";
+import { addNotification } from "@/redux/slices/featuresSlice";
 import { cn } from "@/lib/cn";
-import type { Job } from "@/types";
+import type { Booking, Job } from "@/types";
+
+type JobRow = {
+  job: Job;
+  quotesCount: number;
+  requestedProName?: string;
+  booking?: Booking;
+  hiredProName?: string;
+};
+
+function formatBudget(budget?: string) {
+  if (!budget) return "";
+  return /^\d+(\.\d+)?$/.test(budget) ? `$${budget}` : budget;
+}
 
 export default function AccountPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const user = useAppSelector((state) => state.auth.user);
-  const allJobs = useAppSelector(selectAllJobs);
-  const quotes = useAppSelector(selectAllQuotes);
-  const bookings = useAppSelector((state) => state.marketplace.bookings);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
+  const [deleteError, setDeleteError] = useState("");
 
-  function confirmDeleteJob() {
-    if (!jobToDelete) return;
-    dispatch(deleteJob(jobToDelete.id));
-    dispatch(setJobStatus({ jobId: jobToDelete.id, status: "cancelled" }));
-    dispatch(
-      addNotification({
-        title: "Request Deleted",
-        body: `Your request "${jobToDelete.title}" has been deleted.`,
-        href: "/account",
-        createdAt: new Date().toISOString(),
-        role: "homeowner",
-      }),
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const { data, isLoading, isError, refetch } = useGetMyJobRequestsQuery(
+    debouncedSearch ? { searchTerm: debouncedSearch } : undefined,
+  );
+  const { data: categoryResponse } = useGetCategoriesQuery();
+  const [deleteJobRequest, { isLoading: isDeleting }] = useDeleteJobRequestMutation();
+
+  const categoryNames = useMemo(() => {
+    const map = new Map<string, string>();
+    (categoryResponse?.data || []).map(mapCategory).forEach((item) => map.set(item.slug, item.name));
+    return map;
+  }, [categoryResponse]);
+
+  function categoryLabel(slug: string) {
+    return (
+      categoryNames.get(slug) ||
+      slug
+        .split("-")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ")
     );
-    setJobToDelete(null);
   }
 
-  const activeRequests = useMemo(() => {
-    const name = user?.name ?? "Homeowner";
-    const mine =
-      !name || name === "Homeowner" || name === "Maya Chen"
-        ? allJobs.filter((j) => j.homeownerName === "Maya Chen" || j.homeownerName === "Homeowner")
-        : allJobs.filter((j) => j.homeownerName === name || j.homeownerName === "Maya Chen");
-    return mine.filter((j) =>
-      ["draft", "active", "getting_quotes", "quotes_in"].includes(j.status),
-    );
-  }, [allJobs, user?.name]);
+  async function confirmDeleteJob() {
+    if (!jobToDelete) return;
+    setDeleteError("");
+    try {
+      await deleteJobRequest(jobToDelete.id).unwrap();
+      dispatch(
+        addNotification({
+          title: "Request Deleted",
+          body: `Your request "${jobToDelete.title}" has been deleted.`,
+          href: "/account",
+          createdAt: new Date().toISOString(),
+          role: "homeowner",
+        }),
+      );
+      setJobToDelete(null);
+    } catch (err) {
+      setDeleteError(apiErrorMessage(err, "Could not delete this request."));
+    }
+  }
 
-  const filteredJobs = useMemo(() => {
-    if (!searchQuery.trim()) return activeRequests;
-    const q = searchQuery.toLowerCase().trim();
-    return activeRequests.filter((job) => {
-      const cat = getCategory(job.categorySlug)?.name.toLowerCase() ?? "";
-      const text = `${job.title} ${job.description} ${job.city} ${job.zip} ${cat}`.toLowerCase();
-      return text.includes(q);
-    });
-  }, [activeRequests, searchQuery]);
+  const activeRequests = useMemo<JobRow[]>(() => {
+    return unwrapList<ApiJobRequest>(data?.data)
+      .map((raw) => {
+        const job = mapJobRequest(raw);
+        const requestedPro =
+          raw.professional && typeof raw.professional === "object" ? raw.professional : null;
+        return {
+          job,
+          quotesCount: raw.quotesCount ?? raw.quotations?.length ?? 0,
+          requestedProName: requestedPro?.companyName || requestedPro?.name,
+          booking: raw.booking ? mapBooking(raw.booking) : undefined,
+          hiredProName: raw.booking?.professional?.companyName || raw.booking?.professional?.name,
+        };
+      })
+      .filter(({ job }) => ["draft", "active", "getting_quotes", "quotes_in"].includes(job.status));
+  }, [data]);
+
+  const filteredJobs = activeRequests;
 
   return (
     <div className="w-full max-w-5xl space-y-6">
@@ -99,7 +140,26 @@ export default function AccountPage() {
       )}
 
       {/* 3. Request List */}
-      {activeRequests.length === 0 ? (
+      {isLoading ? (
+        <Card className="rounded-[20px] border border-line/80 bg-white p-8 text-center">
+          <p className="text-sm text-muted">Loading your requests…</p>
+        </Card>
+      ) : isError ? (
+        <Card className="rounded-[20px] border border-line/80 bg-white p-8 text-center">
+          <p className="font-display text-sm font-semibold text-title">
+            We couldn&apos;t load your requests.
+          </p>
+          <p className="mt-1 text-xs text-muted">Please check your connection and try again.</p>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => refetch()}
+            className="mt-4 rounded-full border border-line text-xs font-semibold"
+          >
+            Try again
+          </Button>
+        </Card>
+      ) : activeRequests.length === 0 ? (
         <div className="mt-4">
           <EmptyState
             title="No open repair requests"
@@ -114,19 +174,11 @@ export default function AccountPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {filteredJobs.map((job) => {
+          {filteredJobs.map(({ job, quotesCount, requestedProName, booking, hiredProName }) => {
             const isDirect = job.visibility === "direct" || Boolean(job.requestedProId);
-            const requestedPro = job.requestedProId ? getPro(job.requestedProId) : null;
-            const rawQuotes = isDirect && requestedPro
-              ? quotes.filter((q) => q.jobId === job.id && q.proId === requestedPro.id)
-              : quotes.filter((q) => q.jobId === job.id);
-            const jobQuotes = Array.from(
-              new Map(rawQuotes.map((q) => [q.proId || q.id, q])).values(),
-            );
-            const booking = bookings[job.id];
-            const hiredPro = booking?.proId ? getPro(booking.proId) : null;
             const isHired = job.status === "hired" || job.status === "scheduled" || Boolean(booking?.agreedPrice);
-            const categoryName = getCategory(job.categorySlug)?.name;
+            const bookingHref = booking?.id ? `/account/bookings/${booking.id}` : "/account/bookings";
+            const categoryName = categoryLabel(job.categorySlug);
             const displayTitle =
               categoryName && job.title.toLowerCase().startsWith(categoryName.toLowerCase())
                 ? job.title.slice(categoryName.length).replace(/^[\s·•-]+/, "")
@@ -135,7 +187,11 @@ export default function AccountPage() {
             return (
               <Card
                 key={job.id}
-                onClick={() => router.push(isHired ? `/account/bookings/${job.id}` : `/account/jobs/${job.id}`)}
+                onClick={() =>
+                  router.push(
+                    isHired && booking?.id ? `/account/bookings/${booking.id}` : `/account/jobs/${job.id}`,
+                  )
+                }
                 className={cn(
                   "group relative rounded-[20px] border bg-white p-5 sm:p-6 shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/50 cursor-pointer",
                   job.status === "awaiting_confirm"
@@ -150,18 +206,18 @@ export default function AccountPage() {
                     {/* Clean Header Badges */}
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-md bg-smoke px-2 py-0.5 text-[11px] font-semibold text-title/80">
-                        {getCategory(job.categorySlug)?.name}
+                        {categoryName}
                       </span>
 
-                      {isDirect && requestedPro && (
+                      {isDirect && requestedProName && (
                         <span className="rounded-md bg-smoke px-2 py-0.5 text-[11px] font-medium text-title/80">
-                          To: {requestedPro.name}
+                          To: {requestedProName}
                         </span>
                       )}
 
                       {/* Status / Awaiting Quotes Badge (no duplicate quote count since the CTA button clearly displays it) */}
                       {!isHired ? (
-                        jobQuotes.length === 0 ? (
+                        quotesCount === 0 ? (
                           <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-muted">
                             Awaiting Quotes
                           </span>
@@ -195,7 +251,7 @@ export default function AccountPage() {
                         <>
                           <span>•</span>
                           <span className="font-semibold text-title">
-                            Budget: {job.budget}
+                            Budget: {formatBudget(job.budget)}
                           </span>
                         </>
                       ) : null}
@@ -209,11 +265,11 @@ export default function AccountPage() {
                         </>
                       ) : null}
 
-                      {isHired && hiredPro && booking ? (
+                      {isHired && hiredProName && booking ? (
                         <>
                           <span>•</span>
                           <span className="font-semibold text-title">
-                            Pro: {hiredPro.name}
+                            Pro: {hiredProName}
                           </span>
                           <span>•</span>
                           <span className="font-bold text-emerald-700">
@@ -255,7 +311,7 @@ export default function AccountPage() {
                       </Button>
                     ) : job.status === "completed" ? (
                       <Button
-                        href="/account/bookings"
+                        href={bookingHref}
                         variant="ghost"
                         size="sm"
                         className="rounded-full border border-line text-xs font-semibold text-muted hover:text-title"
@@ -265,7 +321,7 @@ export default function AccountPage() {
                       </Button>
                     ) : job.status === "in_progress" || job.status === "en_route" ? (
                       <Button
-                        href="/account/bookings"
+                        href={bookingHref}
                         size="sm"
                         className="rounded-full text-xs font-semibold shadow-xs"
                       >
@@ -273,20 +329,20 @@ export default function AccountPage() {
                       </Button>
                     ) : isHired ? (
                       <Button
-                        href="/account/bookings"
+                        href={bookingHref}
                         size="sm"
                         variant="ghost"
                         className="rounded-full text-xs font-semibold border-primary/40 text-primary hover:bg-primary/5"
                       >
                         View in Bookings ↗
                       </Button>
-                    ) : jobQuotes.length > 0 ? (
+                    ) : quotesCount > 0 ? (
                       <Button
                         href={`/account/jobs/${job.id}`}
                         size="sm"
                         className="rounded-full text-xs font-semibold shadow-xs"
                       >
-                        View Quotes ({jobQuotes.length}) ↗
+                        View Quotes ({quotesCount}) ↗
                       </Button>
                     ) : (
                       <Button
@@ -333,11 +389,17 @@ export default function AccountPage() {
             <p className="mt-1.5 text-xs sm:text-sm text-muted leading-relaxed">
               Are you sure you want to delete this request? This cannot be undone.
             </p>
+            {deleteError ? (
+              <p className="mt-2 text-xs font-medium text-error">{deleteError}</p>
+            ) : null}
             <div className="mt-5 flex items-center justify-end gap-2.5">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setJobToDelete(null)}
+                onClick={() => {
+                  setJobToDelete(null);
+                  setDeleteError("");
+                }}
                 className="rounded-xl text-xs font-semibold"
               >
                 Cancel
@@ -345,9 +407,10 @@ export default function AccountPage() {
               <Button
                 size="sm"
                 onClick={confirmDeleteJob}
+                disabled={isDeleting}
                 className="rounded-xl text-xs font-semibold bg-error hover:bg-error/90 text-white shadow-xs"
               >
-                Delete
+                {isDeleting ? "Deleting…" : "Delete"}
               </Button>
             </div>
           </div>

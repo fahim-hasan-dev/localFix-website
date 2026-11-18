@@ -1,13 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RequestDetail } from "@/components/web-pages/request-detail";
 import { ProQuoteForm } from "@/components/web-pages/pro-quote-form";
 import { Button } from "@/components/ui/button";
 import { isSamePro, normalizeProId, selectBooking, selectJob, selectQuotesForJob } from "@/lib/marketplace";
 import { useRoleAccess } from "@/hooks/use-role-access";
+import { errorMessage } from "@/lib/booking-view";
 import { setLeadAction } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { useRejectDirectRequestMutation, useRejectMarketplaceLeadMutation } from "@/services/client/jobs-api";
 
 import {
   Calendar,
@@ -37,10 +40,14 @@ export function ProJobLead({
   const leadAction = useAppSelector((state) => state.features.leadActions[jobId] ?? "open");
   const hiredQuoteId = useAppSelector((state) => state.marketplace.hiredByJob[jobId]);
   const user = useAppSelector((state) => state.auth.user);
-  const myProId = normalizeProId(user?.role === "pro" && user?.id ? user.id : "pro-1");
+  const myProId = user?.id ? normalizeProId(user.id) : "";
   const quotes = useAppSelector((state) => selectQuotesForJob(state, jobId));
   const myQuote = quotes.find((quote) => isSamePro(quote.proId, myProId));
   const alreadyQuoted = Boolean(myQuote);
+  const [passError, setPassError] = useState("");
+  const [passing, setPassing] = useState(false);
+  const [rejectDirectRequest] = useRejectDirectRequestMutation();
+  const [rejectMarketplaceLead] = useRejectMarketplaceLeadMutation();
 
   const isBooked = Boolean(
     job && ["hired", "scheduled", "en_route", "in_progress", "awaiting_confirm", "completed"].includes(job.status)
@@ -65,14 +72,34 @@ export function ProJobLead({
     ((booking && !isSamePro(booking.proId, myProId)) || (hiredQuoteId && (!myQuote || hiredQuoteId !== myQuote.id)))
   );
   const passed = leadAction === "declined";
+  const canSendQuote =
+    !isMyBooking &&
+    !forSomeoneElse &&
+    !hiredElsewhere &&
+    access.canSubmitQuote &&
+    !passed &&
+    !alreadyQuoted;
 
   function accept() {
     dispatch(setLeadAction({ jobId, action: "accepted" }));
   }
 
-  function pass() {
-    dispatch(setLeadAction({ jobId, action: "declined" }));
-    router.push(resolvedBackHref);
+  async function pass() {
+    if (passing) return;
+    setPassing(true);
+    setPassError("");
+    try {
+      if (job?.visibility === "direct" || job?.requestedProId) {
+        await rejectDirectRequest(jobId).unwrap();
+      } else {
+        await rejectMarketplaceLead(jobId).unwrap();
+      }
+      dispatch(setLeadAction({ jobId, action: "declined" }));
+      router.push(resolvedBackHref);
+    } catch (error) {
+      setPassError(errorMessage(error, "This request could not be declined."));
+      setPassing(false);
+    }
   }
 
   return (
@@ -150,19 +177,15 @@ export function ProJobLead({
           </div>
 
           <div className="space-y-5">
-            {/* Scope of Work */}
-            <div>
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">
-                Scope of Work
-              </h4>
-              <p className="text-xs sm:text-sm text-copy leading-relaxed">
-                {!myQuote.scope || /^(veniam|elit|rerum|occaecat|lorem|ipsum)/i.test(myQuote.scope)
-                  ? "Full diagnostic inspection, specialized repair according to homeowner requirements, professional labor, and safety testing."
-                  : myQuote.scope}
-              </p>
-            </div>
+            {myQuote.scope ? (
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">
+                  Scope of Work
+                </h4>
+                <p className="text-xs sm:text-sm text-copy leading-relaxed">{myQuote.scope}</p>
+              </div>
+            ) : null}
 
-            {/* Specifications in Unified Clean Grid (No separate awkward boxes) */}
             <div className="pt-4 border-t border-line/50">
               <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted mb-3.5">
                 Quotation Terms &amp; Timeline
@@ -178,7 +201,7 @@ export function ProJobLead({
                         Schedule
                       </span>
                       <strong className="font-semibold text-title text-xs sm:text-[13px] block mt-1 break-words leading-tight">
-                        {(myQuote.proposedSchedule || myQuote.availability || "").replace(/\(\((.*?)\)\)/g, "($1)").replace(/\((.*?)\s*\((.*?)\)\)/g, "$1 · $2")}
+                        {myQuote.proposedSchedule || myQuote.availability}
                       </strong>
                     </div>
                   </div>
@@ -216,21 +239,21 @@ export function ProJobLead({
                   </div>
                 ) : null}
 
-                <div className="flex items-start gap-2.5">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-smoke/80 border border-line/70 text-primary shadow-2xs">
-                    <ShieldCheck className="h-4 w-4" />
+                {myQuote.warranty ? (
+                  <div className="flex items-start gap-2.5">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-smoke/80 border border-line/70 text-primary shadow-2xs">
+                      <ShieldCheck className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[11px] text-muted block leading-none font-normal">
+                        Warranty
+                      </span>
+                      <strong className="font-semibold text-title text-xs sm:text-[13px] block mt-1 break-words leading-tight">
+                        {myQuote.warranty}
+                      </strong>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[11px] text-muted block leading-none font-normal">
-                      Warranty
-                    </span>
-                    <strong className="font-semibold text-title text-xs sm:text-[13px] block mt-1 break-words leading-tight">
-                      {!myQuote.warranty || /^(veniam|elit|rerum|occaecat)/i.test(myQuote.warranty)
-                        ? "1-Year Workmanship Warranty"
-                        : myQuote.warranty}
-                    </strong>
-                  </div>
-                </div>
+                ) : null}
 
                 {myQuote.paymentTerms ? (
                   <div className="flex items-start gap-2.5">
@@ -242,9 +265,7 @@ export function ProJobLead({
                         Payment Terms
                       </span>
                       <strong className="font-semibold text-title text-xs sm:text-[13px] block mt-1 break-words leading-tight">
-                        {/^(veniam|elit|rerum|occaecat)/i.test(myQuote.paymentTerms)
-                          ? "Direct payment upon 100% completion (Card, Transfer, or Cash)"
-                          : myQuote.paymentTerms.replace(/Accepted:\s*(veniam|rerum|elit).*$/i, "Accepted: Card, Bank Transfer, Cash")}
+                        {myQuote.paymentTerms}
                       </strong>
                     </div>
                   </div>
@@ -267,8 +288,7 @@ export function ProJobLead({
                 ) : null}
               </div>
 
-              {/* Dedicated Contractor Notes Box */}
-              {myQuote.notes && !/^(veniam|elit|rerum|occaecat)/i.test(myQuote.notes) ? (
+              {myQuote.notes ? (
                 <div className="mt-4 flex items-start gap-3 rounded-xl border border-line/80 bg-smoke/40 p-3.5 text-xs">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-line text-primary shadow-2xs mt-0.5">
                     <FileText className="h-4 w-4" />
@@ -286,9 +306,16 @@ export function ProJobLead({
             </div>
           </div>
         </div>
-      ) : (
-        <ProQuoteForm jobId={jobId} onPass={pass} />
-      )}
+      ) : canSendQuote ? (
+        <div className="space-y-3">
+          {passError ? <p className="text-xs font-medium text-error">{passError}</p> : null}
+          <ProQuoteForm
+            jobId={jobId}
+            onPass={() => void pass()}
+            onSubmitted={() => router.push("/pro/jobs?tab=quoted")}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -20,6 +20,37 @@ import { Card } from "@/components/ui/card";
 import { AppliedBanner } from "@/components/web-pages/applied-banner";
 import { saveApplicationDraft, submitApplication } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { useGetProfessionalApplicationQuery } from "@/services/client/marketplace-api";
+import { unwrapRecord, str, type ApiRecord } from "@/lib/api-profile";
+import { mediaUrl } from "@/utils/mediaUrl";
+
+function toRecord(value: unknown): ApiRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as ApiRecord;
+}
+
+function fileNameFromUrl(url: string) {
+  const clean = url.split("?")[0].split("#")[0];
+  const last = clean.split("/").filter(Boolean).pop() ?? "";
+  try {
+    return decodeURIComponent(last);
+  } catch {
+    return last;
+  }
+}
+
+type ApplicationStatusKey = "draft" | "submitted" | "needs_info" | "rejected" | "cleared";
+
+function mapApiStatus(value: unknown): ApplicationStatusKey | null {
+  const v = str(value).toLowerCase().replace(/[\s-]+/g, "_");
+  if (!v) return null;
+  if (["approved", "cleared", "verified", "active", "accepted"].includes(v)) return "cleared";
+  if (["pending", "submitted", "in_review", "under_review", "review", "processing"].includes(v)) return "submitted";
+  if (["rejected", "declined", "denied"].includes(v)) return "rejected";
+  if (["needs_info", "more_info", "info_required", "incomplete"].includes(v)) return "needs_info";
+  if (v === "draft") return "draft";
+  return null;
+}
 
 const statusConfig = {
   draft: { label: "Draft", icon: FileText, className: "text-muted" },
@@ -31,17 +62,59 @@ const statusConfig = {
 
 export default function ProApplicationPage() {
   const dispatch = useAppDispatch();
-  const status = useAppSelector((state) => state.features.applicationStatus);
-  const reason = useAppSelector((state) => state.features.rejectionReason);
-  const draft = useAppSelector((state) => state.features.applicationDraft);
-  const proProfile = useAppSelector((state) => state.features.proProfile);
+  const localStatus = useAppSelector((state) => state.features.applicationStatus);
+  const localReason = useAppSelector((state) => state.features.rejectionReason);
+  const localDraft = useAppSelector((state) => state.features.applicationDraft);
 
-  const [licenseFile, setLicenseFile] = useState(
-    draft.licenseFile || "TX-M-42981-Master-Plumber-Certificate.pdf",
+  // Live application status from the API (falls back to local state until it loads).
+  const { data: applicationResponse } = useGetProfessionalApplicationQuery();
+  const application = unwrapRecord(applicationResponse?.data);
+  const status: ApplicationStatusKey =
+    mapApiStatus(application?.status ?? application?.approvalStatus ?? application?.applicationStatus) ??
+    localStatus;
+  const reason =
+    str(application?.rejectionReason ?? application?.reason ?? application?.adminNote) || localReason;
+  const backgroundApi = str(
+    application?.backgroundCheckStatus ?? application?.backgroundCheck,
+  ).toLowerCase();
+  const tradeLicense = toRecord(application?.tradeLicense);
+  const liabilityInsurance = toRecord(application?.liabilityInsurance ?? application?.insurance);
+  const draft: Record<string, string> = {
+    ...localDraft,
+    licenseNumber: str(tradeLicense?.licenseNumber) || str(application?.licenseNumber) || localDraft.licenseNumber,
+    licenseState: str(tradeLicense?.licenseState ?? tradeLicense?.state) || str(application?.licenseState) || localDraft.licenseState,
+    insuranceCarrier:
+      str(liabilityInsurance?.insuranceCarrier ?? liabilityInsurance?.carrier) ||
+      str(application?.insuranceCarrier) ||
+      localDraft.insuranceCarrier,
+    insuranceCoverage:
+      str(liabilityInsurance?.insuranceCoverage ?? liabilityInsurance?.coverage) ||
+      str(application?.insuranceCoverage) ||
+      localDraft.insuranceCoverage,
+    backgroundCheck: ["clear", "cleared", "passed", "approved", "completed"].includes(backgroundApi)
+      ? ("clear" as const)
+      : localDraft.backgroundCheck,
+  };
+  const proProfile = {
+    contactName: str(application?.name),
+    businessName: str(application?.companyName),
+    licenseNumber: draft.licenseNumber,
+    licenseState: draft.licenseState,
+    insuranceCarrier: draft.insuranceCarrier,
+    insuranceCoverage: draft.insuranceCoverage,
+  };
+
+  // Certificate files come from the API only (relative upload paths resolved via mediaUrl).
+  const apiLicenseUrl = mediaUrl(
+    str(tradeLicense?.certificateUrl) || str(application?.tradeLicenseCertificate),
   );
-  const [insuranceFile, setInsuranceFile] = useState(
-    draft.insuranceFile || "Next-General-Liability-COI-2026.pdf",
+  const apiInsuranceUrl = mediaUrl(
+    str(liabilityInsurance?.certificateUrl) || str(application?.coiCertificate ?? application?.insuranceCertificate),
   );
+  const [licenseFileOverride, setLicenseFileOverride] = useState<string | null>(null);
+  const [insuranceFileOverride, setInsuranceFileOverride] = useState<string | null>(null);
+  const licenseFile = licenseFileOverride ?? (apiLicenseUrl ? fileNameFromUrl(apiLicenseUrl) : "");
+  const insuranceFile = insuranceFileOverride ?? (apiInsuranceUrl ? fileNameFromUrl(apiInsuranceUrl) : "");
   const [fileUrls, setFileUrls] = useState<{ license?: string; insurance?: string }>({});
   const [previewModal, setPreviewModal] = useState<{
     type: "license" | "insurance";
@@ -50,6 +123,7 @@ export default function ProApplicationPage() {
   } | null>(null);
 
   const [, startTransition] = useTransition();
+  const verifiedLabel = status === "cleared" ? "Verified & Active" : status === "submitted" ? "In review" : "Not verified";
 
   const current = statusConfig[status] || statusConfig.draft;
   const canSubmit = status === "draft" || status === "needs_info" || status === "rejected";
@@ -76,8 +150,8 @@ export default function ProApplicationPage() {
     const url = URL.createObjectURL(file);
     setFileUrls((prev) => ({ ...prev, [type]: url }));
     startTransition(() => {
-      if (type === "license") setLicenseFile(file.name);
-      else setInsuranceFile(file.name);
+      if (type === "license") setLicenseFileOverride(file.name);
+      else setInsuranceFileOverride(file.name);
       dispatch(
         saveApplicationDraft({
           savedAt: new Date().toISOString(),
@@ -88,85 +162,27 @@ export default function ProApplicationPage() {
   }
 
   function handleOpenPreview(type: "license" | "insurance") {
-    const filename = type === "license" ? licenseFile : insuranceFile;
-    const customUrl = fileUrls[type];
-    const reduxUrl = type === "license" ? proProfile?.licenseDoc?.previewUrl : proProfile?.insuranceDoc?.previewUrl;
+    const url = fileUrls[type] || (type === "license" ? apiLicenseUrl : apiInsuranceUrl);
+    if (!url) return;
     setPreviewModal({
       type,
-      filename,
-      url: customUrl || reduxUrl,
+      filename: type === "license" ? licenseFile : insuranceFile,
+      url,
     });
   }
 
   function handleDownload(type: "license" | "insurance") {
-    const customUrl = fileUrls[type];
-    const reduxUrl = type === "license" ? proProfile?.licenseDoc?.previewUrl : proProfile?.insuranceDoc?.previewUrl;
-    const urlToUse = customUrl || reduxUrl;
-
-    if (urlToUse) {
-      const a = document.createElement("a");
-      a.href = urlToUse;
-      a.download = type === "license" ? licenseFile : insuranceFile;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      return;
-    }
-
-    // Generate downloadable structured certificate file
-    const isLic = type === "license";
-    const filename = isLic ? licenseFile : insuranceFile;
-    const proName = proProfile?.contactName || "Luis Ortega";
-    const bizName = proProfile?.businessName || "Ortega Plumbing & Repair";
-    const licNum = proProfile?.licenseNumber || draft.licenseNumber || "TX-M-42981";
-    const licState = proProfile?.licenseState || draft.licenseState || "TX";
-    const carrier = proProfile?.insuranceCarrier || draft.insuranceCarrier || "Next Insurance";
-    const coverage = proProfile?.insuranceCoverage || draft.insuranceCoverage || "$1,000,000";
-
-    const content = isLic
-      ? `=======================================================
-STATE OF ${licState} - OFFICIAL TRADE LICENSE CERTIFICATE
-=======================================================
-
-Licensee Name:    ${proName}
-Business Name:    ${bizName}
-Trade Specialty:  Master Plumbing & Repair
-License Number:   ${licNum}
-Issuing State:    ${licState}
-Jurisdiction:     Texas State Board of Plumbing Examiners
-Verification:     VERIFIED & ACTIVE ON LOCAL FIX
-Effective Date:   2024-2027
-Status:           CLEAR / STANDING GOOD
-
-Verification Hash: LF-LIC-${Math.random().toString(36).substring(2, 9).toUpperCase()}
-Verified by: Local Fix Trust & Safety Department
-`
-      : `=======================================================
-CERTIFICATE OF COMMERCIAL LIABILITY INSURANCE (COI)
-=======================================================
-
-Policy Holder:    ${bizName}
-Insured Contact:  ${proName}
-Insurance Carrier:${carrier}
-Policy Coverage:  ${coverage} General Aggregate
-Policy Status:    ACTIVE / IN FORCE
-Effective Period: 2026 - 2027
-Certificate ID:   LF-COI-${Math.random().toString(36).substring(2, 9).toUpperCase()}
-
-Verified by: Local Fix Platform Security & Insurance Verification Desk
-`;
-
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const blobUrl = URL.createObjectURL(blob);
+    const urlToUse = fileUrls[type] || (type === "license" ? apiLicenseUrl : apiInsuranceUrl);
+    if (!urlToUse) return;
     const a = document.createElement("a");
-    a.href = blobUrl;
-    a.download = filename.endsWith(".txt") || filename.endsWith(".pdf") ? filename : `${filename}.txt`;
+    a.href = urlToUse;
+    a.target = "_blank";
+    a.rel = "noreferrer";
+    a.download = type === "license" ? licenseFile : insuranceFile;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(blobUrl);
   }
-
   return (
     <div className="w-full max-w-5xl space-y-6">
       {/* Header */}
@@ -263,15 +279,15 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs text-stone-700 pt-0.5">
                   <div>
                     <span className="text-muted font-medium">License Number: </span>
-                    <span className="font-semibold text-title">{proProfile?.licenseNumber || draft.licenseNumber || "TX-M-42981"}</span>
+                    <span className="font-semibold text-title">{proProfile?.licenseNumber || draft.licenseNumber || "—"}</span>
                   </div>
                   <div>
                     <span className="text-muted font-medium">Issuing State: </span>
-                    <span className="font-semibold text-title">{proProfile?.licenseState || draft.licenseState || "TX"}</span>
+                    <span className="font-semibold text-title">{proProfile?.licenseState || draft.licenseState || "—"}</span>
                   </div>
                   <div>
                     <span className="text-muted font-medium">Status: </span>
-                    <span className="font-semibold text-emerald-700">Verified &amp; Active</span>
+                    <span className={`font-semibold ${status === "cleared" ? "text-emerald-700" : "text-amber-700"}`}>{verifiedLabel}</span>
                   </div>
                   <div>
                     <span className="text-muted font-medium">Certificate: </span>
@@ -282,7 +298,7 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                       title="Preview document"
                     >
                       <FileText className="h-3 w-3" />
-                      {licenseFile}
+                      {licenseFile || "Not uploaded"}
                     </button>
                   </div>
                 </div>
@@ -294,6 +310,7 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
               <button
                 type="button"
                 onClick={() => handleDownload("license")}
+                disabled={!(fileUrls.license || apiLicenseUrl)}
                 className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-title hover:text-primary hover:border-primary/40 hover:bg-smoke shadow-2xs transition cursor-pointer"
                 title="Download document"
               >
@@ -334,15 +351,15 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs text-stone-700 pt-0.5">
                   <div>
                     <span className="text-muted font-medium">Carrier: </span>
-                    <span className="font-semibold text-title">{proProfile?.insuranceCarrier || draft.insuranceCarrier || "Next Insurance"}</span>
+                    <span className="font-semibold text-title">{proProfile?.insuranceCarrier || draft.insuranceCarrier || "—"}</span>
                   </div>
                   <div>
                     <span className="text-muted font-medium">Coverage Limit: </span>
-                    <span className="font-semibold text-title">{proProfile?.insuranceCoverage || draft.insuranceCoverage || "$1,000,000"} General Aggregate</span>
+                    <span className="font-semibold text-title">{proProfile?.insuranceCoverage || draft.insuranceCoverage ? `${proProfile?.insuranceCoverage || draft.insuranceCoverage} General Aggregate` : "—"}</span>
                   </div>
                   <div>
                     <span className="text-muted font-medium">Policy Status: </span>
-                    <span className="font-semibold text-emerald-700">Verified &amp; Active</span>
+                    <span className={`font-semibold ${status === "cleared" ? "text-emerald-700" : "text-amber-700"}`}>{verifiedLabel}</span>
                   </div>
                   <div>
                     <span className="text-muted font-medium">Certificate (COI): </span>
@@ -353,7 +370,7 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                       title="Preview certificate"
                     >
                       <FileText className="h-3 w-3" />
-                      {insuranceFile}
+                      {insuranceFile || "Not uploaded"}
                     </button>
                   </div>
                 </div>
@@ -365,6 +382,7 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
               <button
                 type="button"
                 onClick={() => handleDownload("insurance")}
+                disabled={!(fileUrls.insurance || apiInsuranceUrl)}
                 className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-title hover:text-primary hover:border-primary/40 hover:bg-smoke shadow-2xs transition cursor-pointer"
                 title="Download certificate"
               >
@@ -436,7 +454,7 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                       </span>
                     </div>
                     <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 text-[10px] font-bold">
-                      Verified &amp; Active
+                      {verifiedLabel}
                     </span>
                   </div>
 
@@ -445,21 +463,21 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <p className="text-[10px] text-muted uppercase">Contractor / Licensee</p>
-                          <p className="font-semibold text-title">{proProfile?.contactName || "Luis Ortega"}</p>
+                          <p className="font-semibold text-title">{proProfile?.contactName || "—"}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-muted uppercase">Business Name</p>
-                          <p className="font-semibold text-title">{proProfile?.businessName || "Ortega Plumbing & Repair"}</p>
+                          <p className="font-semibold text-title">{proProfile?.businessName || "—"}</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <p className="text-[10px] text-muted uppercase">License Number</p>
-                          <p className="font-mono font-bold text-title">{proProfile?.licenseNumber || draft.licenseNumber || "TX-M-42981"}</p>
+                          <p className="font-mono font-bold text-title">{proProfile?.licenseNumber || draft.licenseNumber || "—"}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-muted uppercase">Issuing State</p>
-                          <p className="font-semibold text-title">{proProfile?.licenseState || draft.licenseState || "TX"}</p>
+                          <p className="font-semibold text-title">{proProfile?.licenseState || draft.licenseState || "—"}</p>
                         </div>
                       </div>
                       <div className="border-t border-line/50 pt-2 text-[11px] text-muted">
@@ -471,17 +489,17 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <p className="text-[10px] text-muted uppercase">Named Insured</p>
-                          <p className="font-semibold text-title">{proProfile?.businessName || "Ortega Plumbing & Repair"}</p>
+                          <p className="font-semibold text-title">{proProfile?.businessName || "—"}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-muted uppercase">Carrier</p>
-                          <p className="font-semibold text-title">{proProfile?.insuranceCarrier || draft.insuranceCarrier || "Next Insurance"}</p>
+                          <p className="font-semibold text-title">{proProfile?.insuranceCarrier || draft.insuranceCarrier || "—"}</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <p className="text-[10px] text-muted uppercase">Coverage Amount</p>
-                          <p className="font-semibold text-title">{proProfile?.insuranceCoverage || draft.insuranceCoverage || "$1,000,000"} General Aggregate</p>
+                          <p className="font-semibold text-title">{proProfile?.insuranceCoverage || draft.insuranceCoverage ? `${proProfile?.insuranceCoverage || draft.insuranceCoverage} General Aggregate` : "—"}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-muted uppercase">Policy Status</p>
@@ -499,7 +517,7 @@ Verified by: Local Fix Platform Security & Insurance Verification Desk
 
             {/* Modal Actions */}
             <div className="flex items-center justify-between border-t border-line/70 px-5 py-3.5 bg-stone-50/70">
-              <span className="text-[11px] text-muted">Document ID: LF-DOC-VERIFIED</span>
+              <span className="text-[11px] text-muted">{previewModal.filename}</span>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"

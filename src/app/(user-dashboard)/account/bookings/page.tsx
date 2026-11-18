@@ -1,134 +1,124 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useUrlTab } from "@/hooks/use-url-tab";
 import {
   Ban,
   Calendar,
   CheckCircle2,
   FileCheck2,
   Search,
-  Star,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { getCategory, getPro } from "@/Mockdata";
 import { getAvatar } from "@/lib/avatars";
 import {
-  selectAllQuotes,
-  selectHomeownerBookingsGrouped,
-} from "@/lib/marketplace";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { setJobStatus, addNotification } from "@/redux/slices/featuresSlice";
+  bookingBadgeStatus,
+  canHomeownerCancelBooking,
+  BOOKING_TAB_QUERY,
+  bookingCategoryName,
+  errorMessage,
+  formatBookingDate,
+  type BookingListTab,
+} from "@/lib/booking-view";
+import {
+  bookingToJob,
+  unwrapList,
+  type ApiBooking,
+} from "@/lib/marketplace-mappers";
+import {
+  useCancelBookingMutation,
+  useGetMyBookingsQuery,
+} from "@/services/client/marketplace-api";
+import { mediaUrl } from "@/utils/mediaUrl";
 import { cn } from "@/lib/cn";
-import type { Job } from "@/types";
 
-type BookingTab = "all" | "upcoming" | "inProgress" | "history";
+type BookingTab = BookingListTab;
+
+type BookingRow = {
+  /** Booking document id (use for API calls and detail links). */
+  id: string;
+  raw: ApiBooking;
+  job: ReturnType<typeof bookingToJob>;
+};
+
+function useBookingRows(tab: BookingTab, searchTerm?: string) {
+  const query = useGetMyBookingsQuery({
+    tab: BOOKING_TAB_QUERY[tab],
+    ...(searchTerm ? { searchTerm } : {}),
+  });
+  const rows = useMemo<BookingRow[]>(
+    () =>
+      unwrapList<ApiBooking>(query.data?.data).map((raw) => ({
+        id: raw._id,
+        raw,
+        job: bookingToJob(raw),
+      })),
+    [query.data],
+  );
+  return { rows, isLoading: query.isLoading, isError: query.isError };
+}
 
 export default function MyBookingsPage() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
-  const user = useAppSelector((state) => state.auth.user);
-  const state = useAppSelector((state) => state);
-  const grouped = useMemo(
-    () => selectHomeownerBookingsGrouped(state, user?.name ?? "Homeowner"),
-    [state, user?.name],
-  );
-  const quotes = useAppSelector(selectAllQuotes);
-  const bookings = state.marketplace.bookings;
-  const hiredByJob = state.marketplace.hiredByJob;
-  const reviews = state.features.reviews;
 
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab") as BookingTab | null;
-  const [activeTab, setActiveTab] = useState<BookingTab>(
-    tabParam && ["all", "upcoming", "inProgress", "history"].includes(tabParam)
-      ? tabParam
-      : "all",
+  const [activeTab, setActiveTab] = useUrlTab(
+    ["all", "upcoming", "inProgress", "history"] as const,
+    "all",
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [cancellingJob, setCancellingJob] = useState<Job | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [cancellingBooking, setCancellingBooking] = useState<BookingRow | null>(null);
   const [cancelReason, setCancelReason] = useState("Change of plans");
+  const [cancelError, setCancelError] = useState("");
   const [previewEmpty, setPreviewEmpty] = useState(false);
 
-  function handleTabChange(tab: BookingTab) {
-    setActiveTab(tab);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      if (tab === "all") {
-        url.searchParams.delete("tab");
-      } else {
-        url.searchParams.set("tab", tab);
-      }
-      window.history.replaceState(null, "", url.toString());
-    }
-  }
+  const [cancelBooking, { isLoading: cancelling }] = useCancelBookingMutation();
 
-  function handleConfirmCancel() {
-    if (!cancellingJob) return;
-    dispatch(setJobStatus({ jobId: cancellingJob.id, status: "cancelled" }));
-    dispatch(
-      addNotification({
-        title: "Booking Cancelled",
-        body: `Your booking for "${cancellingJob.title}" has been cancelled.`,
-        href: "/account/bookings",
-        createdAt: new Date().toISOString(),
-        role: "homeowner",
-      }),
-    );
-    const booking = bookings[cancellingJob.id];
-    const hiredQuoteId = hiredByJob[cancellingJob.id];
-    const hiredQuote = quotes.find((quote) => quote.id === hiredQuoteId);
-    const pro = hiredQuote
-      ? getPro(hiredQuote.proId)
-      : booking?.proId
-      ? getPro(booking.proId)
-      : null;
-    if (pro) {
-      dispatch(
-        addNotification({
-          title: "Booking Cancelled by Homeowner",
-          body: `${user?.name ?? "Homeowner"} cancelled the booking for "${cancellingJob.title}".`,
-          href: `/pro/jobs/${cancellingJob.id}`,
-          createdAt: new Date().toISOString(),
-          role: "pro",
-        }),
-      );
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // One query per lifecycle tab so the tab counters stay accurate.
+  // Counters use unfiltered lists; the active tab applies searchTerm against the API.
+  const allTab = useBookingRows("all");
+  const upcomingTab = useBookingRows("upcoming");
+  const inProgressTab = useBookingRows("inProgress");
+  const historyTab = useBookingRows("history");
+  const activeSearchTab = useBookingRows(activeTab, debouncedSearch || undefined);
+  const tabData = {
+    all: allTab,
+    upcoming: upcomingTab,
+    inProgress: inProgressTab,
+    history: historyTab,
+  } satisfies Record<BookingTab, ReturnType<typeof useBookingRows>>;
+  const current = debouncedSearch ? activeSearchTab : tabData[activeTab];
+
+  async function handleConfirmCancel() {
+    if (!cancellingBooking) return;
+    setCancelError("");
+    try {
+      await cancelBooking(cancellingBooking.id).unwrap();
+      setCancellingBooking(null);
+    } catch (error) {
+      setCancelError(errorMessage(error, "This booking could not be cancelled."));
     }
-    setCancellingJob(null);
   }
 
   const tabCounts = {
-    all: grouped.all.length,
-    upcoming: grouped.upcoming.length,
-    inProgress: grouped.inProgress.length,
-    history: grouped.history.length,
+    all: allTab.rows.length,
+    upcoming: upcomingTab.rows.length,
+    inProgress: inProgressTab.rows.length,
+    history: historyTab.rows.length,
   };
 
-  const filteredBookings = useMemo(() => {
-    let list: Job[] = [];
-    if (activeTab === "all") list = grouped.all;
-    else if (activeTab === "upcoming") list = grouped.upcoming;
-    else if (activeTab === "inProgress") list = grouped.inProgress;
-    else if (activeTab === "history") list = grouped.history;
-
-    if (!searchQuery.trim()) return list;
-    const q = searchQuery.toLowerCase().trim();
-    return list.filter((job) => {
-      const cat = getCategory(job.categorySlug)?.name.toLowerCase() ?? "";
-      const booking = bookings[job.id];
-      const hiredQuoteId = hiredByJob[job.id];
-      const hiredQuote = quotes.find((quote) => quote.id === hiredQuoteId);
-      const pro = hiredQuote ? getPro(hiredQuote.proId) : booking?.proId ? getPro(booking.proId) : null;
-      const proName = pro?.name.toLowerCase() ?? "";
-      const text = `${job.title} ${job.description} ${job.city} ${job.zip} ${cat} ${proName}`.toLowerCase();
-      return text.includes(q);
-    });
-  }, [activeTab, grouped, searchQuery, bookings, hiredByJob, quotes]);
+  const filteredBookings = current.rows;
 
   return (
     <div className="w-full max-w-5xl space-y-6">
@@ -148,7 +138,7 @@ export default function MyBookingsPage() {
           className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted hover:text-primary hover:border-primary/40 transition shadow-2xs cursor-pointer"
           title="Toggle empty state view"
         >
-          <span>{previewEmpty ? "← View Mock Data" : "Preview Empty State"}</span>
+          <span>{previewEmpty ? "← View Live Data" : "Preview Empty State"}</span>
         </button>
       </div>
 
@@ -168,7 +158,7 @@ export default function MyBookingsPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => handleTabChange(tab.id)}
+                onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   "flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap",
                   active
@@ -194,7 +184,7 @@ export default function MyBookingsPage() {
       </div>
 
       {/* 3. Search Filter */}
-      {grouped.all.length > 0 && (
+      {allTab.rows.length > 0 && (
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
@@ -208,7 +198,11 @@ export default function MyBookingsPage() {
       )}
 
       {/* 4. Bookings List */}
-      {grouped.all.length === 0 || previewEmpty ? (
+      {current.isLoading ? (
+        <p className="text-sm text-muted">Loading bookings...</p>
+      ) : current.isError ? (
+        <p className="text-sm text-error">Bookings could not be loaded.</p>
+      ) : allTab.rows.length === 0 || previewEmpty ? (
         <div className="mt-4">
           <EmptyState
             title="No Bookings Yet"
@@ -226,38 +220,35 @@ export default function MyBookingsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredBookings.map((job) => {
-            const booking = bookings[job.id];
-            const hiredQuoteId = hiredByJob[job.id];
-            const hiredQuote = quotes.find((quote) => quote.id === hiredQuoteId);
-            const pro = hiredQuote
-              ? getPro(hiredQuote.proId)
-              : booking?.proId
-              ? getPro(booking.proId)
-              : null;
-            const review = reviews.find((r) => r.jobId === job.id);
-            const isCompleted = job.status === "completed";
+          {filteredBookings.map((row) => {
+            const { raw, job } = row;
+            const pro = raw.professional;
+            const proName = pro?.name || pro?.companyName || "";
+            const category = bookingCategoryName(raw);
+            const status = bookingBadgeStatus(raw);
+            const isCompleted = status === "completed";
+            const detailHref = `/account/bookings/${row.id}`;
 
             return (
               <Card
-                key={job.id}
-                onClick={() => router.push(`/account/bookings/${job.id}`)}
+                key={row.id}
+                onClick={() => router.push(detailHref)}
                 className="group overflow-hidden rounded-2xl border border-line/80 bg-white p-4 sm:p-5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer"
               >
                 {/* Header: Pro Info + Status Badge */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    {pro ? (
+                    {pro?._id ? (
                       <Link
-                        href={`/browse-pros/${pro.id}`}
+                        href={`/browse-pros/${pro._id}`}
                         onClick={(e) => e.stopPropagation()}
-                        title={`View ${pro.name}'s profile`}
+                        title={`View ${proName}'s profile`}
                         className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-line/80 bg-slate-100 transition hover:ring-2 hover:ring-primary/40 cursor-pointer shadow-2xs"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={pro.avatar || getAvatar(pro.name, pro.id)}
-                          alt={pro.name}
+                          src={mediaUrl(pro.profileImage) || getAvatar(proName, pro._id)}
+                          alt={proName}
                           className="h-full w-full object-cover"
                         />
                       </Link>
@@ -273,13 +264,13 @@ export default function MyBookingsPage() {
                     )}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        {pro ? (
+                        {pro?._id ? (
                           <Link
-                            href={`/browse-pros/${pro.id}`}
+                            href={`/browse-pros/${pro._id}`}
                             onClick={(e) => e.stopPropagation()}
                             className="font-display text-sm font-bold text-title group-hover:text-primary transition-colors hover:underline truncate"
                           >
-                            {pro.name}
+                            {proName}
                           </Link>
                         ) : (
                           <h2 className="font-display text-sm font-bold text-title truncate">
@@ -288,12 +279,12 @@ export default function MyBookingsPage() {
                         )}
                       </div>
                       <p className="text-xs text-muted truncate">
-                        {pro?.trade ? `${pro.trade} · ` : ""}{job.city}, {job.state}
+                        {category ? `${category} · ` : ""}{job.city}{job.state ? `, ${job.state}` : ""}
                       </p>
                     </div>
                   </div>
 
-                  <StatusBadge status={job.status} />
+                  <StatusBadge status={status} />
                 </div>
 
                 {/* Job Info + Meta + Actions in clean single row */}
@@ -305,11 +296,12 @@ export default function MyBookingsPage() {
                     <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5 text-muted" />
-                        {booking?.scheduledDate || hiredQuote?.proposedSchedule || "Date coordinated"}
+                        {formatBookingDate(raw.appointmentDate)}
+                        {raw.arrivalTimeWindow ? ` (${raw.arrivalTimeWindow})` : ""}
                       </span>
                       <span>·</span>
                       <span className="font-semibold text-title">
-                        ${booking?.agreedPrice || hiredQuote?.amount || 0}
+                        ${Number(raw.totalAmount || 0)}
                       </span>
                     </div>
                   </div>
@@ -318,20 +310,23 @@ export default function MyBookingsPage() {
                     onClick={(e) => e.stopPropagation()}
                     className="flex items-center gap-2 shrink-0"
                   >
-                    {!isCompleted && job.status !== "cancelled" && job.status !== "disputed" ? (
+                    {canHomeownerCancelBooking(status) ? (
                       <Button
                         type="button"
                         size="sm"
                         variant="ghost"
-                        onClick={() => setCancellingJob(job)}
+                        onClick={() => {
+                          setCancelError("");
+                          setCancellingBooking(row);
+                        }}
                         className="rounded-full text-xs font-semibold text-muted hover:text-error hover:bg-error/10 cursor-pointer"
                       >
                         Cancel
                       </Button>
                     ) : null}
-                    {pro ? (
+                    {pro?._id ? (
                       <Button
-                        href={`/account/messages?dm=${pro.id}`}
+                        href={`/account/messages?dm=${pro._id}`}
                         size="sm"
                         variant="ghost"
                         className="rounded-full text-xs font-semibold text-muted hover:text-title"
@@ -339,9 +334,9 @@ export default function MyBookingsPage() {
                         Message
                       </Button>
                     ) : null}
-                    {job.status === "awaiting_confirm" ? (
+                    {status === "awaiting_confirm" ? (
                       <Button
-                        href={`/account/bookings/${job.id}`}
+                        href={detailHref}
                         size="sm"
                         className="rounded-full text-xs font-semibold gap-1.5 shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                       >
@@ -350,16 +345,16 @@ export default function MyBookingsPage() {
                       </Button>
                     ) : isCompleted ? (
                       <Button
-                        href={`/account/bookings/${job.id}`}
+                        href={detailHref}
                         size="sm"
                         className="rounded-full text-xs font-semibold gap-1.5 shadow-xs"
                       >
                         <FileCheck2 className="h-3.5 w-3.5" />
                         Receipt &amp; Review ↗
                       </Button>
-                    ) : job.status === "cancelled" ? (
+                    ) : status === "cancelled" ? (
                       <Button
-                        href={`/account/bookings/${job.id}`}
+                        href={detailHref}
                         size="sm"
                         variant="ghost"
                         className="rounded-full text-xs font-semibold border border-line text-muted hover:text-title"
@@ -368,7 +363,7 @@ export default function MyBookingsPage() {
                       </Button>
                     ) : (
                       <Button
-                        href={`/account/bookings/${job.id}`}
+                        href={detailHref}
                         size="sm"
                         className="rounded-full text-xs font-semibold shadow-xs"
                       >
@@ -377,31 +372,6 @@ export default function MyBookingsPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Review line if completed */}
-                {isCompleted && review ? (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="mt-3 pt-2.5 border-t border-line/40 text-xs flex items-center justify-between gap-2 text-muted"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex text-amber-500">
-                        {[...Array(review.rating)].map((_, i) => (
-                          <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-500" />
-                        ))}
-                      </div>
-                      <span className="font-medium text-title">
-                        {review.rating}.0 Review submitted
-                      </span>
-                    </div>
-                    <Link
-                      href={`/account/bookings/${job.id}`}
-                      className="text-primary font-medium hover:underline text-[11px]"
-                    >
-                      View on profile →
-                    </Link>
-                  </div>
-                ) : null}
               </Card>
             );
           })}
@@ -409,10 +379,10 @@ export default function MyBookingsPage() {
       )}
 
       {/* Cancel Booking Confirmation Modal */}
-      {cancellingJob ? (
+      {cancellingBooking ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-xs animate-in fade-in duration-150"
-          onClick={() => setCancellingJob(null)}
+          onClick={() => setCancellingBooking(null)}
         >
           <div
             className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-line bg-white p-6 shadow-xl animate-in zoom-in-95 duration-150"
@@ -424,7 +394,7 @@ export default function MyBookingsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setCancellingJob(null)}
+                onClick={() => setCancellingBooking(null)}
                 className="rounded-full p-1.5 text-muted hover:text-title hover:bg-smoke transition cursor-pointer"
                 aria-label="Close modal"
               >
@@ -436,7 +406,7 @@ export default function MyBookingsPage() {
               Cancel Booking?
             </h3>
             <p className="mt-1.5 text-xs sm:text-sm text-muted leading-relaxed">
-              Are you sure you want to cancel your booking for <span className="font-semibold text-title">&ldquo;{cancellingJob.title}&rdquo;</span>?
+              Are you sure you want to cancel your booking for <span className="font-semibold text-title">&ldquo;{cancellingBooking.job.title}&rdquo;</span>?
               No cancellation penalty will be applied, and your pro will be notified.
             </p>
 
@@ -455,11 +425,13 @@ export default function MyBookingsPage() {
               </select>
             </div>
 
+            {cancelError ? <p className="mt-3 text-xs text-error">{cancelError}</p> : null}
+
             <div className="mt-6 flex items-center justify-end gap-2.5">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setCancellingJob(null)}
+                onClick={() => setCancellingBooking(null)}
                 className="rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Keep Booking
@@ -467,10 +439,11 @@ export default function MyBookingsPage() {
               <Button
                 variant="danger"
                 size="sm"
+                disabled={cancelling}
                 onClick={handleConfirmCancel}
                 className="rounded-xl text-xs font-semibold cursor-pointer"
               >
-                Cancel Booking
+                {cancelling ? "Cancelling…" : "Cancel Booking"}
               </Button>
             </div>
           </div>

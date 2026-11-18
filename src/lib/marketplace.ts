@@ -1,5 +1,4 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { jobs as seedJobs, quotes as seedQuotes } from "@/Mockdata";
 import type { RootState } from "@/redux/store";
 import type { Booking, Job, JobStatus, Quote } from "@/types";
 
@@ -32,33 +31,40 @@ export const selectAllJobs = createSelector(
         uniqueJobs.push(j);
       }
     }
-    for (const j of seedJobs) {
-      if (!seenJobIds.has(j.id)) {
-        seenJobIds.add(j.id);
-        uniqueJobs.push(j);
-      }
-    }
+
+    const stageRank: Partial<Record<JobStatus, number>> = {
+      hired: 1,
+      scheduled: 2,
+      en_route: 3,
+      in_progress: 4,
+      awaiting_confirm: 5,
+    };
 
     return uniqueJobs.map((job) => {
-      let status: JobStatus = overrides[job.id] ?? job.status;
-
-      if (status === "cancelled" || status === "disputed" || status === "completed") {
-        return { ...job, status };
+      const apiStatus = job.status;
+      if (apiStatus === "cancelled" || apiStatus === "disputed" || apiStatus === "completed") {
+        return { ...job, status: apiStatus };
       }
+
+      let status: JobStatus = overrides[job.id] ?? apiStatus;
+      const booking = bookings[job.id];
 
       const completion = completions[job.id];
       if (completion?.homeownerConfirmedAt) {
         status = "completed";
       } else if (completion?.proMarkedAt) {
         status = "awaiting_confirm";
-      } else if (bookings[job.id]?.status === "confirmed" && hired[job.id]) {
-        if (status === "hired" || status === "getting_quotes" || status === "quotes_in" || status === "active") {
+      } else if (booking) {
+        const apiRank = stageRank[apiStatus] ?? 0;
+        const currentRank = stageRank[status] ?? 0;
+        // A booked job shows its appointment stage. An optimistic step can move forward,
+        // but a stale "hired" override cannot hide Scheduled / On the way / In progress.
+        if (apiRank > 0) status = currentRank > apiRank ? status : apiStatus;
+        else if (status === "hired" || status === "getting_quotes" || status === "quotes_in" || status === "active") {
           status = "scheduled";
         }
       } else if (hired[job.id]) {
-        if (status !== "scheduled" && status !== "in_progress" && status !== "awaiting_confirm") {
-          status = "hired";
-        }
+        if ((stageRank[status] ?? 0) === 0) status = "hired";
       }
 
       return { ...job, status };
@@ -89,16 +95,7 @@ export const selectAllQuotes = createSelector(
     const seenProJob = new Set<string>();
     const result: Quote[] = [];
 
-    // Prioritize extraQuotes, then seedQuotes
     for (const q of extraQuotes.map(merge)) {
-      const proJobKey = `${q.jobId}-${q.proId}`;
-      if (seenQuoteIds.has(q.id) || seenProJob.has(proJobKey)) continue;
-      seenQuoteIds.add(q.id);
-      seenProJob.add(proJobKey);
-      result.push(q);
-    }
-
-    for (const q of seedQuotes.map(merge)) {
       const proJobKey = `${q.jobId}-${q.proId}`;
       if (seenQuoteIds.has(q.id) || seenProJob.has(proJobKey)) continue;
       seenQuoteIds.add(q.id);
@@ -113,24 +110,19 @@ export const selectAllQuotes = createSelector(
 export function selectQuotesForJob(state: RootState, jobId: string) {
   const job = selectJob(state, jobId);
   const allForJob = selectAllQuotes(state).filter((quote) => quote.jobId === jobId);
-  if (job?.requestedProId || job?.visibility === "direct") {
-    const targetProId = job.requestedProId;
-    if (targetProId) {
-      return allForJob.filter((q) => q.proId === targetProId);
-    }
+  const live = allForJob.filter((quote) => !quote.id.startsWith("quote-local-"));
+  const pool = live.length ? live : allForJob;
+  if (job?.requestedProId) {
+    const matched = pool.filter((quote) => isSamePro(quote.proId, job.requestedProId));
+    if (matched.length) return matched;
   }
-  return allForJob;
+  return pool;
 }
 
 export function selectJobsForHomeowner(state: RootState, name: string) {
   const all = selectAllJobs(state);
-  const userJobs = name ? all.filter((job) => job.homeownerName === name) : [];
-  if (userJobs.length > 0) {
-    return userJobs;
-  }
-  return all.filter(
-    (job) => job.homeownerName === "Maya Chen" || job.homeownerName === "Homeowner"
-  );
+  if (!name) return [];
+  return all.filter((job) => job.homeownerName === name);
 }
 
 export function selectBooking(state: RootState, jobId: string): Booking | undefined {
@@ -163,7 +155,17 @@ export function selectChangeRequests(state: RootState, jobId: string) {
 }
 
 export function selectCompletion(state: RootState, jobId: string) {
-  return state.marketplace.completions[jobId];
+  const stored = state.marketplace.completions[jobId];
+  const booking = state.marketplace.bookings[jobId];
+  if (!booking?.paymentConfirmedByPro && !booking?.paymentConfirmedByHomeowner) return stored;
+  return {
+    jobId,
+    proMarkedAt: booking.paymentConfirmedByPro ? booking.acceptedAt || stored?.proMarkedAt || "confirmed" : stored?.proMarkedAt,
+    homeownerConfirmedAt: booking.paymentConfirmedByHomeowner ? booking.paidAt || "confirmed" : stored?.homeownerConfirmedAt,
+    completionNotes: booking.notes || stored?.completionNotes,
+    paymentMethod: booking.paymentMethod || stored?.paymentMethod,
+    receiptNumber: booking.paymentReceiptNumber || stored?.receiptNumber,
+  };
 }
 
 export function selectHiredQuoteId(state: RootState, jobId: string) {
@@ -300,7 +302,7 @@ export function jobRequestFacts(job: Job) {
   const materials = byId("materials") ?? byLabel(/part|material/i);
   if (timing) facts.push({ label: "Timing", value: timing });
   if (materials) facts.push({ label: "Materials", value: materials });
-  if (job.propertyType) {
+  if (job.propertyTypeLabel || job.propertyType) {
     const labels: Record<string, string> = {
       single_family: "Single-family",
       condo: "Condo",
@@ -309,7 +311,13 @@ export function jobRequestFacts(job: Job) {
       commercial: "Commercial",
       other: "Other",
     };
-    facts.push({ label: "Property", value: labels[job.propertyType] ?? job.propertyType });
+    facts.push({
+      label: "Property",
+      value: job.propertyTypeLabel || labels[job.propertyType!] || job.propertyType || "",
+    });
+  }
+  if (job.timeframeLabel) {
+    facts.push({ label: "Timeframe", value: job.timeframeLabel });
   }
   if (job.budget) {
     const raw = job.budget.trim();
@@ -329,7 +337,10 @@ export function jobRequestFacts(job: Job) {
         ans.id !== "timing" &&
         ans.id !== "when" &&
         ans.id !== "materials" &&
-        !/timing|schedule|when|part|material/i.test(ans.label) &&
+        ans.id !== "timeframe" &&
+        ans.id !== "property" &&
+        ans.id !== "budget" &&
+        !/timing|schedule|when|part|material|timeframe|property|budget/i.test(ans.label) &&
         ans.value &&
         ans.label
       ) {
@@ -347,15 +358,22 @@ export function jobRequestFacts(job: Job) {
   });
 }
 
+/** Matches `BOOKING_PAYMENT_METHOD` on the API. Used to label a method already saved on a booking. */
 export const paymentMethodLabels: Record<string, string> = {
   cash: "Cash",
   bank_transfer: "Bank transfer",
-  mobile_banking: "Mobile banking",
-  zelle: "Zelle / instant transfer",
-  card: "Card reader (paid to the pro)",
+  stripe: "Stripe",
+  card: "Card",
   check: "Check",
-  other: "Other agreed method",
+  digital_wallet: "Digital wallet",
+  other: "Other",
 };
+
+/** Choices offered when a homeowner picks how to pay. */
+export const selectablePaymentMethods = [
+  { value: "cash", label: "Cash" },
+  { value: "stripe", label: "Stripe" },
+] as const;
 
 export function selectProJobsGrouped(state: RootState, proId: string = "pro-1") {
   const normalizedId = normalizeProId(proId);
@@ -520,10 +538,7 @@ export function selectProBookingsGrouped(state: RootState, proId: string = "pro-
     });
   };
 
-  let booked = getBookedForPro(normalizedTargetId);
-  if (booked.length === 0 && normalizedTargetId !== "pro-1") {
-    booked = getBookedForPro("pro-1");
-  }
+  const booked = getBookedForPro(normalizedTargetId);
 
   const upcoming = booked.filter((j: Job) => ["hired", "scheduled"].includes(j.status));
   const inProgress = booked.filter((j: Job) =>

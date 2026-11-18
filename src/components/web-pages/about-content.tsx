@@ -18,6 +18,9 @@ import { photos } from "@/lib/media";
 import { postJobHref } from "@/lib/role-access";
 import { useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/cn";
+import { useGetRuleQuery } from "@/services/client/catalog-api";
+import { isRealRuleContent, ruleContentToHtml } from "@/lib/api-profile";
+import { RuleHtml } from "@/components/shared/rule-html";
 
 export interface AboutPillarData {
   id: string;
@@ -125,6 +128,10 @@ function getPillarIcon(name?: string) {
 export function AboutContent() {
   const user = useAppSelector((state) => state.auth.user);
   const [activeTab, setActiveTab] = useState<"mission" | "vision">("mission");
+  // Live "about" rule content; placeholder/short content keeps the default page below.
+  const { data: ruleResponse } = useGetRuleQuery("about");
+  const apiContent = ruleResponse?.data?.content;
+  const ruleHtml = isRealRuleContent(apiContent) ? ruleContentToHtml(apiContent) : null;
   const [data, setData] = useState<AboutContentData>(() => {
     if (typeof window === "undefined") return defaultAboutData;
     try {
@@ -180,6 +187,14 @@ export function AboutContent() {
         ]}
       />
 
+      {ruleHtml ? (
+        <section className="py-12 sm:py-16 bg-white border-b border-line/60">
+          <div className="container-site">
+            <RuleHtml html={ruleHtml} className="mx-auto max-w-4xl" />
+          </div>
+        </section>
+      ) : (
+      <>
       {/* ========================================================================= */}
       {/* SECTION 1: HERO SHOWCASE (100% Consistent with Global Design System)      */}
       {/* ========================================================================= */}
@@ -421,6 +436,9 @@ export function AboutContent() {
           </div>
         </div>
       </section>
+
+      </>
+      )}
 
       {/* ========================================================================= */}
       {/* SECTION 4: CALL TO ACTION (Global Design System Typography)               */}

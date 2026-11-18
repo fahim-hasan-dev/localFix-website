@@ -35,7 +35,7 @@ export function ServiceTile({
   onSelect?: (slug: string) => void;
 }) {
   const Icon = icons[category.slug] ?? Wrench;
-  const image = photos.services[category.slug];
+  const image = category.image || photos.services[category.slug];
 
   return (
     <button

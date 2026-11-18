@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { useUrlTab } from "@/hooks/use-url-tab";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -10,24 +11,118 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/cn";
+import { num, refId, str, type ApiRecord } from "@/lib/api-profile";
+import { useGetPackagesQuery } from "@/services/client/catalog-api";
+import { useGetMySubscriptionQuery } from "@/services/client/engagement-api";
+
+type PlanType = "monthly" | "yearly" | "";
+
+type StatementRow = {
+  id: string;
+  number: string;
+  title: string;
+  date: string;
+  amount: string;
+  status: "paid" | "upcoming";
+  receiptUrl: string;
+};
+
+function toRecord(value: unknown): ApiRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as ApiRecord;
+}
+
+function normalizePlanType(value: unknown): PlanType {
+  const v = str(value).toLowerCase();
+  if (v === "yearly" || v === "annual" || v === "year") return "yearly";
+  if (v === "monthly" || v === "month") return "monthly";
+  return "";
+}
+
+function formatDate(value: unknown) {
+  const raw = str(value);
+  if (!raw) return "";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatMoney(value: unknown, currency?: unknown) {
+  const amount = num(value, Number.NaN);
+  if (Number.isNaN(amount)) return str(value);
+  const code = str(currency, "USD").toUpperCase();
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: code }).format(amount);
+  } catch {
+    return `$${amount.toFixed(2)}`;
+  }
+}
 
 export default function TransactionsPage() {
-  const items = useAppSelector((state) => state.features.invoices);
-  const [filter, setFilter] = useState<"all" | "paid" | "upcoming">("all");
+  const { data: subscriptionResponse, isLoading } = useGetMySubscriptionQuery();
+  const { data: packageResponse } = useGetPackagesQuery();
+  const [filter, setFilter] = useUrlTab(["all", "paid", "upcoming"] as const, "all");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const filteredItems = useMemo(() => {
-    if (filter === "all") return items;
-    return items.filter((item) => item.status === filter);
-  }, [items, filter]);
+  const rawSub = toRecord(subscriptionResponse?.data);
+  const sub = rawSub ? (toRecord(rawSub.subscription) ?? rawSub) : null;
+  const hasSub = Boolean(sub && (sub._id || sub.status || sub.planType || sub.package));
+  const subStatus = str(sub?.status).toLowerCase();
+  const planType = normalizePlanType(sub?.planType ?? sub?.billingCycle ?? sub?.interval);
+  const cancelAtPeriodEnd = Boolean(sub?.cancelAtPeriodEnd);
+  const isEnded = ["canceled", "cancelled", "expired", "inactive"].includes(subStatus);
+  const renewalDate = formatDate(
+    sub?.currentPeriodEnd ?? sub?.endDate ?? sub?.renewalDate ?? sub?.nextBillingDate ?? sub?.expiresAt,
+  );
 
-  function handleDownload(id: string) {
-    setDownloadingId(id);
-    setTimeout(() => {
-      setDownloadingId(null);
-    }, 1500);
+  const packageRef = sub?.package ?? sub?.packageId;
+  const embeddedPackage = toRecord(packageRef);
+  const packageId = refId(packageRef);
+  const catalogPackage = (packageResponse?.data ?? []).find((p) => p._id === packageId);
+  const packageName = str(embeddedPackage?.name) || catalogPackage?.name || "";
+  const monthlyPrice = num(embeddedPackage?.monthlyPrice, catalogPackage?.monthlyPrice ?? 0);
+  const yearlyPrice = num(embeddedPackage?.yearlyPrice, catalogPackage?.yearlyPrice ?? 0);
+  const planPrice =
+    num(sub?.price, 0) || num(sub?.amount, 0) || (planType === "yearly" ? yearlyPrice : monthlyPrice);
+  const planLabel = hasSub
+    ? `${packageName || "Pro"} ${planType === "yearly" ? "Yearly" : planType === "monthly" ? "Monthly" : "Membership"}`
+    : "No active plan";
+  const priceSuffix = planType === "yearly" ? "/yr" : "/mo";
+
+  // Only use billing records if the subscription payload actually includes them.
+  const items: StatementRow[] = (() => {
+    const source = sub?.invoices ?? sub?.payments ?? sub?.transactions;
+    if (!Array.isArray(source)) return [];
+    return source.flatMap((entry, idx) => {
+      const rec = toRecord(entry);
+      if (!rec) return [];
+      const status = str(rec.status).toLowerCase();
+      const upcoming = ["upcoming", "scheduled", "pending", "draft", "open"].includes(status);
+      const id = str(rec._id) || str(rec.id) || `statement-${idx}`;
+      return [
+        {
+          id,
+          number: str(rec.invoiceNumber) || str(rec.number) || id,
+          title: str(rec.description) || str(rec.title) || `${packageName || "Pro"} Membership`,
+          date: formatDate(rec.paidAt ?? rec.date ?? rec.createdAt ?? rec.dueDate),
+          amount: formatMoney(rec.amount ?? rec.total ?? rec.amountPaid, rec.currency),
+          status: upcoming ? "upcoming" : "paid",
+          receiptUrl: str(rec.receiptUrl) || str(rec.invoiceUrl) || str(rec.hostedInvoiceUrl) || str(rec.invoicePdf),
+        },
+      ];
+    });
+  })();
+
+  const filteredItems = filter === "all" ? items : items.filter((item) => item.status === filter);
+
+  function handleDownload(item: StatementRow) {
+    if (item.receiptUrl) {
+      window.open(item.receiptUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    setDownloadingId(item.id);
+    setTimeout(() => setDownloadingId(null), 1500);
   }
 
   return (
@@ -66,14 +161,28 @@ export default function TransactionsPage() {
         <Card className="rounded-2xl border border-line/70 bg-white p-4 sm:p-5 shadow-2xs hover:border-line transition">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">Active Membership</p>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-base sm:text-lg font-bold text-title">Pro Monthly</span>
-            <span className="text-xs text-muted font-medium">($19.99/mo)</span>
+            <span className="text-base sm:text-lg font-bold text-title">
+              {isLoading ? "Loading…" : planLabel}
+            </span>
+            {hasSub && planPrice > 0 ? (
+              <span className="text-xs text-muted font-medium">
+                ({formatMoney(planPrice)}
+                {priceSuffix})
+              </span>
+            ) : null}
           </div>
         </Card>
 
         <Card className="rounded-2xl border border-line/70 bg-white p-4 sm:p-5 shadow-2xs hover:border-line transition">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">Next Auto-Renew</p>
-          <p className="text-base sm:text-lg font-bold text-title">Jan 10, 2027</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">
+            {cancelAtPeriodEnd || isEnded ? "Access Ends" : "Next Auto-Renew"}
+          </p>
+          <p className="text-base sm:text-lg font-bold text-title">
+            {isLoading ? "Loading…" : hasSub && renewalDate ? renewalDate : "—"}
+          </p>
+          {hasSub && cancelAtPeriodEnd ? (
+            <p className="mt-0.5 text-[11px] text-amber-700 font-medium">Auto-renew cancelled</p>
+          ) : null}
         </Card>
 
         <Card className="rounded-2xl border border-line/70 bg-white p-4 sm:p-5 shadow-2xs hover:border-line transition">
@@ -118,14 +227,14 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        {filteredItems.length === 0 ? (
+        {items.length === 0 ? (
+          <div className="p-8 text-center text-xs text-muted">No billing statements yet</div>
+        ) : filteredItems.length === 0 ? (
           <div className="p-8 text-center text-xs text-muted">No statements found in this filter.</div>
         ) : (
           <div className="divide-y divide-line/60">
-            {filteredItems.map((item, idx) => {
+            {filteredItems.map((item) => {
               const isPaid = item.status === "paid";
-              const invoiceNum = `INV-2026-${String(idx + 1).padStart(3, "0")}`;
-              const isTrial = (item.description ?? "").toLowerCase().includes("trial");
 
               return (
                 <div
@@ -139,9 +248,7 @@ export default function TransactionsPage() {
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-title truncate">
-                          {isTrial ? "Pro Membership — 30-Day Free Trial" : "Pro Monthly Membership"}
-                        </span>
+                        <span className="text-sm font-medium text-title truncate">{item.title}</span>
                         <span
                           className={cn(
                             "rounded-md px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
@@ -154,9 +261,13 @@ export default function TransactionsPage() {
                         </span>
                       </div>
                       <div className="mt-0.5 flex items-center gap-2 text-xs text-muted">
-                        <span className="font-mono text-[11px]">{invoiceNum}</span>
-                        <span>·</span>
-                        <span>{item.date}</span>
+                        <span className="font-mono text-[11px]">{item.number}</span>
+                        {item.date ? (
+                          <>
+                            <span>·</span>
+                            <span>{item.date}</span>
+                          </>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -167,7 +278,7 @@ export default function TransactionsPage() {
                     {isPaid ? (
                       <button
                         type="button"
-                        onClick={() => handleDownload(item.id)}
+                        onClick={() => handleDownload(item)}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-line/70 px-2.5 py-1 text-xs font-medium text-copy hover:bg-stone-50 hover:text-title transition cursor-pointer"
                       >
                         {downloadingId === item.id ? (

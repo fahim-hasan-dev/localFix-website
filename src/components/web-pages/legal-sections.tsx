@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { useGetRuleQuery } from "@/services/client/catalog-api";
+import { isRealRuleContent, ruleContentToHtml } from "@/lib/api-profile";
+import { RuleHtml } from "@/components/shared/rule-html";
 
 export interface LegalSection {
   title: string;
@@ -28,6 +31,11 @@ export function LegalSections({
   effectiveDate = "October 20, 2026",
   sections,
 }: LegalSectionsProps) {
+  // Live rule content from the API; placeholder/short content keeps the default sections below.
+  const { data: ruleResponse } = useGetRuleQuery(documentType);
+  const apiContent = ruleResponse?.data?.content;
+  const ruleHtml = isRealRuleContent(apiContent) ? ruleContentToHtml(apiContent) : null;
+
   return (
     <section className="bg-white py-12 md:py-16">
       <div className="container-site">
@@ -65,7 +73,7 @@ export function LegalSections({
           </div>
 
           {/* Mobile TOC Quick-Jumper */}
-          <div className="lg:hidden mt-6 overflow-x-auto pb-2 scrollbar-none">
+          <div className={cn("lg:hidden mt-6 overflow-x-auto pb-2 scrollbar-none", ruleHtml && "hidden")}>
             <div className="inline-flex items-center gap-2 text-xs">
               <span className="text-muted font-medium shrink-0">On this page:</span>
               {sections.map((section, idx) => (
@@ -83,7 +91,7 @@ export function LegalSections({
           {/* Main 2-Column Grid */}
           <div className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-14">
             {/* Desktop Minimal Sticky TOC */}
-            <aside className="hidden lg:col-span-3 lg:block">
+            <aside className={cn("hidden lg:col-span-3", ruleHtml ? "lg:hidden" : "lg:block")}>
               <div className="sticky top-28">
                 <p className="font-display text-xs font-bold uppercase tracking-wider text-muted">
                   On this page
@@ -106,7 +114,9 @@ export function LegalSections({
             </aside>
 
             {/* Document Content Flow */}
-            <div className="lg:col-span-9">
+            <div className={ruleHtml ? "lg:col-span-12" : "lg:col-span-9"}>
+              {ruleHtml ? <RuleHtml html={ruleHtml} /> : null}
+              {ruleHtml ? null : (
               <div className="divide-y divide-line/70">
                 {sections.map((section, idx) => {
                   const slug = slugify(section.title);
@@ -134,6 +144,7 @@ export function LegalSections({
                   );
                 })}
               </div>
+              )}
 
               {/* Minimal Understated Contact Note */}
               <div className="mt-12 border-t border-line pt-8 text-sm text-muted">

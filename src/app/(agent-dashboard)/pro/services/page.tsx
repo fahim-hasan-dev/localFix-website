@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Check,
   CheckCircle2,
@@ -13,20 +13,52 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Field, TextField } from "@/components/ui/field";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { updateProProfile, type ProServiceItem } from "@/redux/slices/featuresSlice";
-import { tradeDefaultServices } from "@/lib/pro-extras";
+import { Field, NativeSelect, TextField } from "@/components/ui/field";
+import { mapCategory, type ApiService } from "@/lib/api-mappers";
+import { apiErrorMessage } from "@/services/client/form-data";
+import { useGetCategoriesQuery } from "@/services/client/catalog-api";
+import {
+  useCreateServiceMutation,
+  useDeleteServiceMutation,
+  useGetMyServicesQuery,
+  useUpdateServiceMutation,
+} from "@/services/client/services-api";
+import type { ProServiceItem } from "@/redux/slices/featuresSlice";
+
+function serviceRows(items: ApiService[] | undefined): Array<ProServiceItem & { categoryId?: string }> {
+  return (items || []).map((item) => {
+    const category = typeof item.category === "string" ? undefined : item.category;
+    return {
+      id: item._id,
+      name: item.name,
+      description: item.description || "",
+      category: category?.name || (typeof item.category === "string" ? item.category : ""),
+      categoryId: category?._id || (typeof item.category === "string" ? item.category : ""),
+    };
+  });
+}
 
 export default function ProServicesPage() {
-  const dispatch = useAppDispatch();
-  const proProfile = useAppSelector((state) => state.features.proProfile);
-  const services = useMemo(() => proProfile.services ?? [], [proProfile.services]);
-
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const { data, isLoading, isError } = useGetMyServicesQuery(
+    debouncedSearch ? { searchTerm: debouncedSearch } : undefined,
+  );
+  const { data: categoryResponse } = useGetCategoriesQuery();
+  const categories = (categoryResponse?.data || []).map(mapCategory);
+  const [createService] = useCreateServiceMutation();
+  const [updateService] = useUpdateServiceMutation();
+  const [deleteService] = useDeleteServiceMutation();
+  const services = useMemo(() => serviceRows(data?.data), [data]);
 
   // Form state for modal (pricing completely removed)
   const [serviceForm, setServiceForm] = useState({
@@ -40,16 +72,7 @@ export default function ProServicesPage() {
     setTimeout(() => setToastMessage(null), 3000);
   }
 
-  const filteredServices = useMemo(() => {
-    if (!searchQuery.trim()) return services;
-    const q = searchQuery.toLowerCase().trim();
-    return services.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        (s.category && s.category.toLowerCase().includes(q)) ||
-        (s.description && s.description.toLowerCase().includes(q)),
-    );
-  }, [services, searchQuery]);
+  const filteredServices = services;
 
   function handleOpenAdd() {
     setEditingServiceId(null);
@@ -61,66 +84,49 @@ export default function ProServicesPage() {
     setShowModal(true);
   }
 
-  function handleOpenEdit(srv: ProServiceItem) {
+  function handleOpenEdit(srv: ProServiceItem & { categoryId?: string }) {
     setEditingServiceId(srv.id);
-    const fallbackCategory =
-      srv.category ||
-      tradeDefaultServices.plumbing?.find(
-        (s) => s.id === srv.id || s.name.toLowerCase() === srv.name.toLowerCase(),
-      )?.category ||
-      "";
     setServiceForm({
       name: srv.name,
-      category: fallbackCategory,
+      category: srv.categoryId || srv.category || "",
       description: srv.description || "",
     });
     setShowModal(true);
   }
 
-  function handleSaveService() {
-    if (!serviceForm.name.trim()) return;
-
-    const trimmedCat = serviceForm.category.trim();
-    let updatedList: ProServiceItem[];
-    if (editingServiceId) {
-      updatedList = services.map((s) =>
-        s.id === editingServiceId
-          ? {
-              ...s,
-              name: serviceForm.name.trim(),
-              category: trimmedCat || undefined,
-              description: serviceForm.description.trim(),
-            }
-          : s,
-      );
-      showToast("Service details updated!");
-    } else {
-      const newService: ProServiceItem = {
-        id: `srv-${Date.now()}`,
-        name: serviceForm.name.trim(),
-        category: trimmedCat || undefined,
-        description: serviceForm.description.trim(),
-      };
-      updatedList = [...services, newService];
-      showToast("New service added to public storefront!");
+  async function handleSaveService() {
+    if (!serviceForm.name.trim() || !serviceForm.category.trim()) {
+      showToast("Name and category are required.");
+      return;
     }
 
-    dispatch(
-      updateProProfile({
-        services: updatedList,
-      }),
-    );
-    setShowModal(false);
+    const payload = {
+      name: serviceForm.name.trim(),
+      category: serviceForm.category.trim(),
+      description: serviceForm.description.trim(),
+    };
+
+    try {
+      if (editingServiceId) {
+        await updateService({ id: editingServiceId, ...payload }).unwrap();
+        showToast("Service details updated!");
+      } else {
+        await createService(payload).unwrap();
+        showToast("New service added to public storefront!");
+      }
+      setShowModal(false);
+    } catch (err) {
+      showToast(apiErrorMessage(err, "Could not save this service."));
+    }
   }
 
-  function handleDeleteService(id: string) {
-    const updatedList = services.filter((s) => s.id !== id);
-    dispatch(
-      updateProProfile({
-        services: updatedList,
-      }),
-    );
-    showToast("Service removed from storefront.");
+  async function handleDeleteService(id: string) {
+    try {
+      await deleteService(id).unwrap();
+      showToast("Service removed from storefront.");
+    } catch (err) {
+      showToast(apiErrorMessage(err, "Could not remove this service."));
+    }
   }
 
   return (
@@ -168,8 +174,11 @@ export default function ProServicesPage() {
         </div>
       </div>
 
+      {isLoading ? <p className="text-sm text-muted">Loading services...</p> : null}
+      {isError ? <p className="text-sm text-error">Services could not be loaded.</p> : null}
+
       {/* 3. Services Grid: Balanced 2-Column Responsive Cards */}
-      {filteredServices.length === 0 ? (
+      {!isLoading && !isError && filteredServices.length === 0 ? (
         <Card className="rounded-2xl border border-line/80 bg-white p-10 text-center">
           <Filter className="mx-auto mb-3 h-8 w-8 text-muted/60" />
           <p className="font-display text-base font-bold text-title">No matching services found</p>
@@ -271,14 +280,20 @@ export default function ProServicesPage() {
                 />
               </Field>
 
-              <Field label="Category / Specialty (Optional)">
-                <TextField
+              <Field label="Category / Specialty">
+                <NativeSelect
                   value={serviceForm.category}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                     setServiceForm({ ...serviceForm, category: e.target.value })
                   }
-                  placeholder="e.g. Troubleshooting, Lighting, Repairs, Installation…"
-                />
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </NativeSelect>
               </Field>
 
               <Field label="Service Scope & Description">

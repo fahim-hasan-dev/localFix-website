@@ -7,6 +7,7 @@ import { DashboardSidebar, type SidebarSection } from "@/components/layout/dashb
 import { loginHref } from "@/lib/role-access";
 import { selectHomeownerRequests } from "@/lib/marketplace";
 import { useAppSelector } from "@/redux/hooks";
+import { useUnreadChatCount } from "@/services/client/engagement-api";
 
 export default function UserDashboardLayout({
   children,
@@ -16,6 +17,7 @@ export default function UserDashboardLayout({
   const user = useAppSelector((state) => state.auth.user);
   const hydrated = useAppSelector((state) => state.auth.hydrated);
   const state = useAppSelector((s) => s);
+  const unreadChats = useUnreadChatCount(hydrated && user?.role === "homeowner");
   const router = useRouter();
   const pathname = usePathname();
 
@@ -47,7 +49,11 @@ export default function UserDashboardLayout({
             href: "/account/bookings",
             label: "My Bookings",
           },
-          { href: "/account/messages", label: "Messages" },
+          {
+            href: "/account/messages",
+            label: "Messages",
+            badge: unreadChats > 0 ? unreadChats : undefined,
+          },
           { href: "/account/post-job", label: "Post a Request" },
         ],
       },
@@ -55,10 +61,11 @@ export default function UserDashboardLayout({
         items: [
           { href: "/account/profile", label: "Profile" },
           { href: "/account/password", label: "Password" },
+          { href: "/account/support", label: "Support" },
         ],
       },
     ];
-  }, [state, user?.name]);
+  }, [state, unreadChats, user?.name]);
 
   if (!hydrated || !user || user.role !== "homeowner") return null;
 

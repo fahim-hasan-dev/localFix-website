@@ -18,8 +18,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { cn } from "@/lib/cn";
-import { plans, type PlanItem } from "@/lib/site-content";
+import { type PlanFeature, type PlanItem } from "@/lib/site-content";
 import { useRoleAccess } from "@/hooks/use-role-access";
+import { useGetPackagesQuery, type PackageItem } from "@/services/client/catalog-api";
 
 function getPlanIcon(name: string) {
   switch (name) {
@@ -53,16 +54,73 @@ function getPlanIcon(name: string) {
   }
 }
 
+type DisplayPlan = Omit<PlanItem, "id"> & {
+  id: string;
+  kind: "pro";
+  hasTrial?: boolean;
+};
+
+function money(value: number) {
+  return Number.isInteger(value) ? `$${value}` : `$${value.toFixed(2)}`;
+}
+
+function packageToPlan(pkg: PackageItem): DisplayPlan {
+  const monthlyRaw = pkg.monthlyPrice ?? pkg.price;
+  const yearly = pkg.yearlyPrice && pkg.yearlyPrice > 0 ? pkg.yearlyPrice : undefined;
+  const monthly = monthlyRaw && monthlyRaw > 0 ? monthlyRaw : yearly ? yearly / 12 : 0;
+  const fullYear = monthly * 12;
+  const savePct =
+    yearly && monthlyRaw && monthlyRaw > 0 && yearly < fullYear
+      ? Math.round((1 - yearly / fullYear) * 100)
+      : 0;
+
+  const trialDays = pkg.hasTrial ? pkg.trialDays || 0 : 0;
+  const taglineParts: string[] = [];
+  if (pkg.description) taglineParts.push(pkg.description);
+  else taglineParts.push("Flat subscription for pros. Keep 100% of your earnings.");
+  if (yearly) taglineParts.push(`Or ${money(yearly)}/yr${savePct > 0 ? ` (save ${savePct}%)` : ""}.`);
+
+  const features: PlanFeature[] = [];
+  if (pkg.features && pkg.features.length > 0) {
+    features.push(...pkg.features.map((text) => ({ text, icon: "check" })));
+  }
+  if (typeof pkg.leadLimit === "number" && pkg.leadLimit > 0) {
+    features.unshift({ text: `Up to ${pkg.leadLimit} leads per month`, icon: "briefcase" });
+  }
+  return {
+    id: pkg._id,
+    kind: "pro",
+    name: pkg.name,
+    badge: pkg.isPopular ? "Popular" : savePct > 0 ? `Save ${savePct}%` : undefined,
+    price: money(monthly),
+    period: "/mo",
+    tagline: taglineParts.join(" "),
+    href: "/pro-register",
+    cta: trialDays > 0 ? `Start ${trialDays} days free ↗` : "Get started ↗",
+    featured: Boolean(pkg.isPopular),
+    features,
+    hasTrial: trialDays > 0,
+  };
+}
+
 export function PricingPlans({
   eyebrow = "Transparent Pricing",
-  title = "100% free for homeowners. Simple subscription for pros.",
-  description = "Homeowners never pay any commissions, booking fees, or hidden markups — it's completely free. Service professionals simply choose a flat subscription and keep 100% of their earnings.",
+  title = "Simple subscription for pros.",
+  description = "Service professionals choose a flat subscription and keep 100% of their earnings. No commissions, no lead fees.",
 }: {
   eyebrow?: string;
   title?: string;
   description?: string;
 }) {
   const { access, membershipActive } = useRoleAccess();
+  const { data: packageResponse, isLoading: packagesLoading, isError: packagesError } =
+    useGetPackagesQuery();
+
+  const livePackages = (packageResponse?.data ?? []).filter((pkg) => pkg.isActive !== false);
+
+  const livePlans: DisplayPlan[] =
+    !packagesLoading && !packagesError ? livePackages.map((pkg) => packageToPlan(pkg)) : [];
+  const showSkeletons = packagesLoading;
 
   return (
     <section id="pricing" className="bg-white py-[var(--section-sm)] md:py-[var(--section)]">
@@ -72,43 +130,26 @@ export function PricingPlans({
         </div>
 
         <div className="mx-auto mt-14 sm:mt-16 grid max-w-6xl gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan: PlanItem) => {
-            const isHome = plan.id === "homeowner";
-            const isPro = plan.id === "pro" || plan.id === "pro-annual";
-            const yours =
-              (isHome && access.audience === "homeowner") ||
-              (isPro && access.audience === "pro" && membershipActive);
+          {livePlans.map((plan: DisplayPlan) => {
+            const yours = access.audience === "pro" && membershipActive;
 
             let href = plan.href;
             let cta = plan.cta;
-            if (isHome) {
-              if (access.audience === "homeowner") {
-                href = "/account/post-job";
-                cta = "Post a request ↗";
-              } else if (access.audience === "pro") {
-                href = "/pro/jobs";
-                cta = "Stay on pro jobs ↗";
-              }
-            }
-            if (isPro) {
-              if (access.audience === "pro") {
-                href = "/pro/pricing";
-                cta = membershipActive ? "Manage membership ↗" : "Start free trial ↗";
-              } else if (access.audience === "homeowner") {
-                href = "/pro-register";
-                cta = "Apply with a pro account ↗";
-              }
+            if (access.audience === "pro") {
+              href = "/pro/pricing";
+              cta = membershipActive ? "Manage membership ↗" : plan.cta;
+            } else if (access.audience === "homeowner") {
+              href = "/pro-register";
+              cta = "Apply with a pro account ↗";
             }
 
             return (
               <article
-                key={plan.name}
+                key={plan.id}
                 className={cn(
                   "relative flex flex-col justify-between rounded-[24px] bg-white p-7 sm:p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
                   plan.featured
                     ? "border-2 border-primary/50 shadow-md ring-1 ring-primary/20"
-                    : isHome
-                    ? "border-2 border-emerald-500/30 shadow-xs"
                     : "border border-line shadow-xs",
                 )}
               >
@@ -134,9 +175,7 @@ export function PricingPlans({
                       <span
                         className={cn(
                           "rounded-full px-3 py-0.5 font-display text-xs font-semibold",
-                          isHome
-                            ? "border border-emerald-500/30 bg-emerald-50 text-emerald-700"
-                            : plan.featured
+                          plan.featured
                             ? "border border-primary/25 bg-primary/10 text-primary"
                             : "border border-line bg-smoke text-title/70",
                         )}
@@ -211,7 +250,26 @@ export function PricingPlans({
               </article>
             );
           })}
+          {showSkeletons
+            ? [0, 1, 2].map((i) => (
+                <div
+                  key={`plan-skeleton-${i}`}
+                  aria-hidden="true"
+                  className="h-[520px] animate-pulse rounded-[24px] border border-line bg-smoke/60"
+                />
+              ))
+            : null}
         </div>
+        {!packagesLoading && packagesError ? (
+          <p className="mt-6 text-center text-sm text-error">
+            Subscription packages could not be loaded. Please refresh and try again.
+          </p>
+        ) : null}
+        {!packagesLoading && !packagesError && livePackages.length === 0 ? (
+          <p className="mt-6 text-center text-sm text-muted">
+            No pro subscription packages are available right now.
+          </p>
+        ) : null}
       </div>
     </section>
   );

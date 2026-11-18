@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Calendar, ChevronRight, Clock, ShieldCheck, Star } from "lucide-react";
-import { getPro, offerStatusLabels } from "@/Mockdata";
+import { offerStatusLabels } from "@/Mockdata";
 import { getAvatar } from "@/lib/avatars";
+import { useResolvedPro } from "@/hooks/use-resolved-pro";
 import { useAppSelector } from "@/redux/hooks";
 import type { Quote } from "@/types";
 import { cn } from "@/lib/cn";
@@ -23,7 +24,7 @@ export function QuoteCard({
 }) {
   const router = useRouter();
   const hiredId = useAppSelector((state) => state.marketplace.hiredByJob[quote.jobId]);
-  const pro = getPro(quote.proId);
+  const pro = useResolvedPro(quote.proId);
   const hired = hiredId === quote.id;
   const closed = quote.status === "rejected" || quote.status === "withdrawn" || quote.status === "expired";
   const status = hired

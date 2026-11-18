@@ -98,7 +98,7 @@ const journeys: Record<
       {
         n: "04",
         title: "Flat monthly membership",
-        text: "After your trial, continue for just $19.99/mo flat. Quote unlimited jobs and keep every dollar you charge.",
+        text: "After your trial, continue on a flat membership. Quote jobs and keep every dollar you charge.",
         icon: CreditCard,
       },
     ],

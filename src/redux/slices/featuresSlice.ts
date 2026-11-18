@@ -1,10 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { defaultWeeklyHours, type WeeklyHours } from "@/lib/business-hours";
-import {
-  defaultInsuranceDoc,
-  defaultLicenseDoc,
-  type CredentialFile,
-} from "@/lib/credential-file";
+import { type CredentialFile } from "@/lib/credential-file";
 import type { JobStatus } from "@/types";
 
 export type LeadAction = "saved" | "declined" | "scheduled" | "open" | "accepted";
@@ -139,91 +135,50 @@ export interface ProProfileData {
   portfolio: ProPortfolioItem[];
 }
 
-const seedNotifications: AppNotification[] = [
-  {
-    id: "n1",
-    title: "New quote",
-    body: "Ortega Plumbing sent a quote on your kitchen sink request.",
-    href: "/account/jobs/job-1",
-    createdAt: "Oct 14 · 2:20 PM",
-    read: false,
-    role: "homeowner",
+const emptyProProfile: ProProfileData = {
+  businessName: "",
+  contactName: "",
+  trade: "",
+  categorySlug: "",
+  tagline: "",
+  bio: "",
+  phone: "",
+  email: "",
+  street: "",
+  city: "",
+  state: "",
+  zip: "",
+  radiusMiles: 25,
+  startingPrice: 0,
+  yearsInBusiness: "",
+  responseTime: "",
+  emergency: false,
+  businessHours: defaultWeeklyHours(),
+  acceptedPayments: [],
+  specialOffer: {
+    active: false,
+    title: "",
+    discount: "",
+    terms: "",
   },
-  {
-    id: "n2",
-    title: "Message reply",
-    body: "Shah Electric Co. replied on the hallway outlets job.",
-    href: "/account/messages",
-    createdAt: "Oct 13 · 6:42 PM",
-    read: false,
-    role: "homeowner",
-  },
-  {
-    id: "n3",
-    title: "New open request",
-    body: "A plumbing job near 78701 matches your trade.",
-    href: "/pro/jobs/job-1",
-    createdAt: "Oct 14 · 9:00 AM",
-    read: false,
-    role: "pro",
-  },
-  {
-    id: "n4",
-    title: "Membership reminder",
-    body: "Your free trial has days left. Review membership terms anytime.",
-    href: "/pro/pricing",
-    createdAt: "Oct 12 · 10:00 AM",
-    read: true,
-    role: "pro",
-  },
-];
+  services: [],
+  includedPerks: [],
+  licenseNumber: "",
+  licenseState: "",
+  licenseDoc: null,
+  insuranceCarrier: "",
+  insuranceCoverage: "",
+  insuranceExpires: "",
+  insuranceDoc: null,
+  idDoc: null,
+  portfolio: [],
+};
 
 const initialState: FeaturesState = {
-  favorites: ["pro-1", "pro-2", "pro-3"],
-  notifications: seedNotifications,
-  addresses: [
-    {
-      id: "addr-1",
-      label: "Home",
-      street: "418 West 5th Street",
-      city: "Austin",
-      state: "TX",
-      zip: "78701",
-    },
-  ],
-  reviews: [
-    {
-      id: "rev-1",
-      jobId: "job-past-1",
-      proId: "pro-1",
-      author: "Maya Chen",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&h=256&q=80",
-      rating: 5,
-      body: "Fixed the leak the same afternoon. Clean work and clear price.",
-      createdAt: "Sep 2026",
-      reply: "Thanks Maya — glad the cabinet dried out cleanly.",
-    },
-    {
-      id: "rev-2",
-      jobId: "job-past-2",
-      proId: "pro-1",
-      author: "Jordan Hale",
-      avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=256&h=256&q=80",
-      rating: 4,
-      body: "Showed up on time and explained the fittings before replacing them.",
-      createdAt: "Aug 2026",
-    },
-    {
-      id: "rev-3",
-      jobId: "job-past-3",
-      proId: "pro-2",
-      author: "Elena Ruiz",
-      avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=256&h=256&q=80",
-      rating: 5,
-      body: "Diagnosed the dead outlets quickly and left the hallway tidy.",
-      createdAt: "Sep 2026",
-    },
-  ],
+  favorites: [],
+  notifications: [],
+  addresses: [],
+  reviews: [],
   leadActions: {},
   jobPhotos: {},
   jobStatusOverride: {},
@@ -235,175 +190,19 @@ const initialState: FeaturesState = {
   membershipCancelled: false,
   subscriptionPlan: "trial",
   billingCycle: "monthly",
-  renewalDate: "Jan 10, 2027",
-  paymentMethod: {
-    brand: "Visa",
-    last4: "4242",
-    exp: "08/29",
-  },
-  trialDaysLeft: 30,
-  invoices: [
-    {
-      id: "inv-1",
-      date: "Oct 10, 2026",
-      period: "Oct 10 – Nov 10, 2026",
-      description: "Pro 30-Day Free Trial",
-      amount: "$0.00",
-      status: "paid",
-    },
-    {
-      id: "inv-2",
-      date: "Nov 10, 2026",
-      period: "Nov 10 – Dec 10, 2026",
-      description: "Pro Monthly Membership (Scheduled Renewal)",
-      amount: "$19.99",
-      status: "upcoming",
-    },
-  ],
+  renewalDate: "",
+  paymentMethod: null,
+  trialDaysLeft: 0,
+  invoices: [],
   applicationDraft: {},
-  /** Demo pro starts cleared so job-board gates focus on membership. New applications reset to submitted. */
-  applicationStatus: "cleared",
+  applicationStatus: "draft",
   rejectionReason: "",
-  contactUnlocked: true,
-  proProfile: {
-    businessName: "Luis Ortega",
-    contactName: "Luis Ortega",
-    trade: "Plumbing",
-    categorySlug: "plumbing",
-    tagline: "Licensed master plumber serving residential Austin & Central Texas",
-    bio: "Over 10 years of trusted plumbing diagnostics, emergency leak remediation, tankless water heater installations, and drain restoration. We provide itemized pricing upfront with zero platform fees.",
-    phone: "(512) 555-0198",
-    email: "luis.ortega@example.com",
-    street: "2201 South Lamar Blvd",
-    city: "Austin",
-    state: "TX",
-    zip: "78704",
-    radiusMiles: 25,
-    startingPrice: 95,
-    yearsInBusiness: "10+ years",
-    responseTime: "Usually under 1 hour",
-    emergency: true,
-    businessHours: defaultWeeklyHours(),
-    acceptedPayments: [
-      "Apple Pay",
-      "Cash",
-      "Check",
-      "Credit or debit",
-      "Google Pay",
-      "PayPal",
-      "Venmo",
-      "Zelle",
-    ],
-    specialOffer: {
-      active: true,
-      title: "$25 Off First Diagnostic Call",
-      discount: "$25 OFF",
-      terms: "Valid for all first-time residential homeowners across Travis & Williamson counties. Mention Local Fix on booking.",
-    },
-    services: [
-      {
-        id: "srv-1",
-        name: "Leak Detection & Emergency Pipe Repair",
-        category: "Leak repair",
-        price: 95,
-        unit: "starting rate",
-        description: "Electronic water line detection and non-invasive pipe repairs.",
-      },
-      {
-        id: "srv-2",
-        name: "Water Heater Flush, Repair & Replacement",
-        category: "Water heaters",
-        price: 140,
-        unit: "flush & diag",
-        description: "Standard tank & tankless servicing, element replacement, and anode rods.",
-      },
-      {
-        id: "srv-3",
-        name: "Drain Clearing & Hydro-Jetting",
-        category: "Drains",
-        price: 89,
-        unit: "starting rate",
-        description: "Kitchen sinks, bathroom lines, and main sewer branch snake clearing.",
-      },
-      {
-        id: "srv-4",
-        name: "Fixture, Toilet & Faucet Installation",
-        category: "Fixtures",
-        price: 110,
-        unit: "per fixture",
-        description: "OEM fixture mounting, supply hookups, and leak-tested seal guarantee.",
-      },
-      {
-        id: "srv-5",
-        name: "Garbage Disposal Repair & Replacement",
-        category: "Repairs",
-        price: 85,
-        unit: "starting rate",
-        description: "Humming or jammed disposals, seal gaskets, and new unit installs.",
-      },
-    ],
-    includedPerks: [
-      "Free upfront itemized quote",
-      "1-Year workmanship & leak warranty",
-      "Floor protection & clean boot covers",
-      "OEM certified plumbing parts",
-      "Direct payment upon 100% completion",
-    ],
-    licenseNumber: "TX-M-42981",
-    licenseState: "TX",
-    licenseDoc: defaultLicenseDoc(),
-    insuranceCarrier: "Next Insurance",
-    insuranceCoverage: "$1,000,000",
-    insuranceExpires: "2027-09",
-    insuranceDoc: defaultInsuranceDoc(),
-    portfolio: [
-      {
-        id: "port-1",
-        title: "Whole-Home PEX Water Line Repiping",
-        category: "Replacements",
-        image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=1200&q=80",
-        description: "Replaced degraded galvanized piping with commercial-grade PEX, copper manifolds, and shutoff valves.",
-      },
-      {
-        id: "port-2",
-        title: "Tankless Water Heater Installation",
-        category: "Installations",
-        image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1200&q=80",
-        description: "High-efficiency condensing unit installation with dual vent kit and gas regulator.",
-      },
-      {
-        id: "port-3",
-        title: "Under-Sink Drain Rebuild & Disposal Line",
-        category: "Repairs",
-        image: "https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=1200&q=80",
-        description: "Rebuilt slip-joint drain lines with air gap and sound-dampened garbage disposal connection.",
-      },
-      {
-        id: "port-4",
-        title: "Modern Master Bath Vanity Fixtures",
-        category: "Installations",
-        image: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=80",
-        description: "Twin widespread brushed-nickel faucet mounting and pop-up drain alignment.",
-      },
-      {
-        id: "port-5",
-        title: "Main Emergency Shutoff & Pressure Valve",
-        category: "Repairs",
-        image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=1200&q=80",
-        description: "Installed lead-free quarter-turn brass ball valve and 75 PSI pressure regulator.",
-      },
-      {
-        id: "port-6",
-        title: "Sewer Line Cleanout & Camera Inspection",
-        category: "Diagnostics",
-        image: "https://images.unsplash.com/photo-1542013936693-884638332954?auto=format&fit=crop&w=1200&q=80",
-        description: "Full-run HD video camera diagnostic locating root intrusions and bellies.",
-      },
-    ],
-  },
+  contactUnlocked: false,
+  proProfile: emptyProProfile,
 };
 
-const FEATURES_STORAGE_KEY = "lhf-features-v3";
+/** Bumped to drop persisted demo seed from older localStorage. */
+const FEATURES_STORAGE_KEY = "lhf-features-v4";
 
 function persistFeatures(state: FeaturesState) {
   if (typeof window === "undefined") return;
@@ -651,17 +450,6 @@ const featuresSlice = createSlice({
       state.membershipPaused = false;
       state.membershipCancelled = false;
       state.contactUnlocked = true;
-
-      const upcoming = state.invoices.find((i) => i.status === "upcoming");
-      if (upcoming) {
-        if (action.payload.plan === "annual") {
-          upcoming.amount = "$179.88";
-          upcoming.description = "Pro Annual Membership ($14.99/mo · Billed Yearly)";
-        } else if (action.payload.plan === "monthly") {
-          upcoming.amount = "$19.99";
-          upcoming.description = "Pro Monthly Membership ($19.99/mo)";
-        }
-      }
     },
     updatePaymentMethod(
       state,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Ban,
@@ -22,9 +22,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, NativeSelect, TextField } from "@/components/ui/field";
-import { getPro, offerStatusLabels } from "@/Mockdata";
+import { offerStatusLabels } from "@/Mockdata";
 import { getAvatar } from "@/lib/avatars";
-import { paymentMethodLabels, selectJob, selectQuotesForJob } from "@/lib/marketplace";
+import { useResolvedPro } from "@/hooks/use-resolved-pro";
+import { selectablePaymentMethods, selectJob, selectQuotesForJob } from "@/lib/marketplace";
 import {
   confirmBooking,
   hireQuote,
@@ -33,7 +34,23 @@ import {
 } from "@/redux/slices/marketplaceSlice";
 import { addNotification, setJobStatus } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import type { DirectPaymentMethod } from "@/types";
+import { errorMessage } from "@/lib/booking-view";
+import { mapLiveJob, mapQuotation, toApiPaymentMethod, unwrapJobRecord, type ApiQuotation } from "@/lib/marketplace-mappers";
+import {
+  useAcceptQuotationMutation,
+  useDeclineQuotationMutation,
+  useGetQuotationQuery,
+} from "@/services/client/marketplace-api";
+import { useGetJobQuery } from "@/services/client/jobs-api";
+import type { DirectPaymentMethod, Quote } from "@/types";
+
+function quotationRecord(data: unknown): ApiQuotation | null {
+  if (!data || typeof data !== "object") return null;
+  const record = data as { quotation?: ApiQuotation; _id?: string };
+  if (record.quotation && typeof record.quotation === "object" && record.quotation._id) return record.quotation;
+  if (record._id) return record as ApiQuotation;
+  return null;
+}
 
 const priceLabels: Record<string, string> = {
   fixed: "Fixed Price",
@@ -74,7 +91,23 @@ export function QuoteDetail({
   const dispatch = useAppDispatch();
   const job = useAppSelector((state) => selectJob(state, jobId));
   const quotes = useAppSelector((state) => selectQuotesForJob(state, jobId));
-  const quote = quotes.find((item) => item.id === quoteId);
+  const isLiveQuoteId = /^[0-9a-f]{24}$/i.test(quoteId);
+  const quoteQuery = useGetQuotationQuery(quoteId, { skip: !isLiveQuoteId });
+  const jobQuery = useGetJobQuery(jobId, { skip: !jobId });
+  const liveQuote = useMemo(() => {
+    const direct = quotationRecord(quoteQuery.data?.data);
+    if (direct?._id) return mapQuotation(direct, jobId);
+    const rawJob = unwrapJobRecord(jobQuery.data?.data);
+    const fromJob = rawJob ? mapLiveJob(rawJob).quotes : [];
+    return (
+      fromJob.find((item) => item.id === quoteId) ??
+      fromJob.find((item) => !item.id.startsWith("quote-local-")) ??
+      null
+    );
+  }, [jobId, jobQuery.data, quoteId, quoteQuery.data]);
+  const storedQuote = quotes.find((item) => item.id === quoteId && !item.id.startsWith("quote-local-"));
+  const quote: Quote | undefined = liveQuote ?? storedQuote;
+  const loadingQuote = !quote && (quoteQuery.isLoading || quoteQuery.isFetching || jobQuery.isLoading || jobQuery.isFetching);
   const hiredId = useAppSelector((state) => state.marketplace.hiredByJob[jobId]);
   const booking = useAppSelector((state) => state.marketplace.bookings[jobId]);
   const homeownerName = useAppSelector((state) => state.auth.user?.name);
@@ -82,6 +115,15 @@ export function QuoteDetail({
   const [arrivalWindow, setArrivalWindow] = useState("10:00 AM – 12:00 PM (Late Morning)");
   const [payMethod, setPayMethod] = useState<DirectPaymentMethod>("cash");
   const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [acceptQuotation] = useAcceptQuotationMutation();
+  const [declineQuotation] = useDeclineQuotationMutation();
+  const pro = useResolvedPro(quote?.proId);
+
+  if (loadingQuote || (!job && jobQuery.isLoading)) {
+    return <p className="text-sm text-muted">Loading quotation…</p>;
+  }
 
   if (!quote || !job) {
     return (
@@ -94,7 +136,6 @@ export function QuoteDetail({
     );
   }
 
-  const pro = getPro(quote.proId);
   const hired = hiredId === quote.id;
   const closed = quote.status === "rejected" || quote.status === "withdrawn" || quote.status === "expired";
   const jobClosed = job.status === "cancelled" || job.status === "disputed";
@@ -103,8 +144,27 @@ export function QuoteDetail({
       ? `$${quote.amount}–$${quote.priceMax}`
       : `$${quote.amount}${quote.priceType === "hourly" ? "/hr" : ""}`;
 
-  function accept() {
+  async function accept() {
     if (!quote) return;
+    if (!bookDate) {
+      setMsg("Please choose an appointment date.");
+      return;
+    }
+    setBusy(true);
+    setMsg("");
+    try {
+      await acceptQuotation({
+        id: quote.id,
+        appointmentDate: bookDate,
+        paymentMethod: toApiPaymentMethod(payMethod),
+        arrivalTimeWindow: arrivalWindow,
+      }).unwrap();
+    } catch (err) {
+      setMsg(errorMessage(err, "This quotation could not be accepted."));
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
     dispatch(
       hireQuote({
         jobId,
@@ -136,11 +196,21 @@ export function QuoteDetail({
         role: "pro",
       }),
     );
-    setMsg("Quotation accepted. Agree a schedule and payment method to confirm the booking.");
+    finishBooking();
   }
 
-  function decline() {
+  async function decline() {
     if (!quote) return;
+    setBusy(true);
+    setMsg("");
+    try {
+      await declineQuotation(quote.id).unwrap();
+    } catch (err) {
+      setMsg(errorMessage(err, "This quotation could not be declined."));
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
     dispatch(setOfferStatus({ quoteId: quote.id, status: "rejected" }));
     setMsg("Quote declined.");
   }
@@ -151,6 +221,12 @@ export function QuoteDetail({
       setMsg("Please choose an appointment date.");
       return;
     }
+    finishBooking();
+  }
+
+  /** Local booking state (instant UI). The API accept call has already created the booking server-side. */
+  function finishBooking() {
+    if (!quote) return;
     dispatch(
       confirmBooking({
         jobId,
@@ -336,11 +412,11 @@ export function QuoteDetail({
           ) : null}
           {canHire && !hiredId && !closed && !jobClosed ? (
             <>
-              <Button type="button" size="sm" variant="ghost" onClick={decline} className="sm:ml-auto">
+              <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={decline} className="sm:ml-auto">
                 <X className="h-4 w-4" />
                 Decline
               </Button>
-              <Button type="button" size="sm" onClick={accept}>
+              <Button type="button" size="sm" disabled={busy} onClick={() => setShowSchedule(true)}>
                 <Check className="h-4 w-4" />
                 Accept quote
               </Button>
@@ -348,7 +424,11 @@ export function QuoteDetail({
           ) : null}
         </div>
 
-        {canHire && hired && !booking?.scheduledDate ? (
+        {canHire &&
+        !booking?.scheduledDate &&
+        !closed &&
+        !jobClosed &&
+        (hired || (!hiredId && showSchedule)) ? (
           <div className="mx-5 mb-5 space-y-3 rounded-2xl border border-primary/30 bg-smoke/80 p-4 sm:mx-6">
             <div className="flex items-center gap-2 text-sm font-semibold text-title">
               <Calendar className="h-4 w-4 text-primary" />
@@ -363,7 +443,7 @@ export function QuoteDetail({
                   value={payMethod}
                   onChange={(e) => setPayMethod(e.target.value as DirectPaymentMethod)}
                 >
-                  {Object.entries(paymentMethodLabels).map(([value, label]) => (
+                  {selectablePaymentMethods.map(({ value, label }) => (
                     <option key={value} value={value}>
                       {label}
                     </option>
@@ -380,8 +460,8 @@ export function QuoteDetail({
                 </NativeSelect>
               </Field>
             </div>
-            <Button type="button" size="sm" onClick={lockBooking}>
-              Confirm booking
+            <Button type="button" size="sm" disabled={busy} onClick={hired ? lockBooking : accept}>
+              {busy ? "Saving…" : hired ? "Confirm booking" : "Accept & confirm booking"}
             </Button>
           </div>
         ) : null}

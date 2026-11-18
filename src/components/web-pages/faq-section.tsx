@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowUpRight, Home, Minus, Plus, Wrench } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { faqs as defaultFaqs, homeownerFaqs, proFaqs } from "@/lib/site-content";
+import { faqs as defaultFaqs } from "@/lib/site-content";
+import { useGetFaqsQuery } from "@/services/client/catalog-api";
 
 export function FaqSection({
   eyebrow = "FAQ",
@@ -23,9 +24,17 @@ export function FaqSection({
 }) {
   const [tab, setTab] = useState<"homeowner" | "pro">("homeowner");
   const [open, setOpen] = useState(0);
+  const usesLiveFaqs = items === defaultFaqs;
+  const { data, isLoading } = useGetFaqsQuery(
+    { role: tab === "homeowner" ? "home_owner" : "professional" },
+    { skip: !usesLiveFaqs },
+  );
+  const liveItems = (data?.data || [])
+    .slice()
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+    .map((item) => ({ q: item.question, a: item.answer }));
 
-  const allItems =
-    items !== defaultFaqs ? items : tab === "homeowner" ? homeownerFaqs : proFaqs;
+  const allItems = usesLiveFaqs ? liveItems : items;
   const displayItems = showViewAll ? allItems.slice(0, 5) : allItems;
 
   const dynamicDescription =
@@ -123,6 +132,7 @@ export function FaqSection({
 
           {/* Accordion Questions List */}
           <div className="space-y-3 sm:space-y-3.5 pt-1">
+            {usesLiveFaqs && isLoading ? <p className="text-sm text-muted">Loading questions...</p> : null}
             {displayItems.map((item, index) => {
               const active = open === index;
               return (

@@ -1,6 +1,4 @@
-import { notFound } from "next/navigation";
-import { ProProfileContent } from "@/components/web-pages/pro-profile-content";
-import { getPro } from "@/Mockdata";
+import { ProPublicProfile } from "@/components/web-pages/pro-public-profile";
 
 export default async function ProPublicProfilePage({
   params,
@@ -8,7 +6,5 @@ export default async function ProPublicProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const pro = getPro(id);
-  if (!pro || pro.clearance !== "cleared") notFound();
-  return <ProProfileContent pro={pro} />;
+  return <ProPublicProfile id={id} />;
 }

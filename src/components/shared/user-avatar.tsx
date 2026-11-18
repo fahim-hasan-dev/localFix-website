@@ -1,5 +1,6 @@
 import { cn } from "@/lib/cn";
 import { getAvatar } from "@/lib/avatars";
+import { mediaUrl } from "@/utils/mediaUrl";
 import type { User } from "@/types";
 
 function initials(name: string) {
@@ -26,7 +27,7 @@ export function UserAvatar({
     lg: "h-16 w-16 text-lg",
   };
 
-  const avatarUrl = user.avatar || (user.name ? getAvatar(user.name) : undefined);
+  const avatarUrl = mediaUrl(user.avatar) || (user.name ? getAvatar(user.name) : undefined);
 
   if (avatarUrl) {
     return (

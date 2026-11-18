@@ -3,17 +3,17 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, TextField } from "@/components/ui/field";
 import { PasswordField } from "@/components/ui/password-field";
 import { GoogleIcon } from "@/components/ui/google-icon";
 import { AuthLinks } from "@/components/web-pages/auth-links";
-import { cn } from "@/lib/cn";
-import { loginAs } from "@/redux/slices/authSlice";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { useLoginMutation } from "@/services/client/auth-api";
+import { useAppSelector } from "@/redux/hooks";
+import { normalizeRole } from "@/utils/authToken";
 
 export function LoginForm() {
-  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const router = useRouter();
   const search = useSearchParams();
@@ -25,6 +25,8 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
+  const [loginApi, { isLoading }] = useLoginMutation();
 
   useEffect(() => {
     if (user) {
@@ -42,25 +44,56 @@ export function LoginForm() {
     setRole(roleParam);
   }
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
-    dispatch(loginAs(role));
-    if (nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")) {
-      router.push(nextPath);
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      setError("Please enter both email and password.");
+      toast.error("Please enter both email and password.");
       return;
     }
-    router.push(role === "pro" ? "/pro" : "/account");
+
+    try {
+      const res = await loginApi({ email: trimmedEmail, password }).unwrap();
+      // Live API nests the user under data.data (not data.user).
+      const backendRole = res.data?.user?.role || res.data?.data?.role;
+      const mappedRole = normalizeRole(backendRole);
+      const isPro = mappedRole === "pro";
+
+      toast.success("Signed in successfully!");
+
+      if (nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")) {
+        // Never send a pro into a homeowner-only next path (and vice versa).
+        if (isPro && nextPath.startsWith("/account")) {
+          router.push("/pro");
+          return;
+        }
+        if (!isPro && nextPath.startsWith("/pro")) {
+          router.push("/account");
+          return;
+        }
+        router.push(nextPath);
+        return;
+      }
+      router.push(isPro ? "/pro" : "/account");
+    } catch (err: unknown) {
+      const apiErr = err as { data?: { message?: string }; error?: string };
+      const msg = apiErr?.data?.message || apiErr?.error || "Invalid email or password. Please try again.";
+      setError(msg);
+      toast.error(msg);
+      if (msg.toLowerCase().includes("verify your account") || msg.toLowerCase().includes("verify your email")) {
+        // If unverified account, redirect directly to verify-email after a short prompt
+        setTimeout(() => {
+          router.push(`/verify-email?email=${encodeURIComponent(trimmedEmail)}&role=${role}`);
+        }, 1200);
+      }
+    }
   }
 
   function handleGoogleSignIn() {
-    setError("");
-    dispatch(loginAs(role));
-    if (nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")) {
-      router.push(nextPath);
-      return;
-    }
-    router.push(role === "pro" ? "/pro" : "/account");
+    setError("Google Sign-in is not configured on this server yet. Please use email and password.");
   }
 
   return (
@@ -80,48 +113,15 @@ export function LoginForm() {
           "Sign in to your account or get started with quotes and requests."
         )}
       </p>
-
-      <div
-        role="tablist"
-        aria-label="Account type"
-        className="mt-6 grid grid-cols-2 rounded-full border border-line bg-smoke p-1"
-      >
-        {(
-          [
-            ["homeowner", "Homeowner"],
-            ["pro", "Professional"],
-          ] as const
-        ).map(([value, label]) => {
-          const active = role === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setRole(value)}
-              className={cn(
-                "min-h-[44px] rounded-full font-display text-sm font-bold transition-colors",
-                active
-                  ? "bg-primary text-white shadow-sm"
-                  : "bg-transparent text-title hover:text-primary",
-              )}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-
       <form className="mt-5 space-y-4" onSubmit={submit}>
         <Field label="Email">
           <TextField
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder={role === "pro" ? "marcus@ortegaplumbing.com" : "maya.chen@gmail.com"}
+            placeholder="you@email.com"
             autoComplete="email"
+            required
           />
         </Field>
         <Field label="Password">
@@ -130,6 +130,7 @@ export function LoginForm() {
             onChange={(event) => setPassword(event.target.value)}
             placeholder="••••••••••••"
             autoComplete="current-password"
+            required
           />
         </Field>
         <div className="flex justify-end">
@@ -138,8 +139,8 @@ export function LoginForm() {
           </Link>
         </div>
         {error ? <p className="text-sm text-error">{error}</p> : null}
-        <Button type="submit" className="w-full">
-          Sign in ↗
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? "Signing in..." : "Sign in ↗"}
         </Button>
       </form>
 

@@ -1,36 +1,37 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, Check, CheckCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import type { AppNotification } from "@/redux/slices/featuresSlice";
 import {
-  markAllNotificationsRead,
-  markNotificationRead,
-  type AppNotification,
-} from "@/redux/slices/featuresSlice";
+  useLiveNotifications,
+  useReadAllNotificationsMutation,
+  useReadNotificationMutation,
+} from "@/services/client/engagement-api";
 import type { User } from "@/types";
 
 export function NotificationMenu({ user }: { user: User }) {
   const router = useRouter();
-  const dispatch = useAppDispatch();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const visibleRef = useRef(5);
+  const loadingMoreRef = useRef(false);
+  const [visibleCount, setVisibleCount] = useState(5);
+  const {
+    items: notifications,
+    unreadCount,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useLiveNotifications(Boolean(user));
+  const [readAll] = useReadAllNotificationsMutation();
+  const [readOne] = useReadNotificationMutation();
 
-  const allNotifications = useAppSelector((state) => state.features.notifications);
-  const notifications = useMemo(
-    () =>
-      allNotifications.filter(
-        (n) => n.role === user.role || n.role === "all",
-      ),
-    [allNotifications, user.role],
-  );
-
-  const unreadNotifications = notifications.filter((n) => !n.read);
-  const unreadCount = unreadNotifications.length;
-  const recentNotifications = notifications.slice(0, 5);
+  const recentNotifications = notifications.slice(0, visibleCount);
 
   const isPro = user.role === "pro";
   const viewAllHref = isPro ? "/pro/notifications" : "/account/notifications";
@@ -52,9 +53,42 @@ export function NotificationMenu({ user }: { user: User }) {
     };
   }, []);
 
+  function showFirstPage() {
+    visibleRef.current = 5;
+    setVisibleCount(5);
+  }
+
+  function loadMore() {
+    const node = listRef.current;
+    if (!node) return;
+    const nearBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 48;
+    if (!nearBottom) return;
+
+    if (visibleRef.current < notifications.length) {
+      if (loadingMoreRef.current) return;
+      const next = Math.min(visibleRef.current + 5, notifications.length);
+      if (next === visibleRef.current) return;
+      loadingMoreRef.current = true;
+      visibleRef.current = next;
+      setVisibleCount(next);
+      requestAnimationFrame(() => {
+        loadingMoreRef.current = false;
+      });
+      return;
+    }
+
+    if (!hasNextPage || isFetchingNextPage || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    visibleRef.current += 5;
+    setVisibleCount(visibleRef.current);
+    void fetchNextPage().finally(() => {
+      loadingMoreRef.current = false;
+    });
+  }
+
   function handleSelectNotification(notif: AppNotification) {
     if (!notif.read) {
-      dispatch(markNotificationRead(notif.id));
+      void readOne(notif.id);
     }
     setOpen(false);
     router.push(notif.href);
@@ -62,14 +96,17 @@ export function NotificationMenu({ user }: { user: User }) {
 
   function handleMarkAllRead(e: React.MouseEvent) {
     e.stopPropagation();
-    dispatch(markAllNotificationsRead(user.role));
+    void readAll();
   }
 
   return (
     <div className="relative" ref={rootRef}>
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          setOpen((prev) => !prev);
+          showFirstPage();
+        }}
         className={cn(
           "relative grid h-10 w-10 place-items-center rounded-full border border-line/80 bg-white/95 text-title shadow-2xs backdrop-blur-xs transition-all duration-200 hover:border-primary/40 hover:bg-stone-50/80 hover:text-primary hover:shadow-xs active:scale-95 cursor-pointer select-none",
           open && "border-primary/60 text-primary bg-white ring-2 ring-primary/15 shadow-xs",
@@ -116,7 +153,11 @@ export function NotificationMenu({ user }: { user: User }) {
           </div>
 
           {/* List */}
-          <div className="max-h-[380px] divide-y divide-line/40 overflow-y-auto">
+          <div
+            ref={listRef}
+            onScroll={loadMore}
+            className="max-h-[380px] divide-y divide-line/40 overflow-y-auto"
+          >
             {recentNotifications.length === 0 ? (
               <div className="p-8 text-center text-xs text-muted">
                 <Check className="mx-auto mb-2 h-6 w-6 text-muted/60" />
@@ -154,6 +195,9 @@ export function NotificationMenu({ user }: { user: User }) {
                 </button>
               ))
             )}
+            {isFetchingNextPage ? (
+              <div className="p-3 text-center text-[11px] text-muted">Loading more...</div>
+            ) : null}
           </div>
 
           {/* Footer */}

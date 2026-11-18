@@ -31,7 +31,7 @@ export type RoleAccess = {
   canSeeContact: boolean;
   /** Message as pro on leads */
   canProMessage: boolean;
-  /** Start / manage $19.99 membership */
+  /** Start / manage paid membership */
   canManageMembership: boolean;
   notice: string | null;
   blockedReason: string | null;
@@ -108,7 +108,7 @@ export function resolveRoleAccess(user: User | null, pro?: Partial<ProGate>): Ro
   const contactOk = cleared && membershipOk && Boolean(pro?.contactUnlocked);
 
   let blockedReason: string | null = null;
-  let notice: string | null = "One pro membership: $19.99/mo after 30-day free trial. No commissions.";
+  let notice: string | null = "Choose a membership plan to quote leads. No commissions on completed jobs.";
 
   if (!cleared) {
     blockedReason =
@@ -121,7 +121,7 @@ export function resolveRoleAccess(user: User | null, pro?: Partial<ProGate>): Ro
             : "Background check pending clearance. Account clearance is required before profile activation.";
     notice = blockedReason;
   } else if (!pro?.membershipActive) {
-    blockedReason = "Background cleared! Start your 30-day free trial to quote and unlock contact.";
+    blockedReason = "Background cleared! Start a membership (or trial) to quote and unlock contact.";
     notice = blockedReason;
   } else if (pro.membershipPaused) {
     blockedReason = "Membership paused — resume to quote and unlock contact.";

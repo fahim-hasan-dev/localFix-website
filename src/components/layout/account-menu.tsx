@@ -8,12 +8,14 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { cn } from "@/lib/cn";
 import { logout } from "@/redux/slices/authSlice";
 import { useAppDispatch } from "@/redux/hooks";
+import { useLogoutUserMutation } from "@/services/client/auth-api";
 import type { User } from "@/types";
 
 export function AccountMenu({ user }: { user: User }) {
   const pathname = usePathname();
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const [logoutUser, { isLoading: loggingOut }] = useLogoutUserMutation();
   const [open, setOpen] = useState(false);
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (prevPathname !== pathname) {
@@ -96,9 +98,17 @@ export function AccountMenu({ user }: { user: User }) {
               type="button"
               role="menuitem"
               className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left font-display text-xs sm:text-sm font-medium text-error hover:bg-red-50 transition-colors cursor-pointer"
-              onClick={() => {
-                dispatch(logout());
-                router.push("/");
+              disabled={loggingOut}
+              onClick={async () => {
+                setOpen(false);
+                try {
+                  await logoutUser().unwrap();
+                } catch {
+                  // Server logout failed; still clear the local session below.
+                } finally {
+                  dispatch(logout());
+                  router.push("/");
+                }
               }}
             >
               <LogOut className="h-4 w-4" />

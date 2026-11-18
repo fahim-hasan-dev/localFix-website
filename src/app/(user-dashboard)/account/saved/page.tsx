@@ -4,18 +4,15 @@ import { Search } from "lucide-react";
 import { ProCard } from "@/components/shared/pro-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
-import { professionals } from "@/Mockdata";
-import { useAppSelector } from "@/redux/hooks";
+import { mapProfessional, unwrapProfessionals } from "@/lib/api-mappers";
+import { useGetFavoritesQuery } from "@/services/client/engagement-api";
 
 export default function SavedProsPage() {
-  const favorites = useAppSelector((state) => state.features.favorites);
-  const list = professionals.filter(
-    (pro) => favorites.includes(pro.id) && pro.clearance === "cleared",
-  );
+  const { data, isLoading, isError } = useGetFavoritesQuery();
+  const list = unwrapProfessionals(data?.data).map(mapProfessional);
 
   return (
     <div className="w-full max-w-5xl space-y-6">
-      {/* Consistent Standard Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line/70 pb-4 pt-1">
         <div className="flex items-center gap-2.5">
           <h1 className="font-display text-[22px] sm:text-[26px] font-semibold text-title tracking-tight">
@@ -39,8 +36,10 @@ export default function SavedProsPage() {
         ) : null}
       </div>
 
-      {/* Grid of Saved Pros */}
-      {list.length === 0 ? (
+      {isLoading ? <p className="text-sm text-muted">Loading saved professionals...</p> : null}
+      {isError ? <p className="text-sm text-error">Saved professionals could not be loaded.</p> : null}
+
+      {!isLoading && !isError && list.length === 0 ? (
         <div className="mt-4">
           <EmptyState
             title="No saved pros yet"
