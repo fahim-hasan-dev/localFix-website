@@ -1,49 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
+import { mapCategory } from "@/lib/api-mappers";
 import { mediaUrl } from "@/utils/mediaUrl";
-import { useGetSiteSettingsQuery } from "@/services/client/catalog-api";
-
-const groups = [
-  {
-    title: "Popular Services",
-    links: [
-      { href: "/browse-pros?category=plumbing", label: "Plumbing Repair" },
-      { href: "/browse-pros?category=electrical", label: "Electrical" },
-      { href: "/browse-pros?category=hvac", label: "HVAC & Cooling" },
-      { href: "/browse-pros?category=handyman", label: "Handyman Services" },
-      { href: "/browse-pros?category=painting", label: "Painting" },
-    ],
-  },
-  {
-    title: "For Homeowners",
-    links: [
-      { href: "/browse-pros", label: "Find a Pro" },
-      { href: "/services", label: "All Services" },
-      { href: "/how-it-works", label: "How it works" },
-      { href: "/faq", label: "FAQ" },
-    ],
-  },
-  {
-    title: "For Contractors",
-    links: [
-      { href: "/pro-register", label: "Join Pro Network" },
-      { href: "/pro/jobs", label: "Available Jobs Board" },
-      { href: "/pro/pricing", label: "Pro Membership" },
-      { href: "/pro", label: "Contractor Portal" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { href: "/about", label: "About" },
-      { href: "/contact", label: "Contact" },
-      { href: "/terms", label: "Terms & Conditions" },
-      { href: "/privacy", label: "Privacy Policy" },
-    ],
-  },
-];
+import { useGetCategoriesQuery, useGetSiteSettingsQuery } from "@/services/client/catalog-api";
 
 function SocialIcon({ label }: { label: string }) {
   if (label === "Facebook") {
@@ -71,6 +33,7 @@ function SocialIcon({ label }: { label: string }) {
 
 export function Footer() {
   const { data } = useGetSiteSettingsQuery();
+  const { data: categoryResponse } = useGetCategoriesQuery();
   const settings = data?.data;
   const brand = settings?.platformBrandName || "Local Fix";
   const footerLogo = mediaUrl(settings?.footerLogo);
@@ -79,6 +42,51 @@ export function Footer() {
     { href: settings?.instagramUrl || "https://www.instagram.com/localfix", label: "Instagram" },
     { href: settings?.linkedinUrl || "https://www.linkedin.com/company/localfix", label: "LinkedIn" },
   ].filter((item) => Boolean(item.href));
+
+  const popularServiceLinks = useMemo(() => {
+    const categories = (categoryResponse?.data || []).map(mapCategory);
+    return categories.slice(0, 5).map((category) => ({
+      href: `/browse-pros?category=${encodeURIComponent(category.slug)}`,
+      label: category.name,
+    }));
+  }, [categoryResponse]);
+
+  const groups = [
+    {
+      title: "Popular Services",
+      links:
+        popularServiceLinks.length > 0
+          ? popularServiceLinks
+          : [{ href: "/services", label: "All Services" }],
+    },
+    {
+      title: "For Homeowners",
+      links: [
+        { href: "/browse-pros", label: "Find a Pro" },
+        { href: "/services", label: "All Services" },
+        { href: "/how-it-works", label: "How it works" },
+        { href: "/faq", label: "FAQ" },
+      ],
+    },
+    {
+      title: "For Contractors",
+      links: [
+        { href: "/pro-register", label: "Join Pro Network" },
+        { href: "/pro/jobs", label: "Available Jobs Board" },
+        { href: "/pro/pricing", label: "Pro Membership" },
+        { href: "/pro", label: "Contractor Portal" },
+      ],
+    },
+    {
+      title: "Company",
+      links: [
+        { href: "/about", label: "About" },
+        { href: "/contact", label: "Contact" },
+        { href: "/terms", label: "Terms & Conditions" },
+        { href: "/privacy", label: "Privacy Policy" },
+      ],
+    },
+  ];
 
   return (
     <footer className="bg-title text-white">
@@ -126,7 +134,7 @@ export function Footer() {
             <p className="font-display text-base font-semibold tracking-tight text-white">{group.title}</p>
             <ul className="mt-5 space-y-3 text-sm text-white/70">
               {group.links.map((link) => (
-                <li key={link.href}>
+                <li key={`${group.title}-${link.href}-${link.label}`}>
                   <Link href={link.href} className="hover:text-white transition-colors">
                     {link.label}
                   </Link>

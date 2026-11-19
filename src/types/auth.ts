@@ -68,6 +68,9 @@ export interface ProSignupRequest {
   insuranceCoverage?: string | number;
   insuranceCertificate?: string;
   backgroundCheckConsent: boolean;
+  checkrCandidateId?: string;
+  checkrInvitationId?: string;
+  checkrInvitationUrl?: string;
   countryCode?: string;
   state?: string;
 }

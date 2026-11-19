@@ -23,7 +23,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, NativeSelect, TextField } from "@/components/ui/field";
 import { offerStatusLabels } from "@/Mockdata";
-import { getAvatar } from "@/lib/avatars";
 import { useResolvedPro } from "@/hooks/use-resolved-pro";
 import { selectablePaymentMethods, selectJob, selectQuotesForJob } from "@/lib/marketplace";
 import {
@@ -281,23 +280,29 @@ export function QuoteDetail({
               <Link
                 href={`/browse-pros/${pro.id}`}
                 title={`View ${pro.name}'s profile`}
-                className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-line/80 bg-slate-100 transition hover:ring-2 hover:ring-primary/40 cursor-pointer shadow-2xs"
+                className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl border border-line/80 bg-slate-100 transition hover:ring-2 hover:ring-primary/40 cursor-pointer shadow-2xs"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={pro.avatar || getAvatar(pro.name, pro.id)}
-                  alt={pro.name}
-                  className="h-full w-full object-cover"
-                />
+                {pro.avatar ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={pro.avatar}
+                    alt={pro.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="font-display text-sm font-bold text-title">
+                    {pro.name
+                      .split(" ")
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .map((p) => p[0]?.toUpperCase() ?? "")
+                      .join("") || "?"}
+                  </span>
+                )}
               </Link>
             ) : (
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-line/80 bg-slate-100 shadow-2xs">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={getAvatar("Contractor")}
-                  alt="Contractor Assigned"
-                  className="h-full w-full object-cover"
-                />
+              <div className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl border border-line/80 bg-slate-100 shadow-2xs">
+                <span className="font-display text-sm font-bold text-muted">?</span>
               </div>
             )}
             <div className="min-w-0">

@@ -163,8 +163,8 @@ export default function ProBookingsPage() {
         </div>
       </div>
 
-      {/* 3. Search Filter */}
-      {allTab.rows.length > 0 && (
+      {/* 3. Search Filter — keep visible while searching even with zero matches */}
+      {(allTab.rows.length > 0 || Boolean(searchQuery.trim())) && (
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
@@ -182,7 +182,7 @@ export default function ProBookingsPage() {
         <p className="text-sm text-muted">Loading bookings...</p>
       ) : current.isError ? (
         <p className="text-sm text-error">Bookings could not be loaded.</p>
-      ) : allTab.rows.length === 0 || previewEmpty ? (
+      ) : (allTab.rows.length === 0 || previewEmpty) && !searchQuery.trim() ? (
         <div className="mt-4">
           <EmptyState
             title="No Confirmed Bookings"
@@ -193,10 +193,21 @@ export default function ProBookingsPage() {
         </div>
       ) : filteredBookings.length === 0 ? (
         <div className="rounded-[16px] border border-line/80 bg-white p-8 text-center">
-          <p className="text-sm font-semibold text-title">No bookings in this filter.</p>
+          <p className="text-sm font-semibold text-title">
+            {searchQuery.trim() ? "No matching bookings found." : "No bookings in this filter."}
+          </p>
           <p className="mt-1 text-xs text-muted">
             Try switching tabs or resetting your search query.
           </p>
+          {searchQuery.trim() ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="mt-3 text-xs font-semibold text-primary hover:underline"
+            >
+              Clear search
+            </button>
+          ) : null}
         </div>
       ) : (
         <div className="space-y-4">

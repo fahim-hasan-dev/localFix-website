@@ -1,4 +1,3 @@
-import { proAvatars } from "@/lib/avatars";
 import type {
   Category,
   Job,
@@ -770,7 +769,7 @@ const baseProfessionals: Professional[] = [
 
 export const professionals: Professional[] = baseProfessionals.map((p) => ({
   ...p,
-  avatar: proAvatars[p.id] || p.avatar,
+  avatar: p.avatar || "",
 }));
 
 export const jobs: Job[] = [

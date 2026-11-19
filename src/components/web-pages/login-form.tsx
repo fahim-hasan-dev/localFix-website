@@ -2,19 +2,40 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, TextField } from "@/components/ui/field";
 import { PasswordField } from "@/components/ui/password-field";
-import { GoogleIcon } from "@/components/ui/google-icon";
 import { AuthLinks } from "@/components/web-pages/auth-links";
 import { useLoginMutation } from "@/services/client/auth-api";
 import { useAppSelector } from "@/redux/hooks";
-import { normalizeRole } from "@/utils/authToken";
+import { authToken, normalizeRole } from "@/utils/authToken";
+
+function safeInternalPath(path: string | null): string | null {
+  if (!path || !path.startsWith("/") || path.startsWith("//")) return null;
+  return path;
+}
+
+function destinationForRole(isPro: boolean, nextPath: string | null): string {
+  const next = safeInternalPath(nextPath);
+  if (next) {
+    if (isPro && next.startsWith("/account")) return "/pro";
+    if (!isPro && next.startsWith("/pro")) return "/";
+    return next;
+  }
+  return isPro ? "/pro" : "/";
+}
+
+/** Full navigation so middleware always sees freshly written auth cookies. */
+function hardRedirect(path: string) {
+  if (typeof window === "undefined") return;
+  window.location.assign(path);
+}
 
 export function LoginForm() {
   const user = useAppSelector((state) => state.auth.user);
+  const hydrated = useAppSelector((state) => state.auth.hydrated);
   const router = useRouter();
   const search = useSearchParams();
   const nextPath = search.get("next");
@@ -25,18 +46,17 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const submittingRef = useRef(false);
 
   const [loginApi, { isLoading }] = useLoginMutation();
 
+  // Only auto-bounce users who already have a session (e.g. opened /login while logged in).
+  // Do not race with an in-flight submit — that caused login → /pro → /login loops.
   useEffect(() => {
-    if (user) {
-      if (nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")) {
-        router.replace(nextPath);
-      } else {
-        router.replace(user.role === "pro" ? "/pro" : "/account");
-      }
-    }
-  }, [user, nextPath, router]);
+    if (!hydrated || !user || submittingRef.current) return;
+    if (!authToken.getAccessToken()) return;
+    hardRedirect(destinationForRole(user.role === "pro", nextPath));
+  }, [hydrated, user, nextPath]);
 
   const [prevRoleParam, setPrevRoleParam] = useState(roleParam);
   if (roleParam && (roleParam === "pro" || roleParam === "homeowner") && roleParam !== prevRoleParam) {
@@ -55,45 +75,40 @@ export function LoginForm() {
       return;
     }
 
+    submittingRef.current = true;
     try {
       const res = await loginApi({ email: trimmedEmail, password }).unwrap();
-      // Live API nests the user under data.data (not data.user).
       const backendRole = res.data?.user?.role || res.data?.data?.role;
       const mappedRole = normalizeRole(backendRole);
       const isPro = mappedRole === "pro";
+      const target = destinationForRole(isPro, nextPath);
+
+      // Ensure cookies from persistSession are visible before leaving the page.
+      if (!authToken.getAccessToken()) {
+        const token = res.data?.token || res.data?.accessToken;
+        if (token) {
+          authToken.setTokens({
+            accessToken: token,
+            refreshToken: res.data?.refreshToken,
+            role: mappedRole,
+          });
+        }
+      }
 
       toast.success("Signed in successfully!");
-
-      if (nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")) {
-        // Never send a pro into a homeowner-only next path (and vice versa).
-        if (isPro && nextPath.startsWith("/account")) {
-          router.push("/pro");
-          return;
-        }
-        if (!isPro && nextPath.startsWith("/pro")) {
-          router.push("/account");
-          return;
-        }
-        router.push(nextPath);
-        return;
-      }
-      router.push(isPro ? "/pro" : "/account");
+      hardRedirect(target);
     } catch (err: unknown) {
+      submittingRef.current = false;
       const apiErr = err as { data?: { message?: string }; error?: string };
       const msg = apiErr?.data?.message || apiErr?.error || "Invalid email or password. Please try again.";
       setError(msg);
       toast.error(msg);
       if (msg.toLowerCase().includes("verify your account") || msg.toLowerCase().includes("verify your email")) {
-        // If unverified account, redirect directly to verify-email after a short prompt
         setTimeout(() => {
           router.push(`/verify-email?email=${encodeURIComponent(trimmedEmail)}&role=${role}`);
         }, 1200);
       }
     }
-  }
-
-  function handleGoogleSignIn() {
-    setError("Google Sign-in is not configured on this server yet. Please use email and password.");
   }
 
   return (
@@ -143,26 +158,6 @@ export function LoginForm() {
           {isLoading ? "Signing in..." : "Sign in ↗"}
         </Button>
       </form>
-
-      {/* Or Divider */}
-      <div className="relative my-5 flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-line/80" />
-        </div>
-        <span className="relative bg-white px-3 font-display text-xs font-medium uppercase tracking-wider text-muted">
-          Or
-        </span>
-      </div>
-
-      {/* Google Sign In Button */}
-      <button
-        type="button"
-        onClick={handleGoogleSignIn}
-        className="flex w-full items-center justify-center gap-2.5 rounded-full border border-line bg-white px-5 py-3 font-display text-sm font-semibold text-title shadow-2xs transition-all duration-200 hover:bg-smoke/70 hover:border-line hover:shadow-xs active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer"
-      >
-        <GoogleIcon className="h-4.5 w-4.5" />
-        <span>Continue with Google ↗</span>
-      </button>
 
       <AuthLinks prompt="Don't have an account?" href={signupHrefWithNext} label="Sign up free ↗" />
     </div>

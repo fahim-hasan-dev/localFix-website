@@ -77,10 +77,15 @@ const authSlice = createSlice({
       state.user = normalizedUser;
       state.hydrated = true;
       persistStoredUser(normalizedUser);
-      authToken.setTokens({
-        accessToken: authToken.getAccessToken() || "",
-        role: normalizedUser.role,
-      });
+      // Never overwrite a real access token with "". Tokens are set by persistSession /
+      // loginAs; here we only sync the role cookie for middleware checks.
+      const existingToken = authToken.getAccessToken();
+      if (existingToken) {
+        authToken.setTokens({
+          accessToken: existingToken,
+          role: normalizedUser.role,
+        });
+      }
     },
     loginAs(state, action: PayloadAction<UserRole | { role: UserRole; profile?: Partial<User> }>) {
       const role = typeof action.payload === "string" ? action.payload : action.payload.role;

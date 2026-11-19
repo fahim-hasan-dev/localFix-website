@@ -65,6 +65,12 @@ export const ENDPOINTS = {
     HISTORY: "/professionals/analytics/history",
     APPLICATION: "/professionals/application",
   },
+  CHECKR: {
+    START_SCREENING: "/checkr/start-screening",
+    INITIATE: "/checkr/initiate",
+    STATUS: "/checkr/status",
+  },
+ 
   JOBS: {
     LIST: "/jobs",
     MY_REQUESTS: "/jobs/my-requests",

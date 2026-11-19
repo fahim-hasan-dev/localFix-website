@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { getAvatar } from "@/lib/avatars";
 import {
   bookingBadgeStatus,
   canHomeownerCancelBooking,
@@ -183,8 +182,8 @@ export default function MyBookingsPage() {
         </div>
       </div>
 
-      {/* 3. Search Filter */}
-      {allTab.rows.length > 0 && (
+      {/* 3. Search Filter — keep visible while searching even with zero matches */}
+      {(allTab.rows.length > 0 || Boolean(searchQuery.trim())) && (
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
@@ -202,7 +201,7 @@ export default function MyBookingsPage() {
         <p className="text-sm text-muted">Loading bookings...</p>
       ) : current.isError ? (
         <p className="text-sm text-error">Bookings could not be loaded.</p>
-      ) : allTab.rows.length === 0 || previewEmpty ? (
+      ) : (allTab.rows.length === 0 || previewEmpty) && !searchQuery.trim() ? (
         <div className="mt-4">
           <EmptyState
             title="No Bookings Yet"
@@ -213,10 +212,21 @@ export default function MyBookingsPage() {
         </div>
       ) : filteredBookings.length === 0 ? (
         <div className="rounded-[16px] border border-line/80 bg-white p-8 text-center">
-          <p className="text-sm font-semibold text-title">No bookings in this category.</p>
+          <p className="text-sm font-semibold text-title">
+            {searchQuery.trim() ? "No matching bookings found." : "No bookings in this category."}
+          </p>
           <p className="mt-1 text-xs text-muted">
             Try switching tabs or adjusting your search query.
           </p>
+          {searchQuery.trim() ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="mt-3 text-xs font-semibold text-primary hover:underline"
+            >
+              Clear search
+            </button>
+          ) : null}
         </div>
       ) : (
         <div className="space-y-4">
@@ -243,23 +253,29 @@ export default function MyBookingsPage() {
                         href={`/browse-pros/${pro._id}`}
                         onClick={(e) => e.stopPropagation()}
                         title={`View ${proName}'s profile`}
-                        className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-line/80 bg-slate-100 transition hover:ring-2 hover:ring-primary/40 cursor-pointer shadow-2xs"
+                        className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-line/80 bg-slate-100 transition hover:ring-2 hover:ring-primary/40 cursor-pointer shadow-2xs"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={mediaUrl(pro.profileImage) || getAvatar(proName, pro._id)}
-                          alt={proName}
-                          className="h-full w-full object-cover"
-                        />
+                        {mediaUrl(pro.profileImage) ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={mediaUrl(pro.profileImage)}
+                            alt={proName}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="font-display text-xs font-bold text-title">
+                            {proName
+                              .split(" ")
+                              .filter(Boolean)
+                              .slice(0, 2)
+                              .map((p) => p[0]?.toUpperCase() ?? "")
+                              .join("") || "?"}
+                          </span>
+                        )}
                       </Link>
                     ) : (
-                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-line/80 bg-slate-100 shadow-2xs">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={getAvatar("Contractor")}
-                          alt="Contractor Assigned"
-                          className="h-full w-full object-cover"
-                        />
+                      <div className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-line/80 bg-slate-100 shadow-2xs">
+                        <span className="font-display text-xs font-bold text-muted">?</span>
                       </div>
                     )}
                     <div className="min-w-0">
@@ -344,14 +360,24 @@ export default function MyBookingsPage() {
                         Inspect &amp; Settle ↗
                       </Button>
                     ) : isCompleted ? (
-                      <Button
-                        href={detailHref}
-                        size="sm"
-                        className="rounded-full text-xs font-semibold gap-1.5 shadow-xs"
-                      >
-                        <FileCheck2 className="h-3.5 w-3.5" />
-                        Receipt &amp; Review ↗
-                      </Button>
+                      raw.hasReviewed || raw.review ? (
+                        <Button
+                          href={detailHref}
+                          size="sm"
+                          className="rounded-full text-xs font-semibold gap-1.5 shadow-xs"
+                        >
+                          View ↗
+                        </Button>
+                      ) : (
+                        <Button
+                          href={`${detailHref}#review`}
+                          size="sm"
+                          className="rounded-full text-xs font-semibold gap-1.5 shadow-xs"
+                        >
+                          <FileCheck2 className="h-3.5 w-3.5" />
+                          Review Pending ↗
+                        </Button>
+                      )
                     ) : status === "cancelled" ? (
                       <Button
                         href={detailHref}

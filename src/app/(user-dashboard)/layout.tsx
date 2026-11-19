@@ -8,6 +8,7 @@ import { loginHref } from "@/lib/role-access";
 import { selectHomeownerRequests } from "@/lib/marketplace";
 import { useAppSelector } from "@/redux/hooks";
 import { useUnreadChatCount } from "@/services/client/engagement-api";
+import { authToken } from "@/utils/authToken";
 
 export default function UserDashboardLayout({
   children,
@@ -24,6 +25,8 @@ export default function UserDashboardLayout({
   useEffect(() => {
     if (!hydrated) return;
     if (!user) {
+      // Token exists but Redux not ready yet (hard redirect right after login).
+      if (authToken.getAccessToken()) return;
       const next = pathname?.startsWith("/account") ? pathname : "/account/post-job";
       router.replace(loginHref({ next }));
       return;

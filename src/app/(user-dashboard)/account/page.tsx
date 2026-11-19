@@ -51,11 +51,21 @@ export default function AccountPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Unfiltered list keeps the search bar visible when a query returns zero matches.
+  const baselineQuery = useGetMyJobRequestsQuery();
   const { data, isLoading, isError, refetch } = useGetMyJobRequestsQuery(
     debouncedSearch ? { searchTerm: debouncedSearch } : undefined,
   );
   const { data: categoryResponse } = useGetCategoriesQuery();
   const [deleteJobRequest, { isLoading: isDeleting }] = useDeleteJobRequestMutation();
+
+  const isSearching = Boolean(searchQuery.trim());
+  const hasAnyOpenRequests = useMemo(() => {
+    return unwrapList<ApiJobRequest>(baselineQuery.data?.data).some((raw) => {
+      const status = mapJobRequest(raw).status;
+      return ["draft", "active", "getting_quotes", "quotes_in"].includes(status);
+    });
+  }, [baselineQuery.data]);
 
   const categoryNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -125,8 +135,8 @@ export default function AccountPage() {
         </p>
       </div>
 
-      {/* 2. Search Filter */}
-      {activeRequests.length > 0 && (
+      {/* 2. Search Filter — stay visible while searching even if zero matches */}
+      {(hasAnyOpenRequests || isSearching) && (
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
@@ -140,7 +150,7 @@ export default function AccountPage() {
       )}
 
       {/* 3. Request List */}
-      {isLoading ? (
+      {isLoading || (isSearching && baselineQuery.isLoading) ? (
         <Card className="rounded-[20px] border border-line/80 bg-white p-8 text-center">
           <p className="text-sm text-muted">Loading your requests…</p>
         </Card>
@@ -159,6 +169,19 @@ export default function AccountPage() {
             Try again
           </Button>
         </Card>
+      ) : activeRequests.length === 0 && isSearching ? (
+        <Card className="rounded-[20px] border border-line/80 bg-white p-8 text-center">
+          <p className="font-display text-sm font-semibold text-title">No matching requests found.</p>
+          <p className="mt-1 text-xs text-muted">Try a different search, or clear the box to see all requests.</p>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSearchQuery("")}
+            className="mt-4 rounded-full border border-line text-xs font-semibold"
+          >
+            Clear search
+          </Button>
+        </Card>
       ) : activeRequests.length === 0 ? (
         <div className="mt-4">
           <EmptyState
@@ -168,10 +191,6 @@ export default function AccountPage() {
             href="/account/post-job"
           />
         </div>
-      ) : filteredJobs.length === 0 ? (
-        <Card className="rounded-[20px] border border-line/80 bg-white p-8 text-center">
-          <p className="font-display text-sm font-semibold text-title">No matching requests found.</p>
-        </Card>
       ) : (
         <div className="space-y-4">
           {filteredJobs.map(({ job, quotesCount, requestedProName, booking, hiredProName }) => {

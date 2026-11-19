@@ -53,9 +53,10 @@ export function useRoleAccess() {
     skip: user?.role !== "pro",
   });
   const liveActive = user?.role === "pro" ? liveSubscriptionActive(subscriptionResponse?.data) : undefined;
+  // Application payload uses `approvalStatus` (pending|approved|rejected) — prefer that over any nested status.
   const application = unwrapRecord(applicationResponse?.data);
   const liveApplicationStatus = mapApiApplicationStatus(
-    application?.status ?? application?.approvalStatus ?? application?.applicationStatus,
+    application?.approvalStatus ?? application?.applicationStatus ?? application?.status,
   );
   const applicationStatus = liveApplicationStatus ?? localApplicationStatus;
 

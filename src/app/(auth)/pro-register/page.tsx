@@ -24,6 +24,8 @@ import { PasswordField } from "@/components/ui/password-field";
 import { mapCategory } from "@/lib/api-mappers";
 import { useGetCategoriesQuery } from "@/services/client/catalog-api";
 import { useSignupMutation } from "@/services/client/auth-api";
+import { useStartCheckrScreeningMutation } from "@/services/client/checkr-api";
+import { apiErrorMessage } from "@/services/client/form-data";
 import { authToken } from "@/utils/authToken";
 import { logout } from "@/redux/slices/authSlice";
 import {
@@ -206,9 +208,60 @@ export default function ProRegisterPage() {
   }>({});
   const [checkrOpened, setCheckrOpened] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [checkrSession, setCheckrSession] = useState<{
+    candidateId?: string;
+    invitationId?: string;
+    invitationUrl?: string;
+  } | null>(null);
   const [signupApi, { isLoading: isSubmitting }] = useSignupMutation();
+  const [startCheckr, { isLoading: checkrStarting }] = useStartCheckrScreeningMutation();
   const dispatch = useAppDispatch();
   const router = useRouter();
+
+  async function openCheckrScreening() {
+    setError("");
+    if (!form.name.trim() || !form.email.trim()) {
+      setError("Name and email from step 1 are required before starting Checkr.");
+      return;
+    }
+    if (!consent) {
+      setError("Please agree to complete the background check on Checkr first.");
+      return;
+    }
+    if (checkrSession?.invitationUrl) {
+      setCheckrOpened(true);
+      window.open(checkrSession.invitationUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    try {
+      const res = await startCheckr({
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone: form.phone.trim() || undefined,
+        zipCode: form.serviceZip.trim() || undefined,
+        state: form.licenseState.trim().toUpperCase() || undefined,
+        consentAccepted: true,
+      }).unwrap();
+      const invitationUrl = res.data?.invitationUrl || undefined;
+      if (!invitationUrl) {
+        setError("Checkr screening link is not available right now. Please try again.");
+        toast.error("Checkr screening link is not available right now.");
+        return;
+      }
+      setCheckrSession({
+        candidateId: res.data?.candidateId || undefined,
+        invitationId: res.data?.invitationId || undefined,
+        invitationUrl,
+      });
+      setCheckrOpened(true);
+      window.open(invitationUrl, "_blank", "noopener,noreferrer");
+      toast.success("Checkr screening opened in a new tab.");
+    } catch (err) {
+      const msg = apiErrorMessage(err, "Could not start Checkr screening. Please try again.");
+      setError(msg);
+      toast.error(msg);
+    }
+  }
 
   function patch(partial: Partial<FormState>) {
     setForm((prev) => ({ ...prev, ...partial }));
@@ -296,6 +349,10 @@ export default function ProRegisterPage() {
       );
       return;
     }
+    if (!checkrSession?.invitationId && !checkrOpened) {
+      setError("Please start the Checkr screening before submitting your application.");
+      return;
+    }
 
     const tradeObj = categories.find((c) => c.id === form.trade || c.slug === form.trade);
     const tradeTitle = tradeObj ? tradeObj.name : form.trade || "Plumbing";
@@ -366,6 +423,15 @@ export default function ProRegisterPage() {
         insuranceCoverage: form.insuranceCoverage || undefined,
         backgroundCheckConsent: true,
         agreedToTerms: true,
+        ...(checkrSession?.candidateId
+          ? { checkrCandidateId: checkrSession.candidateId }
+          : {}),
+        ...(checkrSession?.invitationId
+          ? { checkrInvitationId: checkrSession.invitationId }
+          : {}),
+        ...(checkrSession?.invitationUrl
+          ? { checkrInvitationUrl: checkrSession.invitationUrl }
+          : {}),
       }).unwrap();
 
       authToken.clearTokens();
@@ -645,22 +711,27 @@ export default function ProRegisterPage() {
                 <p className="text-xs font-bold text-title">Checkr Screening Portal</p>
                 <p className="text-[11px] text-muted">Takes ~2–3 minutes online</p>
               </div>
-              <a
-                href="https://checkr.com"
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => setCheckrOpened(true)}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-white hover:bg-primary/90 transition shadow-2xs shrink-0"
+              <button
+                type="button"
+                onClick={openCheckrScreening}
+                disabled={checkrStarting}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-white hover:bg-primary/90 transition shadow-2xs shrink-0 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <span>Start on Checkr</span>
+                <span>
+                  {checkrStarting
+                    ? "Opening…"
+                    : checkrSession?.invitationUrl
+                      ? "Continue on Checkr"
+                      : "Start on Checkr"}
+                </span>
                 <ExternalLink className="h-3.5 w-3.5" />
-              </a>
+              </button>
             </div>
 
             {checkrOpened && (
               <div className="flex items-center gap-2 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/70 p-2.5 rounded-lg">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>Portal opened in a new tab. Check your email for updates.</span>
+                <span>Checkr screening opened in a new tab. Finish it there, then submit below.</span>
               </div>
             )}
 

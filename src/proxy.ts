@@ -36,13 +36,13 @@ export function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
     if (isHomeowner) {
-      return NextResponse.redirect(new URL("/account", request.url));
+      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
   // Auth pages (login, signup) - redirect already logged in users
   if (isAuthRoute && isAuthenticated && rawRole) {
-    const target = isPro ? "/pro" : "/account";
+    const target = isPro ? "/pro" : "/";
     return NextResponse.redirect(new URL(target, request.url));
   }
 
@@ -51,7 +51,9 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/account",
     "/account/:path*",
+    "/pro",
     "/pro/:path*",
     "/login",
     "/signup",

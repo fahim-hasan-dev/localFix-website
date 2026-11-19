@@ -21,8 +21,11 @@ import { AppliedBanner } from "@/components/web-pages/applied-banner";
 import { saveApplicationDraft, submitApplication } from "@/redux/slices/featuresSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { useGetProfessionalApplicationQuery } from "@/services/client/marketplace-api";
+import { useInitiateCheckrScreeningMutation } from "@/services/client/checkr-api";
+import { apiErrorMessage } from "@/services/client/form-data";
 import { unwrapRecord, str, type ApiRecord } from "@/lib/api-profile";
 import { mediaUrl } from "@/utils/mediaUrl";
+import { toast } from "sonner";
 
 function toRecord(value: unknown): ApiRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -67,16 +70,29 @@ export default function ProApplicationPage() {
   const localDraft = useAppSelector((state) => state.features.applicationDraft);
 
   // Live application status from the API (falls back to local state until it loads).
-  const { data: applicationResponse } = useGetProfessionalApplicationQuery();
+  const { data: applicationResponse, refetch: refetchApplication } =
+    useGetProfessionalApplicationQuery();
+  const [initiateCheckr, { isLoading: checkrStarting }] = useInitiateCheckrScreeningMutation();
   const application = unwrapRecord(applicationResponse?.data);
   const status: ApplicationStatusKey =
-    mapApiStatus(application?.status ?? application?.approvalStatus ?? application?.applicationStatus) ??
+    mapApiStatus(application?.approvalStatus ?? application?.applicationStatus ?? application?.status) ??
     localStatus;
   const reason =
     str(application?.rejectionReason ?? application?.reason ?? application?.adminNote) || localReason;
-  const backgroundApi = str(
-    application?.backgroundCheckStatus ?? application?.backgroundCheck,
+  const backgroundCheck = toRecord(application?.backgroundCheck);
+  const backgroundStatus = str(
+    backgroundCheck?.status ?? application?.backgroundCheckStatus,
   ).toLowerCase();
+  const backgroundLabel =
+    str(backgroundCheck?.statusLabel) ||
+    (["verified", "clear", "cleared", "passed", "approved", "completed"].includes(backgroundStatus)
+      ? "Cleared"
+      : backgroundStatus
+        ? backgroundStatus.replace(/_/g, " ")
+        : "Pending Verification");
+  const savedInvitationUrl = str(
+    backgroundCheck?.checkrInvitationUrl ?? backgroundCheck?.viewUrl ?? application?.checkrInvitationUrl,
+  );
   const tradeLicense = toRecord(application?.tradeLicense);
   const liabilityInsurance = toRecord(application?.liabilityInsurance ?? application?.insurance);
   const draft: Record<string, string> = {
@@ -91,7 +107,11 @@ export default function ProApplicationPage() {
       str(liabilityInsurance?.insuranceCoverage ?? liabilityInsurance?.coverage) ||
       str(application?.insuranceCoverage) ||
       localDraft.insuranceCoverage,
-    backgroundCheck: ["clear", "cleared", "passed", "approved", "completed"].includes(backgroundApi)
+    backgroundCheck: (
+      backgroundCheck?.isCleared === true ||
+      backgroundCheck?.passed === true ||
+      ["verified", "clear", "cleared", "passed", "approved", "completed"].includes(backgroundStatus)
+    )
       ? ("clear" as const)
       : localDraft.backgroundCheck,
   };
@@ -128,7 +148,33 @@ export default function ProApplicationPage() {
   const current = statusConfig[status] || statusConfig.draft;
   const canSubmit = status === "draft" || status === "needs_info" || status === "rejected";
   const backgroundClear =
-    draft.backgroundCheck === "clear" || status === "cleared";
+    draft.backgroundCheck === "clear" ||
+    backgroundCheck?.isCleared === true ||
+    backgroundCheck?.passed === true;
+
+  async function openCheckrPortal() {
+    try {
+      if (backgroundClear && savedInvitationUrl) {
+        window.open(savedInvitationUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+      const res = await initiateCheckr({ consentAccepted: true }).unwrap();
+      const url = str(res.data?.invitationUrl) || savedInvitationUrl;
+      if (!url) {
+        toast.error("Checkr screening link is not available right now. Please try again.");
+        return;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+      toast.success(
+        res.data?.alreadyVerified
+          ? "Background check already cleared."
+          : "Checkr screening opened in a new tab.",
+      );
+      void refetchApplication();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Could not start Checkr screening. Please try again."));
+    }
+  }
 
   function handleSubmit() {
     dispatch(
@@ -239,7 +285,7 @@ export default function ProApplicationPage() {
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200/60"
                       : "bg-amber-50 text-amber-700 border-amber-200/60"
                   }`}>
-                    {backgroundClear ? "Cleared" : "Pending Verification"}
+                    {backgroundClear ? "Cleared" : backgroundLabel}
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted">
@@ -250,14 +296,22 @@ export default function ProApplicationPage() {
               </div>
             </div>
 
-            <a
-              href="https://checkr.com"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition shrink-0 self-start sm:self-auto cursor-pointer"
+            <button
+              type="button"
+              onClick={openCheckrPortal}
+              disabled={checkrStarting}
+              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-smoke shadow-2xs transition shrink-0 self-start sm:self-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <span>{backgroundClear ? "View on Checkr ↗" : "Start on Checkr ↗"}</span>
-            </a>
+              <span>
+                {checkrStarting
+                  ? "Opening…"
+                  : backgroundClear
+                    ? "View on Checkr ↗"
+                    : savedInvitationUrl
+                      ? "Continue on Checkr ↗"
+                      : "Start on Checkr ↗"}
+              </span>
+            </button>
           </div>
         </Card>
 

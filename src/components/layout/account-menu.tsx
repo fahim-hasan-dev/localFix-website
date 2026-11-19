@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Store, UserRound } from "lucide-react";
+import { LayoutDashboard, LogOut, Store, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { cn } from "@/lib/cn";
@@ -25,6 +25,7 @@ export function AccountMenu({ user }: { user: User }) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   const isPro = user.role === "pro";
+  const dashboardHref = isPro ? "/pro" : "/account";
   const profileHref = isPro ? "/pro/profile" : "/account/profile";
 
   useEffect(() => {
@@ -77,8 +78,19 @@ export function AccountMenu({ user }: { user: User }) {
             </div>
           </div>
 
-          {/* Core Profile Item */}
+          {/* Dashboard + Profile */}
           <div className="p-2 space-y-0.5 bg-white">
+            <Link
+              href={dashboardHref}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-title hover:bg-smoke hover:text-primary transition-colors"
+            >
+              <div className="grid h-7 w-7 place-items-center rounded-lg bg-stone-100 text-stone-600 shrink-0">
+                <LayoutDashboard className="h-3.5 w-3.5" />
+              </div>
+              <span>Dashboard</span>
+            </Link>
             <Link
               href={profileHref}
               role="menuitem"

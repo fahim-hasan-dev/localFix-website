@@ -10,21 +10,6 @@ export interface MarqueeItemData {
   href: string;
 }
 
-export const defaultTickerItems: MarqueeItemData[] = [
-  { label: "Plumbing", href: "/browse-pros?category=plumbing" },
-  { label: "Electrical Work", href: "/browse-pros?category=electrical" },
-  { label: "AC & Heating", href: "/browse-pros?category=hvac" },
-  { label: "Roof Repair", href: "/browse-pros?category=roofing" },
-  { label: "Appliance Repair", href: "/browse-pros?category=appliance-repair" },
-  { label: "Water Heaters", href: "/browse-pros?category=plumbing" },
-  { label: "Painting & Drywall", href: "/browse-pros?category=painting" },
-  { label: "Handyman Help", href: "/browse-pros?category=handyman" },
-  { label: "Drain Cleaning", href: "/browse-pros?category=plumbing" },
-  { label: "Pressure Washing", href: "/browse-pros?category=landscaping" },
-  { label: "Gutter Cleaning", href: "/browse-pros?category=roofing" },
-  { label: "Lawn & Yard Care", href: "/browse-pros?category=landscaping" },
-];
-
 export function HomeMarquee() {
   const marquees = useGetMarqueesQuery();
   const categories = useGetCategoriesQuery();
@@ -40,7 +25,7 @@ export function HomeMarquee() {
 
     if (fromMarquees.length > 0) return fromMarquees;
 
-    const fromCategories = (categories.data?.data ?? [])
+    return (categories.data?.data ?? [])
       .filter((category) => category?.name)
       .map((category) => {
         const mapped = mapCategory(category);
@@ -49,8 +34,6 @@ export function HomeMarquee() {
           href: `/browse-pros?category=${mapped.slug}`,
         };
       });
-
-    return fromCategories.length > 0 ? fromCategories : defaultTickerItems;
   }, [marquees.data, categories.data]);
 
   if (items.length === 0) return null;

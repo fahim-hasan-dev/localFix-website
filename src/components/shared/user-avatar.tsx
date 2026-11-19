@@ -1,5 +1,4 @@
 import { cn } from "@/lib/cn";
-import { getAvatar } from "@/lib/avatars";
 import { mediaUrl } from "@/utils/mediaUrl";
 import type { User } from "@/types";
 
@@ -27,7 +26,8 @@ export function UserAvatar({
     lg: "h-16 w-16 text-lg",
   };
 
-  const avatarUrl = mediaUrl(user.avatar) || (user.name ? getAvatar(user.name) : undefined);
+  // Only show a photo when the user actually has a profile image from the API.
+  const avatarUrl = mediaUrl(user.avatar);
 
   if (avatarUrl) {
     return (
@@ -54,7 +54,7 @@ export function UserAvatar({
         className,
       )}
     >
-      {initials(user.name)}
+      {initials(user.name || "?")}
     </span>
   );
 }

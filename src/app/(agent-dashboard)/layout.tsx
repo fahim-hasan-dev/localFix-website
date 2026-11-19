@@ -7,6 +7,7 @@ import { DashboardSidebar, type SidebarSection } from "@/components/layout/dashb
 import { useAppSelector } from "@/redux/hooks";
 import { useUnreadChatCount } from "@/services/client/engagement-api";
 import { useGetJobTabsCountQuery } from "@/services/client/jobs-api";
+import { authToken } from "@/utils/authToken";
 
 export default function AgentDashboardLayout({
   children,
@@ -19,8 +20,14 @@ export default function AgentDashboardLayout({
 
   useEffect(() => {
     if (!hydrated) return;
-    if (!user) router.replace("/login");
-    if (user?.role === "homeowner") router.replace("/account");
+    // Prefer cookie/localStorage token so a brief Redux gap after hard redirect
+    // does not bounce a valid session back to /login.
+    if (!user) {
+      if (authToken.getAccessToken()) return;
+      router.replace("/login");
+      return;
+    }
+    if (user.role === "homeowner") router.replace("/");
   }, [hydrated, router, user]);
 
   const isPro = user?.role === "pro";

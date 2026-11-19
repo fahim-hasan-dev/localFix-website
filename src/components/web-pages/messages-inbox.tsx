@@ -20,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { TextArea } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
 import { useRoleAccess } from "@/hooks/use-role-access";
-import { getAvatar } from "@/lib/avatars";
 import { mapProfessional } from "@/lib/api-mappers";
 import { errorMessage } from "@/lib/booking-view";
 import {
@@ -137,7 +136,8 @@ export function MessagesInbox({ role = "homeowner" }: { role?: "homeowner" | "pr
 
   function avatarFor(thread: MessageThread | null | undefined) {
     if (!thread) return "";
-    return avatarByChat[thread.id] || getAvatar(thread.otherParty, thread.proId);
+    // Only real profile images — never stock/Unsplash fallbacks.
+    return avatarByChat[thread.id] || "";
   }
 
   // Selection: explicit click wins; otherwise the ?dm= chat; otherwise the first chat.

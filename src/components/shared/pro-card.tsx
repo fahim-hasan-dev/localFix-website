@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   Star,
 } from "lucide-react";
-import { photos } from "@/lib/media";
 import { loginHref } from "@/lib/role-access";
 import { toggleFavorite } from "@/redux/slices/featuresSlice";
 import { useToggleFavoriteMutation } from "@/services/client/engagement-api";
@@ -17,6 +16,21 @@ import { useRoleAccess } from "@/hooks/use-role-access";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import type { Professional } from "@/types";
 import { cn } from "@/lib/cn";
+
+function proInitials(name: string) {
+  const cleaned = name.trim();
+  if (!cleaned) return "?";
+  // Email-like display names → first letter of local-part
+  if (cleaned.includes("@")) {
+    return (cleaned[0] || "?").toUpperCase();
+  }
+  return cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 export function ProCard({
   pro,
@@ -39,11 +53,8 @@ export function ProCard({
   const [toggleFavoriteApi] = useToggleFavoriteMutation();
   const savedLocally = useAppSelector((state) => state.features.favorites.includes(pro.id));
   const saved = savedLocally || Boolean(pro.isFavorite);
-  const image =
-    pro.avatar ||
-    pro.coverImage ||
-    photos.services[pro.categorySlug] ||
-    photos.banner;
+  // Profile photo only — never fall back to cover/project/stock images.
+  const image = (pro.avatar || "").trim();
   const locationLabel = [pro.city, pro.state].filter(Boolean).join(", ");
   const priceLabel =
     pro.startingPrice > 0 ? `$${pro.startingPrice}` : "Quote";
@@ -71,10 +82,18 @@ export function ProCard({
     >
       {/* 1. Photo Banner */}
       <div className="relative h-44 w-full overflow-hidden bg-smoke">
-        <span
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-          style={{ backgroundImage: `url(${image})` }}
-        />
+        {image ? (
+          <span
+            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+            style={{ backgroundImage: `url(${image})` }}
+          />
+        ) : (
+          <span className="absolute inset-0 grid place-items-center bg-gradient-to-br from-slate-200 to-slate-100">
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-white/90 font-display text-xl font-bold text-title shadow-xs ring-1 ring-black/5">
+              {proInitials(pro.name || pro.businessName || "?") || "?"}
+            </span>
+          </span>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/10" />
 
         {/* Top-left Owner Storefront Badge */}

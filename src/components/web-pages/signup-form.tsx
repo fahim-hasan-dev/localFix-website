@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, TextField } from "@/components/ui/field";
 import { PasswordField } from "@/components/ui/password-field";
-import { GoogleIcon } from "@/components/ui/google-icon";
 import { AuthLinks } from "@/components/web-pages/auth-links";
 import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
@@ -101,10 +100,6 @@ export function SignupForm() {
       setError(msg);
       toast.error(msg);
     }
-  }
-
-  function handleGoogleSignUp() {
-    setError("Google Sign-in is not configured on this server yet. Please use email registration.");
   }
 
   return (
@@ -238,26 +233,6 @@ export function SignupForm() {
           {isSigningUp ? "Submitting..." : "Continue to Verification ↗"}
         </Button>
       </form>
-
-      {/* Or Divider */}
-      <div className="relative my-6 flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-line/80" />
-        </div>
-        <span className="relative bg-white px-3 font-display text-xs font-medium uppercase tracking-wider text-muted">
-          Or
-        </span>
-      </div>
-
-      {/* Google Sign Up Button */}
-      <button
-        type="button"
-        onClick={handleGoogleSignUp}
-        className="flex w-full items-center justify-center gap-2.5 rounded-full border border-line bg-white px-5 py-3 font-display text-sm font-semibold text-title shadow-2xs transition-all duration-200 hover:bg-smoke/70 hover:border-line hover:shadow-xs active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer"
-      >
-        <GoogleIcon className="h-4.5 w-4.5" />
-        <span>Continue with Google ↗</span>
-      </button>
 
       <AuthLinks
         prompt="Already have an account?"

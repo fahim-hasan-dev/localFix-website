@@ -71,14 +71,17 @@ const baseQueryWithReauth: BaseQueryFn<
           authToken.setTokens({ accessToken: newAccessToken });
           // Retry original request with the new access token
           result = await rawBaseQuery(args, api, extraOptions);
+        } else if (authToken.getAccessToken()) {
+          // Keep the existing session if refresh payload is empty — avoid wiping a
+          // just-established login because of a flaky refresh response.
+          result = await rawBaseQuery(args, api, extraOptions);
         } else {
           authToken.clearTokens();
           api.dispatch(logout());
         }
-      } else {
-        authToken.clearTokens();
-        api.dispatch(logout());
       }
+      // No refresh token: leave the session alone. A single 401 (e.g. permission)
+      // must not force logout and bounce the user back to /login.
     }
   }
 

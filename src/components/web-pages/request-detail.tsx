@@ -67,7 +67,6 @@ import {
   useRescheduleBookingMutation,
   useStartBookingWorkMutation,
 } from "@/services/client/marketplace-api";
-import { getAvatar } from "@/lib/avatars";
 import { useResolvedPro } from "@/hooks/use-resolved-pro";
 import { cn } from "@/lib/cn";
 import {
@@ -259,8 +258,6 @@ export function RequestDetail({
   const [showProCompleteModal, setShowProCompleteModal] = useState(false);
   const [proCompletionNote, setProCompletionNote] = useState("");
   const [settlePaymentMethod, setSettlePaymentMethod] = useState("cash");
-  const [settlePaid, setSettlePaid] = useState(false);
-  const [settleInspected, setSettleInspected] = useState(true);
   const [arrangePay, setArrangePay] = useState<DirectPaymentMethod>(() => booking?.paymentArrangement ?? "cash");
   const existingReview = useAppSelector((state) =>
     state.features.reviews.find((item) => item.jobId === id)
@@ -1675,25 +1672,6 @@ export function RequestDetail({
                   ))}
                 </NativeSelect>
               </Field>
-              <label className="flex items-start gap-2.5 text-xs text-copy cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settlePaid}
-                  onChange={(e) => setSettlePaid(e.target.checked)}
-                  className="mt-0.5 rounded border-line text-primary focus:ring-primary"
-                />
-                <span>I paid the professional directly. Optional.</span>
-              </label>
-
-              <label className="flex items-start gap-2.5 pt-1 text-xs text-copy cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settleInspected}
-                  onChange={(e) => setSettleInspected(e.target.checked)}
-                  className="mt-0.5 rounded border-line text-primary focus:ring-primary"
-                />
-                <span>I inspected the work and I am satisfied. Optional.</span>
-              </label>
             </div>
 
             <div className="mt-6 flex items-center justify-end gap-2.5 border-t border-line/60 pt-4">
@@ -1714,8 +1692,8 @@ export function RequestDetail({
                     const result = await confirmCompletion({
                       id: bookingTarget,
                       paymentMethod: toApiPaymentMethod(settlePaymentMethod),
-                      isPaidDirectly: settlePaymentMethod === "stripe" ? false : settlePaid,
-                      isSatisfactionConfirmed: settleInspected,
+                      isPaidDirectly: settlePaymentMethod !== "stripe",
+                      isSatisfactionConfirmed: true,
                     }).unwrap();
                     const checkout = checkoutUrlFrom(result);
                     if (checkout) {

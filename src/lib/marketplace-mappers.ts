@@ -94,6 +94,15 @@ export interface ApiBooking {
   homeownerCompletedAt?: string;
   paidAt?: string;
   paymentStatus?: string;
+  hasReviewed?: boolean;
+  review?: {
+    _id?: string;
+    rating?: number;
+    feedback?: string;
+    reply?: string | null;
+    createdAt?: string;
+    homeowner?: { name?: string; profileImage?: string };
+  } | null;
 }
 
 export interface ApiChatParticipant {

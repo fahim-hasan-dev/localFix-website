@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Calendar, CheckCircle2, MapPin } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, MapPin, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -30,6 +30,7 @@ import {
   useStartBookingWorkMutation,
   useVerifyBookingPaymentMutation,
 } from "@/services/client/marketplace-api";
+import { cn } from "@/lib/cn";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "Cash" },
@@ -63,7 +64,7 @@ export function BookingLiveDetail({
   backLabel: string;
   messagesHref: string;
 }) {
-  const { data, isLoading, isError } = useGetBookingQuery(id);
+  const { data, isLoading, isError, refetch } = useGetBookingQuery(id);
   const [cancelBooking, { isLoading: cancelling }] = useCancelBookingMutation();
   const [markOnTheWay, { isLoading: movingOnTheWay }] = useMarkBookingOnTheWayMutation();
   const [startWork, { isLoading: starting }] = useStartBookingWorkMutation();
@@ -79,6 +80,13 @@ export function BookingLiveDetail({
     void verifyPayment(id);
   }, [id, verifyPayment]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#review") return;
+    const el = document.getElementById("review");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [data]);
+
   const [showReschedule, setShowReschedule] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleWindow, setRescheduleWindow] = useState("");
@@ -86,11 +94,8 @@ export function BookingLiveDetail({
   const [rescheduleSaved, setRescheduleSaved] = useState(false);
   const [completionNote, setCompletionNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [isPaidDirectly, setIsPaidDirectly] = useState(true);
-  const [isSatisfied, setIsSatisfied] = useState(true);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewFeedback, setReviewFeedback] = useState("");
-  const [reviewSaved, setReviewSaved] = useState(false);
   const [actionError, setActionError] = useState("");
   const [scheduleErrors, setScheduleErrors] = useState<{ date?: string; window?: string }>({});
 
@@ -310,34 +315,33 @@ export function BookingLiveDetail({
                 ))}
               </select>
             </label>
-            <label className="flex items-center gap-2 text-copy">
-              <input type="checkbox" checked={isPaidDirectly} onChange={(event) => setIsPaidDirectly(event.target.checked)} />
-              I paid the contractor directly (optional)
-            </label>
-            <label className="flex items-center gap-2 text-copy">
-              <input type="checkbox" checked={isSatisfied} onChange={(event) => setIsSatisfied(event.target.checked)} />
-              I&apos;m satisfied with the completed work (optional)
-            </label>
-            <Button
-              type="button"
-              size="sm"
-              disabled={confirming}
-              onClick={() =>
-                run(async () => {
-                  const result = await confirmCompletion({
-                    id: bookingId,
-                    paymentMethod: toApiPaymentMethod(effectivePayment),
-                    isPaidDirectly: effectivePayment === "stripe" ? false : isPaidDirectly,
-                    isSatisfactionConfirmed: isSatisfied,
-                  }).unwrap();
-                  const checkout = checkoutUrlFrom(result);
-                  if (checkout) window.location.assign(checkout);
-                }, "Could not confirm completion.")
-              }
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {confirming ? "Confirming…" : "Confirm completion"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={confirming}
+                onClick={() =>
+                  run(async () => {
+                    const result = await confirmCompletion({
+                      id: bookingId,
+                      paymentMethod: toApiPaymentMethod(effectivePayment),
+                      isPaidDirectly: effectivePayment !== "stripe",
+                      isSatisfactionConfirmed: true,
+                    }).unwrap();
+                    const checkout = checkoutUrlFrom(result);
+                    if (checkout) window.location.assign(checkout);
+                  }, "Could not confirm completion.")
+                }
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {confirming ? "Confirming…" : "Confirm completion"}
+              </Button>
+              {other?._id ? (
+                <Button href={`${messagesHref}?dm=${other._id}`} size="sm" variant="ghost">
+                  Message contractor
+                </Button>
+              ) : null}
+            </div>
           </div>
         ) : null}
 
@@ -463,7 +467,7 @@ export function BookingLiveDetail({
         ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {other?._id ? (
+          {other?._id && !(role === "homeowner" && status === "awaiting_confirm") ? (
             <Button href={`${messagesHref}?dm=${other._id}`} size="sm" variant="ghost">
               Message {role === "pro" ? "client" : "contractor"}
             </Button>
@@ -484,13 +488,51 @@ export function BookingLiveDetail({
           ) : null}
         </div>
 
-        {role === "homeowner" && status === "completed" ? (
-          <div className="mt-4 space-y-3 border-t border-line/70 pt-4">
-            <p className="text-sm font-semibold text-title">Leave a review</p>
-            {reviewSaved ? (
-              <p className="text-xs text-emerald-700">Thanks — your review was submitted.</p>
-            ) : (
+        {status === "completed" && (role === "homeowner" || raw.review) ? (
+          <div id="review" className="mt-4 space-y-3 border-t border-line/70 pt-4 scroll-mt-24">
+            {raw.hasReviewed || raw.review ? (
+              <div className="space-y-3 rounded-2xl border border-line/80 bg-smoke/40 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-title">
+                    {role === "homeowner" ? "Your review" : "Client review"}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={cn(
+                          "h-4 w-4",
+                          star <= (raw.review?.rating || 0)
+                            ? "fill-amber-400 text-amber-500"
+                            : "text-slate-300",
+                        )}
+                      />
+                    ))}
+                    <span className="ml-1 text-xs font-semibold text-title">
+                      {(raw.review?.rating || 0).toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+                {raw.review?.feedback ? (
+                  <p className="text-sm leading-relaxed text-title/90">{raw.review.feedback}</p>
+                ) : null}
+                {raw.review?.createdAt ? (
+                  <p className="text-[11px] text-muted">
+                    Submitted {formatBookingDate(raw.review.createdAt)}
+                  </p>
+                ) : null}
+                {raw.review?.reply ? (
+                  <div className="rounded-xl border border-line/70 bg-white p-3">
+                    <p className="text-[11px] font-semibold text-muted">
+                      Response from {raw.professional?.companyName || raw.professional?.name || "Contractor"}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-title">{raw.review.reply}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : role === "homeowner" ? (
               <>
+                <p className="text-sm font-semibold text-title">Leave a review</p>
                 <label className="block space-y-1.5 text-xs sm:text-sm">
                   <span className="font-semibold text-title">Rating</span>
                   <select
@@ -522,14 +564,15 @@ export function BookingLiveDetail({
                         rating: reviewRating,
                         feedback: reviewFeedback.trim(),
                       }).unwrap();
-                      setReviewSaved(true);
+                      setReviewFeedback("");
+                      await refetch();
                     }, "Could not submit review.")
                   }
                 >
                   {reviewing ? "Submitting…" : "Submit review"}
                 </Button>
               </>
-            )}
+            ) : null}
           </div>
         ) : null}
 

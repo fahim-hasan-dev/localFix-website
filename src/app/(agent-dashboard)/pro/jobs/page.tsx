@@ -60,7 +60,8 @@ function clientInitials(name: string) {
 
 export default function ProJobsPage() {
   const router = useRouter();
-  const { access } = useRoleAccess();
+  const { applicationStatus, applicationReady } = useRoleAccess();
+  const needsClearance = applicationReady && applicationStatus !== "cleared";
   const [activeTab, setActiveTab] = useUrlTab(
     ["direct", "leads", "quoted"] as const,
     "direct",
@@ -291,8 +292,8 @@ export default function ProJobsPage() {
         </select>
       </div>
 
-      {/* Banner when screening is pending to submit quotes, but browsing leads is always open */}
-      {!access.canSubmitQuote && (
+      {/* Clearance banner only — hide once application/profile is approved */}
+      {needsClearance ? (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-200/90 bg-amber-50/80 p-3.5 sm:p-4 text-xs shadow-2xs">
           <div className="flex items-center gap-2.5 text-amber-900">
             <ShieldCheck className="h-4 w-4 text-amber-700 shrink-0" />
@@ -308,7 +309,7 @@ export default function ProJobsPage() {
             Complete Screening ↗
           </Button>
         </div>
-      )}
+      ) : null}
 
       {/* 4. Main List Rendering */}
       {isLoading ? (

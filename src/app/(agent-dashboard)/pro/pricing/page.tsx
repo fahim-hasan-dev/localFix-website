@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
-  Play,
   Receipt,
   ShieldCheck,
   X,
@@ -104,7 +103,6 @@ export default function PricingPage() {
   const isActive = isTrialActive || isPaidActive;
 
   const upcomingRecord = toRecord(rawSub?.upcomingPlan);
-  const upcomingPlanType = normalizePlanType(upcomingRecord?.planType ?? upcomingRecord?.billingCycle);
   const upcomingPackage = toRecord(upcomingRecord?.package);
   const upcomingPackageId = upcomingRecord ? refId(upcomingRecord.package ?? upcomingRecord.packageId) : "";
   const upcomingPackageName = str(upcomingPackage?.name);
@@ -170,7 +168,6 @@ export default function PricingPage() {
 
   // ---- Selection ----
   const [selection, setSelection] = useState<{ packageId: string; planType: PlanType } | null>(null);
-  const [billing, setBilling] = useState<PlanType>(currentPlanType || "monthly");
   const [showPlans, setShowPlans] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const defaultPackage =
@@ -179,16 +176,18 @@ export default function PricingPage() {
     packages[0];
   const selected = selection ?? (isActive
     ? null
-    : {
-        packageId: defaultPackage?._id ?? "",
-        planType: billing,
-      });
+    : defaultPackage
+      ? {
+          packageId: defaultPackage._id,
+          planType: defaultPlanType(defaultPackage, currentPlanType),
+        }
+      : null);
   const selectedPackage = packages.find((p) => p._id === selected?.packageId);
   const isCurrentSelection =
     isActive &&
     !!selected &&
     selected.packageId === (currentPackage?._id ?? "") &&
-    selected.planType === (currentPlanType || billing);
+    selected.planType === (currentPlanType || selected.planType);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   function showToast(msg: string) {
@@ -198,7 +197,19 @@ export default function PricingPage() {
 
   function priceOf(pkg: PackageItem | undefined, planType: PlanType | "") {
     if (!pkg) return 0;
-    return planType === "yearly" ? (pkg.yearlyPrice ?? 0) : (pkg.monthlyPrice ?? 0);
+    if (planType === "yearly") return pkg.yearlyPrice ?? 0;
+    if (planType === "monthly") return pkg.monthlyPrice ?? pkg.price ?? 0;
+    return pkg.monthlyPrice ?? pkg.price ?? pkg.yearlyPrice ?? 0;
+  }
+
+  function defaultPlanType(pkg: PackageItem, preferred: PlanType | "" = ""): PlanType {
+    const monthly = pkg.monthlyPrice ?? pkg.price ?? 0;
+    const yearly = pkg.yearlyPrice ?? 0;
+    if (preferred === "yearly" && yearly > 0) return "yearly";
+    if (preferred === "monthly" && monthly > 0) return "monthly";
+    if (monthly > 0) return "monthly";
+    if (yearly > 0) return "yearly";
+    return "monthly";
   }
 
   async function handleSubscribe() {
@@ -215,10 +226,7 @@ export default function PricingPage() {
         }).unwrap();
         setShowPlans(false);
         setSelection(null);
-        showToast(
-          res.message ||
-            `Plan change to ${selectedPackage.name} ${selected.planType === "yearly" ? "Yearly" : "Monthly"} scheduled.`,
-        );
+        showToast(res.message || `Plan change to ${selectedPackage.name} scheduled.`);
         return;
       }
       const res = await checkoutSubscription({
@@ -273,17 +281,12 @@ export default function PricingPage() {
     }
   }
 
-  function chooseBilling(next: PlanType) {
-    setBilling(next);
-    setSelection((current) => (current ? { ...current, planType: next } : current));
-  }
-
   const currentPlanLabel = currentPackage?.name
-    ? `${currentPackage.name}${currentPlanType ? ` · ${currentPlanType === "yearly" ? "Yearly" : "Monthly"}` : ""}`
+    ? currentPackage.name
     : hasSub
       ? "Active membership"
       : "No plan selected";
-  const currentPrice = priceOf(currentPackage, currentPlanType || "monthly");
+  const currentPrice = priceOf(currentPackage, currentPlanType);
 
   return (
     <div className="w-full max-w-4xl space-y-6">
@@ -294,7 +297,7 @@ export default function PricingPage() {
             Subscription &amp; Billing
           </h1>
           <p className="mt-0.5 text-xs sm:text-sm text-muted">
-            Manage your membership tier, billing interval, and payment credentials.
+            Manage your membership tier and payment credentials.
           </p>
         </div>
 
@@ -417,18 +420,7 @@ export default function PricingPage() {
                   <ShieldCheck className="h-3 w-3 text-amber-700 shrink-0" />
                   <span>Verification Required</span>
                 </Link>
-              ) : (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleSubscribe}
-                  disabled={!selectedPackage || checkingOut}
-                  className="h-7 font-semibold text-xs rounded-lg px-3"
-                >
-                  <Play className="h-3 w-3 mr-1" />
-                  <span>{checkingOut ? "Redirecting..." : "Subscribe"}</span>
-                </Button>
-              )
+              ) : null
             ) : confirmCancel ? (
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <button
@@ -453,7 +445,6 @@ export default function PricingPage() {
                   type="button"
                   onClick={() => {
                     setShowPlans((open) => !open);
-                    setBilling(currentPlanType || "monthly");
                     setSelection(null);
                   }}
                   className="inline-flex h-8 cursor-pointer items-center rounded-lg bg-title px-3 text-[11px] font-semibold text-white shadow-xs transition hover:bg-primary"
@@ -506,9 +497,9 @@ export default function PricingPage() {
               {isCancelled
                 ? "Subscription canceled. Choose a plan to start quoting leads again."
                 : isTrialActive
-                ? `Free trial of the ${currentPackage?.name || "current"} plan${trialEndLabel ? ` through ${trialEndLabel}` : ""}. ${currentPlanType === "yearly" ? "Yearly" : "Monthly"} billing starts after the trial.`
+                ? `Free trial of the ${currentPackage?.name || "current"} plan${trialEndLabel ? ` through ${trialEndLabel}` : ""}. Billing starts after the trial.`
                 : isPaidActive
-                ? `${currentPlanType === "yearly" ? "Yearly" : "Monthly"} plan${renewalDate ? ` · Renews ${renewalDate}` : ""}.`
+                ? `Active plan${renewalDate ? ` · Renews ${renewalDate}` : ""}.`
                 : "Choose a plan below to start receiving and quoting local leads."}
             </p>
             {isActive && (quotesUnlimited || (Number.isFinite(quoteLimit) && quoteLimit > 0)) ? (
@@ -520,8 +511,7 @@ export default function PricingPage() {
             ) : null}
             {hasUpcoming ? (
               <p className="text-[11px] font-medium text-primary">
-                Changes to {upcomingPackageName || packages.find((p) => p._id === upcomingPackageId)?.name || "the selected plan"}{" "}
-                ({upcomingPlanType === "yearly" ? "yearly" : "monthly"})
+                Changes to {upcomingPackageName || packages.find((p) => p._id === upcomingPackageId)?.name || "the selected plan"}
                 {upcomingStarts ? ` on ${upcomingStarts}` : ""}.
               </p>
             ) : null}
@@ -535,7 +525,7 @@ export default function PricingPage() {
                     {money(currentPrice)}
                   </span>
                   <span className="text-xs font-medium text-muted">
-                    {currentPlanType === "yearly" ? "/ year" : "/ month"}
+                    {currentPlanType === "yearly" ? "/yr" : currentPlanType === "monthly" ? "/mo" : ""}
                   </span>
                 </div>
                 {isTrialActive ? (
@@ -575,36 +565,19 @@ export default function PricingPage() {
       </Card>
 
       {/* ============================================================ */}
-      {/* 3. PLAN SELECTION & BILLING INTERVAL (Live packages)         */}
+      {/* 3. PLAN SELECTION (packages as returned from the API)        */}
       {/* ============================================================ */}
       {!isActive || showPlans ? (
       <div className="space-y-2.5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="font-display text-[11px] font-bold uppercase tracking-wider text-muted">
-              {isActive ? "Change plan" : "Subscription tier"}
-            </h3>
-            {isActive ? (
-              <p className="mt-1 text-[11px] text-muted">
-                The new plan starts after the current period{trialEndLabel || renewalDate ? ` on ${isTrialActive ? trialEndLabel : renewalDate}` : ""}.
-              </p>
-            ) : null}
-          </div>
-          <div className="inline-flex rounded-full border border-line bg-white p-0.5 text-[11px] font-semibold">
-            {(["monthly", "yearly"] as const).map((interval) => (
-              <button
-                key={interval}
-                type="button"
-                onClick={() => chooseBilling(interval)}
-                className={cn(
-                  "rounded-full px-3 py-1",
-                  billing === interval ? "bg-title text-white" : "text-muted",
-                )}
-              >
-                {interval === "yearly" ? "Yearly" : "Monthly"}
-              </button>
-            ))}
-          </div>
+        <div>
+          <h3 className="font-display text-[11px] font-bold uppercase tracking-wider text-muted">
+            {isActive ? "Change plan" : "Subscription tier"}
+          </h3>
+          {isActive ? (
+            <p className="mt-1 text-[11px] text-muted">
+              The new plan starts after the current period{trialEndLabel || renewalDate ? ` on ${isTrialActive ? trialEndLabel : renewalDate}` : ""}.
+            </p>
+          ) : null}
         </div>
 
         {packagesLoading ? (
@@ -618,14 +591,14 @@ export default function PricingPage() {
             {packages.map((pkg) => {
               const monthly = pkg.monthlyPrice ?? pkg.price ?? 0;
               const yearly = pkg.yearlyPrice ?? 0;
-              const displayTotal = billing === "yearly" ? yearly || monthly : monthly || yearly;
-              const isYearly = billing === "yearly";
-              const isSelected = selected?.packageId === pkg._id && selected.planType === billing;
-              const isCurrent = isActive && currentPackage?._id === pkg._id && (currentPlanType || "monthly") === billing;
+              const planType = defaultPlanType(pkg, currentPlanType);
+              const displayTotal = planType === "yearly" ? yearly || monthly : monthly || yearly;
+              const isSelected = selected?.packageId === pkg._id;
+              const isCurrent = isActive && currentPackage?._id === pkg._id;
               return (
                 <div
                   key={pkg._id}
-                  onClick={() => setSelection({ packageId: pkg._id, planType: billing })}
+                  onClick={() => setSelection({ packageId: pkg._id, planType })}
                   className={cn(
                     "group relative flex cursor-pointer flex-col justify-between rounded-xl border p-3.5 sm:p-4 transition-all",
                     isSelected
@@ -653,13 +626,29 @@ export default function PricingPage() {
                       ) : null}
                     </div>
 
-                    <div className="mt-2.5 flex items-baseline gap-1">
-                      <span className="font-display text-lg sm:text-xl font-bold text-title tracking-tight">
-                        {money(displayTotal)}
-                      </span>
-                      <span className="text-xs font-medium text-muted">
-                        {isYearly ? "/ yr" : "/ mo"}
-                      </span>
+                    <div className="mt-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      {monthly > 0 ? (
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-display text-lg sm:text-xl font-bold text-title tracking-tight">
+                            {money(monthly)}
+                          </span>
+                          <span className="text-xs font-medium text-muted">/mo</span>
+                        </div>
+                      ) : displayTotal > 0 ? (
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-display text-lg sm:text-xl font-bold text-title tracking-tight">
+                            {money(displayTotal)}
+                          </span>
+                          <span className="text-xs font-medium text-muted">
+                            {planType === "yearly" ? "/yr" : "/mo"}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="font-display text-lg font-bold text-muted">—</span>
+                      )}
+                      {monthly > 0 && yearly > 0 ? (
+                        <span className="text-xs text-muted">or {money(yearly)}/yr</span>
+                      ) : null}
                     </div>
                     {pkg.description ? (
                       <p className="mt-1 text-xs text-muted leading-relaxed line-clamp-2">

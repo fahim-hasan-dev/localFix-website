@@ -94,7 +94,9 @@ export const authApi = baseApi.injectEndpoints({
         method: "POST",
         body: credentials,
       }),
-      invalidatesTags: ["Auth", "User"],
+      // Do not invalidate User here — a parallel /profile refetch can 401 and clear
+      // the brand-new session (login → bounce back to /login).
+      invalidatesTags: ["Auth"],
       async onQueryStarted(_args, { dispatch, queryFulfilled }) {
         try {
           const { data: response } = await queryFulfilled;

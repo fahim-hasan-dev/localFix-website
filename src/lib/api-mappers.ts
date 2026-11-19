@@ -183,13 +183,9 @@ export function mapProfessional(pro: ApiProfessional): Professional {
     startingPrice: Number(pro.startingPrice ?? pro.startingRate ?? pro.hourlyRate ?? 0) || 0,
     availabilityNote: pro.availability || "",
     availableThisWeek: available,
+    // Avatar = uploaded profile photo only (empty → UI shows initials, never a fake face).
     avatar: mediaUrl(pro.profileImage),
-    coverImage: mediaUrl(
-      pro.profileImage ||
-        pro.coverImage ||
-        pro.thumbnail ||
-        pro.projectPhotos?.[0]?.image,
-    ),
+    coverImage: mediaUrl(pro.coverImage || pro.thumbnail || ""),
     isFavorite: Boolean(pro.isFavorite),
     liveServices: (pro.services || []).map(mapService),
     livePhotos: (pro.projectPhotos || []).map(mapPhoto),
